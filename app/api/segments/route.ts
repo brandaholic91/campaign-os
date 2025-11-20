@@ -1,0 +1,201 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { Database } from '@/lib/supabase/types'
+
+type SegmentInsert = Database['public']['Tables']['segments']['Insert']
+type SegmentUpdate = Database['public']['Tables']['segments']['Update']
+
+// GET /api/segments - List segments, optionally filtered by campaign_id
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const campaignId = searchParams.get('campaign_id')
+    
+    const supabase = await createClient()
+    
+    let query = supabase
+      .from('segments')
+      .select('*')
+      .order('priority', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+    
+    if (campaignId) {
+      query = query.eq('campaign_id', campaignId)
+    }
+    
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching segments:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch segments' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(data || [])
+  } catch (error) {
+    console.error('Unexpected error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// POST /api/segments - Create a new segment
+export async function POST(request: NextRequest) {
+  try {
+    const body: SegmentInsert = await request.json()
+    
+    // Validation
+    if (!body.name || !body.campaign_id) {
+      return NextResponse.json(
+        { error: 'Missing required fields: name, campaign_id' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase
+      .from('segments')
+      .insert({
+        campaign_id: body.campaign_id,
+        name: body.name,
+        description: body.description || null,
+        demographics: body.demographics || null,
+        psychographics: body.psychographics || null,
+        priority: body.priority || null,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating segment:', error)
+      return NextResponse.json(
+        { error: 'Failed to create segment', details: error.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(data, { status: 201 })
+  } catch (error) {
+    console.error('Unexpected error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// PUT /api/segments - Update a segment (requires id in body)
+export async function PUT(request: NextRequest) {
+  try {
+    const body: SegmentUpdate & { id: string } = await request.json()
+    
+    if (!body.id) {
+      return NextResponse.json(
+        { error: 'Missing required field: id' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+    
+    const { id, ...updateData } = body
+    
+    const { data, error } = await supabase
+      .from('segments')
+      .update({
+        ...updateData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Segment not found' },
+          { status: 404 }
+        )
+      }
+      console.error('Error updating segment:', error)
+      return NextResponse.json(
+        { error: 'Failed to update segment', details: error.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Unexpected error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/segments - Delete a segment (requires id in query or body)
+export async function DELETE(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const id = searchParams.get('id')
+    
+    if (!id) {
+      // Try to get id from body
+      const body = await request.json().catch(() => ({}))
+      const bodyId = body.id
+      
+      if (!bodyId) {
+        return NextResponse.json(
+          { error: 'Missing required parameter: id' },
+          { status: 400 }
+        )
+      }
+      
+      const supabase = await createClient()
+      const { error } = await supabase
+        .from('segments')
+        .delete()
+        .eq('id', bodyId)
+      
+      if (error) {
+        console.error('Error deleting segment:', error)
+        return NextResponse.json(
+          { error: 'Failed to delete segment', details: error.message },
+          { status: 500 }
+        )
+      }
+      
+      return NextResponse.json({ success: true })
+    }
+    
+    const supabase = await createClient()
+    
+    const { error } = await supabase
+      .from('segments')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting segment:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete segment', details: error.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Unexpected error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
