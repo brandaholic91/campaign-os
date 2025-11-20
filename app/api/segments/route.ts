@@ -56,6 +56,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate JSONB fields if provided
+    let demographics = body.demographics || null
+    let psychographics = body.psychographics || null
+
+    if (demographics !== null && typeof demographics !== 'object') {
+      return NextResponse.json(
+        { error: 'Invalid demographics: must be a valid JSON object' },
+        { status: 400 }
+      )
+    }
+
+    if (psychographics !== null && typeof psychographics !== 'object') {
+      return NextResponse.json(
+        { error: 'Invalid psychographics: must be a valid JSON object' },
+        { status: 400 }
+      )
+    }
+
     const supabase = await createClient()
     
     const { data, error } = await supabase
@@ -64,8 +82,8 @@ export async function POST(request: NextRequest) {
         campaign_id: body.campaign_id,
         name: body.name,
         description: body.description || null,
-        demographics: body.demographics || null,
-        psychographics: body.psychographics || null,
+        demographics,
+        psychographics,
         priority: body.priority || null,
       })
       .select()
@@ -101,9 +119,27 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    // Validate JSONB fields if provided
+    const updateData: SegmentUpdate = { ...body }
+    delete (updateData as any).id
+
+    if (updateData.demographics !== undefined && updateData.demographics !== null && typeof updateData.demographics !== 'object') {
+      return NextResponse.json(
+        { error: 'Invalid demographics: must be a valid JSON object' },
+        { status: 400 }
+      )
+    }
+
+    if (updateData.psychographics !== undefined && updateData.psychographics !== null && typeof updateData.psychographics !== 'object') {
+      return NextResponse.json(
+        { error: 'Invalid psychographics: must be a valid JSON object' },
+        { status: 400 }
+      )
+    }
+
     const supabase = await createClient()
     
-    const { id, ...updateData } = body
+    const { id } = body
     
     const { data, error } = await supabase
       .from('segments')

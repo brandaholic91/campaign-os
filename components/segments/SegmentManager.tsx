@@ -19,6 +19,10 @@ import { Plus, Edit, Trash2 } from 'lucide-react'
 type Segment = Database['public']['Tables']['segments']['Row']
 type SegmentInsert = Database['public']['Tables']['segments']['Insert']
 
+// Type for JSONB fields
+type DemographicsData = Record<string, unknown> | null
+type PsychographicsData = Record<string, unknown> | null
+
 interface SegmentManagerProps {
   campaignId: string
 }
@@ -35,6 +39,9 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
     psychographics: null,
     priority: null,
   })
+  // Store JSON as strings in form for easier editing
+  const [demographicsJson, setDemographicsJson] = useState<string>('')
+  const [psychographicsJson, setPsychographicsJson] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
@@ -60,11 +67,35 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
     setError(null)
 
     try {
+      // Parse and validate JSON fields
+      let demographics: DemographicsData = null
+      let psychographics: PsychographicsData = null
+
+      if (demographicsJson.trim()) {
+        try {
+          const parsed = JSON.parse(demographicsJson.trim())
+          demographics = typeof parsed === 'object' && parsed !== null ? parsed : null
+        } catch (parseError) {
+          setError('Érvénytelen JSON formátum a demográfiai adatoknál. Kérlek ellenőrizd a szintaxist.')
+          return
+        }
+      }
+
+      if (psychographicsJson.trim()) {
+        try {
+          const parsed = JSON.parse(psychographicsJson.trim())
+          psychographics = typeof parsed === 'object' && parsed !== null ? parsed : null
+        } catch (parseError) {
+          setError('Érvénytelen JSON formátum a pszichográfiai adatoknál. Kérlek ellenőrizd a szintaxist.')
+          return
+        }
+      }
+
       const payload = {
         ...formData,
         campaign_id: campaignId,
-        demographics: formData.demographics || null,
-        psychographics: formData.psychographics || null,
+        demographics,
+        psychographics,
       }
 
       let response
@@ -90,6 +121,8 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
       setShowForm(false)
       setEditingId(null)
       setFormData({ name: '', description: '', demographics: null, psychographics: null, priority: null })
+      setDemographicsJson('')
+      setPsychographicsJson('')
       fetchSegments()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save segment')
@@ -116,10 +149,21 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
     setFormData({
       name: segment.name,
       description: segment.description || '',
-      demographics: segment.demographics as any || null,
-      psychographics: segment.psychographics as any || null,
+      demographics: segment.demographics as DemographicsData,
+      psychographics: segment.psychographics as PsychographicsData,
       priority: segment.priority,
     })
+    // Convert JSONB to string for editing
+    setDemographicsJson(
+      segment.demographics 
+        ? JSON.stringify(segment.demographics as DemographicsData, null, 2)
+        : ''
+    )
+    setPsychographicsJson(
+      segment.psychographics 
+        ? JSON.stringify(segment.psychographics as PsychographicsData, null, 2)
+        : ''
+    )
     setShowForm(true)
   }
 
@@ -127,6 +171,8 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
     setShowForm(false)
     setEditingId(null)
     setFormData({ name: '', description: '', demographics: null, psychographics: null, priority: null })
+    setDemographicsJson('')
+    setPsychographicsJson('')
   }
 
   if (loading) {
@@ -181,6 +227,36 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
               value={formData.priority ?? ''}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value ? parseInt(e.target.value) : null })}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="demographics">Demográfiai adatok (JSON)</Label>
+            <Textarea
+              id="demographics"
+              value={demographicsJson}
+              onChange={(e) => setDemographicsJson(e.target.value)}
+              placeholder='{"age": "25-35", "location": "Budapest", "income": "middle"}'
+              rows={4}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Opcionális JSON formátumú adatok (pl. életkor, hely, jövedelem)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="psychographics">Pszichográfiai adatok (JSON)</Label>
+            <Textarea
+              id="psychographics"
+              value={psychographicsJson}
+              onChange={(e) => setPsychographicsJson(e.target.value)}
+              placeholder='{"values": ["sustainability", "quality"], "lifestyle": "urban"}'
+              rows={4}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Opcionális JSON formátumú adatok (pl. értékek, életstílus, attitűdök)
+            </p>
           </div>
 
           <div className="flex gap-2">
