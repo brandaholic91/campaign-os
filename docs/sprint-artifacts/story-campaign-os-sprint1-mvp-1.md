@@ -1,6 +1,6 @@
 # Story 1.1: Project Setup and Database Schema
 
-**Status:** review
+**Status:** done
 
 ---
 
@@ -34,6 +34,7 @@ So that **I have a solid foundation to build campaign management features on**.
 - **And** all enum types are created (campaign_type, goal_type, etc.)
 - **And** foreign key constraints are properly set up
 - **And** indexes are created for performance
+- **Status Note:** Migration file complete, but database not yet created. Supabase project setup required.
 
 **AC #4:** TypeScript types generated from database
 - **Given** the database schema exists
@@ -41,6 +42,7 @@ So that **I have a solid foundation to build campaign management features on**.
 - **Then** TypeScript interfaces are generated for all tables
 - **And** types are saved to `lib/supabase/types.ts`
 - **And** types can be imported in components
+- **Status Note:** Currently placeholder types. Requires Supabase project creation and type generation.
 
 **AC #5:** Basic project structure and configuration
 - **Given** the project is initialized
@@ -73,7 +75,12 @@ So that **I have a solid foundation to build campaign management features on**.
 - [x] Configure path aliases in tsconfig.json (@/components, @/lib) (AC: #5)
 - [x] Initialize Shadcn/ui with basic components (Button, Input, Card, Table) (AC: #5)
 - [x] Create lib/utils.ts with cn() helper function (AC: #5)
-- [ ] Test Supabase connection and verify schema (AC: #3, #4) - Requires Supabase project setup
+- [ ] Test Supabase connection and verify schema (AC: #3, #4) - **ACTION NEEDED**: Supabase project not created, migration not executed
+  - [ ] Create Supabase cloud project
+  - [ ] Run migration SQL in Supabase SQL Editor
+  - [ ] Generate TypeScript types: `npx supabase gen types typescript --project-id <id> > lib/supabase/types.ts`
+  - [ ] Update .env.local with actual Supabase URL and anon key
+  - [ ] Verify database connection with test query
 
 ### Technical Summary
 
@@ -274,6 +281,19 @@ Successfully initialized Campaign OS greenfield project with:
 - Outcome: Approve - all issues resolved
 - .env.local.example template file created during review
 - Next.js version discrepancy documented and justified in Dev Agent Record
+
+**2025-11-20 - Correct Course: Database Setup Gap Identified**
+- Issue: Migration file created but Supabase database never actually set up
+- Impact: Story 1.2 blocked from testing Campaign CRUD operations
+- Root cause: Task 76 (Test Supabase connection) incomplete - Supabase project not created
+- Action required: Complete database setup before Story 1.2 can proceed
+  - Create Supabase cloud project
+  - Run migration SQL in Supabase SQL Editor
+  - Generate TypeScript types with `npx supabase gen types typescript --project-id <id>`
+  - Update .env.local with actual credentials
+  - Verify database connection
+- AC #3 status: Migration file complete, but database not created (execution gap)
+- AC #4 status: TypeScript types are placeholder, need generation from actual schema
 
 ---
 
