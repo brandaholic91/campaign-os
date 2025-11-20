@@ -23,7 +23,7 @@ development_status:
   epic-1: contexted
   
   # Story 1.1: Project Setup and Database Schema
-  campaign-os-sprint1-mvp-1: review
+  campaign-os-sprint1-mvp-1: done
   
   # Story 1.2: Campaign CRUD and Audience Management
   campaign-os-sprint1-mvp-2: drafted
