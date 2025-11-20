@@ -1,0 +1,27 @@
+# BMAD Method and tool directories
+.bmad/
+.agent/
+.claude/
+.cursor/
+
+# Node modules and build artifacts
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
