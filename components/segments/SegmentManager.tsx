@@ -13,15 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Database } from '@/lib/supabase/types'
+import { Database, Json } from '@/lib/supabase/types'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
-type Segment = Database['public']['Tables']['segments']['Row']
-type SegmentInsert = Database['public']['Tables']['segments']['Insert']
+type Segment = Database['campaign_os']['Tables']['segments']['Row']
+type SegmentInsert = Database['campaign_os']['Tables']['segments']['Insert']
 
 // Type for JSONB fields
-type DemographicsData = Record<string, unknown> | null
-type PsychographicsData = Record<string, unknown> | null
+type DemographicsData = Json | null
+type PsychographicsData = Json | null
 
 interface SegmentManagerProps {
   campaignId: string

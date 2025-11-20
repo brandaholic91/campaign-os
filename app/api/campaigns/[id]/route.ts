@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/lib/supabase/types'
 
-type CampaignUpdate = Database['public']['Tables']['campaigns']['Update']
+type CampaignUpdate = Database['campaign_os']['Tables']['campaigns']['Update']
 
 // GET /api/campaigns/[id] - Get a single campaign
 export async function GET(
@@ -12,8 +12,9 @@ export async function GET(
   try {
     const { id } = await params
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('campaigns')
       .select('*')
       .eq('id', id)
@@ -53,6 +54,7 @@ export async function PUT(
     const body: CampaignUpdate = await request.json()
     
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     
     // If dates are being updated, validate them
     if (body.start_date && body.end_date) {
@@ -66,7 +68,7 @@ export async function PUT(
       }
     } else if (body.start_date || body.end_date) {
       // If only one date is being updated, fetch current campaign to validate
-      const { data: currentCampaign } = await supabase
+      const { data: currentCampaign } = await db
         .from('campaigns')
         .select('start_date, end_date')
         .eq('id', id)
@@ -84,7 +86,7 @@ export async function PUT(
       }
     }
     
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('campaigns')
       .update({
         ...body,
@@ -126,8 +128,9 @@ export async function DELETE(
   try {
     const { id } = await params
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     
-    const { error } = await supabase
+    const { error } = await db
       .from('campaigns')
       .delete()
       .eq('id', id)

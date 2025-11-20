@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/lib/supabase/types'
 
-type TopicInsert = Database['public']['Tables']['topics']['Insert']
-type TopicUpdate = Database['public']['Tables']['topics']['Update']
+type TopicInsert = Database['campaign_os']['Tables']['topics']['Insert']
+type TopicUpdate = Database['campaign_os']['Tables']['topics']['Update']
 
 // GET /api/topics - List topics, optionally filtered by campaign_id
 export async function GET(request: NextRequest) {
@@ -12,8 +12,9 @@ export async function GET(request: NextRequest) {
     const campaignId = searchParams.get('campaign_id')
     
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     
-    let query = supabase
+    let query = db
       .from('topics')
       .select('*')
       .order('created_at', { ascending: false })
@@ -56,8 +57,9 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('topics')
       .insert({
         campaign_id: body.campaign_id,
@@ -99,10 +101,11 @@ export async function PUT(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     
     const { id, ...updateData } = body
     
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('topics')
       .update({
         ...updateData,
@@ -155,7 +158,8 @@ export async function DELETE(request: NextRequest) {
       }
       
       const supabase = await createClient()
-      const { error } = await supabase
+      const db = supabase.schema('campaign_os')
+      const { error } = await db
         .from('topics')
         .delete()
         .eq('id', bodyId)
@@ -172,8 +176,9 @@ export async function DELETE(request: NextRequest) {
     }
     
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     
-    const { error } = await supabase
+    const { error } = await db
       .from('topics')
       .delete()
       .eq('id', id)

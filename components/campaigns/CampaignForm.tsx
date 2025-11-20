@@ -15,8 +15,8 @@ import {
 } from '@/components/ui/select'
 import { Database } from '@/lib/supabase/types'
 
-type Campaign = Database['public']['Tables']['campaigns']['Row']
-type CampaignInsert = Database['public']['Tables']['campaigns']['Insert']
+type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
+type CampaignInsert = Database['campaign_os']['Tables']['campaigns']['Insert']
 
 interface CampaignFormProps {
   campaign?: Campaign

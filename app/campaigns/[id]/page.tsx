@@ -8,7 +8,7 @@ import { format } from 'date-fns'
 import { Edit, Users, MessageSquare, Calendar } from 'lucide-react'
 import { DeleteCampaignButton } from '@/components/campaigns/DeleteCampaignButton'
 
-type Campaign = Database['public']['Tables']['campaigns']['Row']
+type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 
 const campaignTypeLabels: Record<Campaign['campaign_type'], string> = {
   political_election: 'Politikai választás',
@@ -27,7 +27,7 @@ const goalTypeLabels: Record<Campaign['primary_goal_type'], string> = {
   mobilization: 'Mobilizáció',
 }
 
-const statusLabels: Record<Campaign['status'], string> = {
+const statusLabels: Record<NonNullable<Campaign['status']>, string> = {
   planning: 'Tervezés',
   running: 'Fut',
   closed: 'Lezárva',
@@ -39,7 +39,8 @@ interface CampaignDetailPageProps {
 
 async function getCampaign(id: string): Promise<Campaign | null> {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const db = supabase.schema('campaign_os')
+  const { data, error } = await db
     .from('campaigns')
     .select('*')
     .eq('id', id)
@@ -97,7 +98,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
               campaign.status === 'closed' ? 'text-gray-600' :
               'text-blue-600'
             }`}>
-              {statusLabels[campaign.status]}
+              {campaign.status ? statusLabels[campaign.status] : 'Tervezés'}
             </div>
           </CardContent>
         </Card>

@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/lib/supabase/types'
 
-type Campaign = Database['public']['Tables']['campaigns']['Row']
-type CampaignInsert = Database['public']['Tables']['campaigns']['Insert']
-type CampaignUpdate = Database['public']['Tables']['campaigns']['Update']
+type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
+type CampaignInsert = Database['campaign_os']['Tables']['campaigns']['Insert']
+type CampaignUpdate = Database['campaign_os']['Tables']['campaigns']['Update']
 
 // GET /api/campaigns - List all campaigns
 export async function GET() {
   try {
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('campaigns')
       .select('*')
       .order('created_at', { ascending: false })
@@ -58,8 +59,9 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('campaigns')
       .insert({
         name: body.name,

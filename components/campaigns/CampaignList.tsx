@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Database } from '@/lib/supabase/types'
 
-type Campaign = Database['public']['Tables']['campaigns']['Row']
+type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 
 export function CampaignList() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])

@@ -11,7 +11,8 @@ interface SprintsPageProps {
 
 async function getCampaign(id: string) {
   const supabase = await createClient()
-  const { data } = await supabase
+  const db = supabase.schema('campaign_os')
+  const { data } = await db
     .from('campaigns')
     .select('id, name')
     .eq('id', id)

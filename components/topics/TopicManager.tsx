@@ -16,8 +16,8 @@ import {
 import { Database } from '@/lib/supabase/types'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
-type Topic = Database['public']['Tables']['topics']['Row']
-type TopicInsert = Database['public']['Tables']['topics']['Insert']
+type Topic = Database['campaign_os']['Tables']['topics']['Row']
+type TopicInsert = Database['campaign_os']['Tables']['topics']['Insert']
 
 interface TopicManagerProps {
   campaignId: string

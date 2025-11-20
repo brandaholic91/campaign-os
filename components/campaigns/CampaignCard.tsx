@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Database } from '@/lib/supabase/types'
 import { format } from 'date-fns'
 
-type Campaign = Database['public']['Tables']['campaigns']['Row']
+type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -28,7 +28,7 @@ const goalTypeLabels: Record<Campaign['primary_goal_type'], string> = {
   mobilization: 'Mobilizáció',
 }
 
-const statusLabels: Record<Campaign['status'], string> = {
+const statusLabels: Record<NonNullable<Campaign['status']>, string> = {
   planning: 'Tervezés',
   running: 'Fut',
   closed: 'Lezárva',
@@ -60,7 +60,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
                 campaign.status === 'closed' ? 'text-gray-600' :
                 'text-blue-600'
               }`}>
-                {statusLabels[campaign.status]}
+                {campaign.status ? statusLabels[campaign.status] : 'Tervezés'}
               </span>
             </div>
             {campaign.description && (

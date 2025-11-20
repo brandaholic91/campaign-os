@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { CampaignForm } from '@/components/campaigns/CampaignForm'
 import { Database } from '@/lib/supabase/types'
 
-type Campaign = Database['public']['Tables']['campaigns']['Row']
+type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 
 interface EditCampaignPageProps {
   params: Promise<{ id: string }>
@@ -11,7 +11,8 @@ interface EditCampaignPageProps {
 
 async function getCampaign(id: string): Promise<Campaign | null> {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const db = supabase.schema('campaign_os')
+  const { data, error } = await db
     .from('campaigns')
     .select('*')
     .eq('id', id)
