@@ -50,7 +50,22 @@ export function buildCampaignFormState(inputs: CampaignFormInputs): CampaignForm
 }
 
 export function useCampaignFormCopilotState(inputs: CampaignFormInputs) {
-  const state = useMemo(() => buildCampaignFormState(inputs), [inputs])
+  const state = useMemo(
+    () => buildCampaignFormState(inputs),
+    [
+      inputs.name,
+      inputs.campaign_type,
+      inputs.primary_goal_type,
+      inputs.start_date,
+      inputs.end_date,
+      inputs.description,
+      inputs.budget_estimate,
+      inputs.current_step,
+      inputs.existing_segments,
+      inputs.existing_topics,
+      inputs.existing_messages,
+    ]
+  )
   useCopilotReadable(
     {
       description: 'Campaign form AG-UI state snapshot',

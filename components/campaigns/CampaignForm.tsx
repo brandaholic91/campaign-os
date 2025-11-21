@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,6 +56,12 @@ const goalTypeLabels: Record<Campaign['primary_goal_type'], string> = {
   list_building: 'Listaépítés',
   conversion: 'Konverzió',
   mobilization: 'Mobilizáció',
+}
+
+const EMPTY_ARRAYS = {
+  existing_segments: [] as Array<Record<string, unknown>>,
+  existing_topics: [] as Array<Record<string, unknown>>,
+  existing_messages: [] as Array<Record<string, unknown>>,
 }
 
 export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
@@ -123,14 +129,27 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
     }
   }
 
-  useCampaignFormCopilotState({
-    ...formData,
-    budget_estimate: formData.budget_estimate ?? undefined, // Convert null to undefined
-    current_step: 1,
-    existing_segments: [],
-    existing_topics: [],
-    existing_messages: [],
-  })
+  const copilotStateInputs = useMemo(
+    () => ({
+      ...formData,
+      budget_estimate: formData.budget_estimate ?? undefined, // Convert null to undefined
+      current_step: 1,
+      existing_segments: EMPTY_ARRAYS.existing_segments,
+      existing_topics: EMPTY_ARRAYS.existing_topics,
+      existing_messages: EMPTY_ARRAYS.existing_messages,
+    }),
+    [
+      formData.name,
+      formData.campaign_type,
+      formData.primary_goal_type,
+      formData.start_date,
+      formData.end_date,
+      formData.description,
+      formData.budget_estimate,
+    ]
+  )
+
+  useCampaignFormCopilotState(copilotStateInputs)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
