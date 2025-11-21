@@ -58,7 +58,7 @@ development_status:
   # Story 2.1: LLM + CopilotKit Infrastructure
   # Note: Story drafted 2025-11-21 - Foundation for all Epic 2 AI features
   # Note: Status updated to in-progress (2025-11-21) - CopilotKit provider infrastructure needs validation for Story 2.2 CopilotKit integration
-  2-1-llm-ag-ui-infrastructure: in-progress
+  2-1-llm-ag-ui-infrastructure: review
   
   # Story 2.2: Campaign Brief → Structure AI
   # Note: Story drafted 2025-11-21 - Two-step LLM flow (Brief Normalizer → Strategy Designer)
