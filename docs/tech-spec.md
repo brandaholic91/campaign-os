@@ -3,8 +3,9 @@
 **Author:** Balazs
 **Date:** 2025-11-20
 **Project Level:** quick-flow
-**Change Type:** Greenfield projekt inicializálása - Sprint 1 MVP
+**Change Type:** Greenfield projekt inicializálása - Epic 1 (Sprint 1 MVP) + Epic 2 (AI/AG-UI)
 **Development Context:** Greenfield - új codebase, Campaign OS kommunikációs és social média kampánytervező
+**Last Updated:** 2025-11-21 (Epic 2 planning added)
 
 ---
 
@@ -103,12 +104,14 @@ Campaign OS - egy webes kommunikációs és social média kampánytervező eszk�
 
 **Out of Scope (Sprint 2-3-re halasztva):**
 
-1. LLM/AI integráció (Campaign Orchestrator agent, message generator)
-2. Content calendar generálás
-3. Risk modul
-4. Export/PDF funkcionalitás
-5. Multi-user/auth rendszer (v1-ben single-user)
-6. Politikai specifikus modulok (risk tracker, scenario board)
+1. LLM/AI integráció (Campaign Orchestrator agent, message generator) - **Epic 2: AG-UI + AI integration**
+2. Content calendar generálás - Epic 3
+3. Risk modul - Epic 3
+4. Export/PDF funkcionalitás - Epic 3+
+5. Multi-user/auth rendszer (v1-ben single-user) - Future
+6. Politikai specifikus modulok (risk tracker, scenario board) - Future
+
+**Note:** Epic 2 will introduce AG-UI protocol for frontend-agent communication, enabling real-time "kampánysegéd" (campaign assistant) with bi-directional state sync.
 
 ---
 
@@ -236,7 +239,8 @@ campaign-os/
 - Supabase Auth később (v1-ben nincs auth)
 
 **External API-k (Sprint 1-ben nincs):**
-- Anthropic Claude API (Sprint 2)
+- Anthropic Claude API (Epic 2) - LLM integration
+- AG-UI Protocol (Epic 2) - Frontend-agent communication (CopilotKit or custom)
 - Meta/Google Ads API (jövőbeli)
 - Email service integráció (jövőbeli)
 
@@ -300,7 +304,15 @@ campaign-os/
 
 **Utilities:**
 - date-fns@3.0.0 (date formatting)
-- zod@3.22.4 (schema validation, opcionális v1-ben)
+- zod@3.22.4 (schema validation, opcionális v1-ben, kötelező Epic 2-ben)
+
+**AI/LLM (Epic 2):**
+- @anthropic-ai/sdk@^0.20.0 (Anthropic Claude API client)
+- zod@3.22.4 (LLM output validation, kötelező)
+
+**AG-UI Protocol (Epic 2):**
+- @copilotkit/react-core@^1.0.0 (AG-UI React client, opcionális - vagy custom implementation)
+- WebSocket vagy Server-Sent Events for real-time streaming
 
 **Internal Modules:**
 
@@ -316,9 +328,18 @@ campaign-os/
 ### Configuration Changes
 
 **Environment változók (.env.local):**
+
+**Sprint 1 (Epic 1):**
 ```
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+**Epic 2 (AI/AG-UI):**
+```
+ANTHROPIC_API_KEY=your-anthropic-api-key
+# AG-UI stream endpoint configuration (if custom implementation)
+AG_UI_STREAM_URL=/api/ai/stream
 ```
 
 **Next.js konfiguráció (next.config.js):**
@@ -377,34 +398,44 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
 **Runtime:**
 - Node.js 20.x LTS
-- Next.js 15.0.0 (App Router)
+- Next.js 16.0.3 (App Router) - Epic 1 uses latest stable
 
 **Language & Type Safety:**
 - TypeScript 5.3.0
 - Strict mode enabled
+- Zod 3.22.4 (Epic 2: LLM output validation)
 
 **Frontend:**
 - React 19.0.0
 - Tailwind CSS 3.4.0
 - Shadcn/ui komponenskönyvtár
 - Lucide React icons
+- AG-UI Protocol (Epic 2: CopilotKit or custom client)
 
 **Backend:**
 - Next.js API Routes (App Router)
 - Supabase Postgres (PostgreSQL 15+)
+- Anthropic Claude API (Epic 2: LLM integration)
+- AG-UI Server (Epic 2: event streaming)
 
 **Database:**
 - Supabase (managed PostgreSQL)
 - Row Level Security (v1-ben disabled)
+
+**AI/LLM (Epic 2):**
+- Anthropic Claude API (@anthropic-ai/sdk)
+- AG-UI Protocol for frontend-agent communication
+- Zod schemas for structured LLM outputs
 
 **Development Tools:**
 - ESLint + Prettier
 - TypeScript strict mode
 - Git version control
 
-**Deployment (Sprint 1 után):**
+**Deployment:**
 - Vercel (Next.js optimalizált)
 - Supabase Cloud (adatbázis)
+- Environment variables: Supabase + Anthropic API keys
 
 ---
 
@@ -526,12 +557,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 2. Supabase account és projekt létrehozva
 3. Git telepítve
 
-**Projekt inicializálás:**
+**Projekt inicializálás (Epic 1):**
 ```bash
 # 1. Next.js projekt létrehozása
 npx create-next-app@latest campaign-os --typescript --tailwind --app --no-src-dir
 
-# 2. Dependencies telepítése
+# 2. Dependencies telepítése (Epic 1)
 cd campaign-os
 npm install @supabase/supabase-js @supabase/ssr
 npm install @radix-ui/react-slot @radix-ui/react-dialog @radix-ui/react-dropdown-menu
@@ -541,12 +572,28 @@ npm install -D @types/node
 # 3. Supabase migration futtatása
 # Supabase CLI vagy Supabase Dashboard-on keresztül
 
-# 4. Environment változók beállítása
+# 4. Environment változók beállítása (Epic 1)
 cp .env.example .env.local
 # NEXT_PUBLIC_SUPABASE_URL és NEXT_PUBLIC_SUPABASE_ANON_KEY beállítása
 
 # 5. Development server indítása
 npm run dev
+```
+
+**Epic 2 kiegészítő setup:**
+```bash
+# 6. Epic 2 dependencies telepítése
+npm install @anthropic-ai/sdk zod
+npm install @copilotkit/react-core  # Optional - AG-UI client
+
+# 7. Environment változók frissítése (Epic 2)
+# .env.local-hez hozzáadni:
+# ANTHROPIC_API_KEY=sk-ant-...
+# AG_UI_STREAM_URL=/api/ai/stream  # If custom implementation
+
+# 8. Epic 2 development
+# AG-UI stream endpoint: /api/ai/stream
+# AI endpoints: /api/ai/campaign-brief, /api/ai/message-matrix
 ```
 
 **Supabase setup:**
@@ -968,4 +1015,443 @@ npm run dev
 - User analytics - feature usage
 - Performance monitoring - Core Web Vitals
 - Uptime monitoring - external service
+
+---
+
+## Epic 2: AI-Powered Campaign Orchestration with AG-UI
+
+**Date:** 2025-11-21
+**Epic:** Epic 2 - AI-Powered Campaign Orchestration
+**Change Type:** AI/LLM integration + AG-UI frontend protocol
+**Development Context:** Building on Epic 1 foundation, adding intelligent campaign assistance
+
+---
+
+### Epic 2 Context
+
+**Epic 1 Foundation (Complete):**
+- ✅ Manual campaign management (CRUD)
+- ✅ Audience segments and topics management
+- ✅ Message matrix UI
+- ✅ Sprint and task board
+- ✅ Database schema with 8 core tables
+- ✅ Next.js 16 + TypeScript + Tailwind + Supabase
+
+**Epic 2 Goal:**
+Introduce AI/LLM capabilities with AG-UI frontend integration to accelerate campaign planning. Enable users to interact with an embedded "kampánysegéd" (campaign assistant) that provides real-time, contextual help during manual campaign creation, or generate complete campaign structures from briefs.
+
+---
+
+### Epic 2 Scope
+
+**In Scope:**
+1. **Anthropic Claude API integration** - LLM client setup, error handling, rate limiting
+2. **AG-UI protocol integration** - Frontend ↔ backend agent communication
+3. **Campaign Brief → Structure AI** - Generate goals, segments, topics, narratives from text brief
+4. **AI Message Matrix Generator** - Generate messages for segment × topic combinations
+5. **Frontend "kampánysegéd" UI** - Real-time streaming chat, bi-directional state sync
+6. **Frontend tool integration** - highlightField, prefillField, navigateToStep
+7. **JSON schema validation** - Zod schemas for all LLM outputs
+8. **User approval workflow** - Preview and approve/reject AI suggestions
+
+**Out of Scope (Epic 3+):**
+- AI-assisted sprint and task planning
+- Full Campaign Orchestrator deep agent (multi-step autonomous)
+- Content calendar AI generation
+- Risk module AI
+- RAG/knowledge base integration
+
+---
+
+### Epic 2 Source Tree Changes
+
+**New files for Epic 2:**
+
+```
+campaign-os/
+├── app/
+│   ├── campaigns/
+│   │   ├── new/
+│   │   │   └── ai/page.tsx                    # CREATE - AI-assisted campaign creation
+│   │   └── [id]/
+│   │       └── messages/
+│   │           └── page.tsx                   # MODIFY - Add AI generation button
+│   └── api/
+│       └── ai/
+│           ├── stream/route.ts                # CREATE - AG-UI event stream endpoint
+│           ├── campaign-brief/route.ts        # CREATE - Campaign brief AI endpoint
+│           └── message-matrix/route.ts         # CREATE - Message matrix AI endpoint
+├── lib/
+│   ├── ai/
+│   │   ├── client.ts                          # CREATE - Anthropic Claude client
+│   │   ├── schemas.ts                         # CREATE - Zod schemas for LLM outputs
+│   │   ├── ag-ui/
+│   │   │   ├── server.ts                      # CREATE - AG-UI server event handler
+│   │   │   ├── events.ts                      # CREATE - AG-UI event type definitions
+│   │   │   ├── tools.ts                       # CREATE - Backend tool definitions
+│   │   │   └── orchestrator.ts                # CREATE - Campaign Orchestrator agent
+│   │   └── prompts/
+│   │       ├── brief-normalizer.ts            # CREATE - Brief normalization prompt
+│   │       ├── strategy-designer.ts           # CREATE - Strategy design prompt
+│   │       └── message-generator.ts           # CREATE - Message generation prompt
+│   └── ag-ui/
+│       ├── client.ts                          # CREATE - AG-UI client (or use CopilotKit)
+│       ├── events.ts                          # CREATE - Frontend event types
+│       └── tools.ts                           # CREATE - Frontend tool implementations
+├── components/
+│   └── ai/
+│       ├── CampaignAssistant.tsx             # CREATE - Main AG-UI wrapper
+│       ├── AssistantChat.tsx                 # CREATE - Streaming chat UI
+│       ├── InlineSuggestions.tsx             # CREATE - Field-level suggestions
+│       └── AssistantButton.tsx               # CREATE - Floating chat button
+├── .env.local                                 # MODIFY - Add ANTHROPIC_API_KEY
+└── package.json                               # MODIFY - Add @anthropic-ai/sdk, zod, AG-UI deps
+```
+
+**Modified files:**
+- `components/messages/MessageMatrix.tsx` - Add AI generation button
+- `app/campaigns/new/page.tsx` - Add "Create with AI" option
+- Existing API routes - No changes, AI endpoints are separate
+
+---
+
+### Epic 2 Technical Approach
+
+**AG-UI Protocol Architecture:**
+
+**Frontend (Next.js/React):**
+- AG-UI client connects to `/api/ai/stream` endpoint
+- Real-time event streaming (WebSocket or Server-Sent Events)
+- Bi-directional state sync: agent sees form state, can suggest/prefill
+- Frontend tools: `highlightField()`, `prefillField()`, `navigateToStep()`, `openSuggestionModal()`
+- Kampánysegéd UI: floating chat button or side panel
+- Progressive enhancement: works without AG-UI (fallback to manual)
+
+**Backend (Next.js API):**
+- AG-UI server endpoint handles event streams
+- Campaign Orchestrator agent with sub-modules:
+  - Brief Normalizer: structure chaotic input
+  - Strategy Designer: generate goals, segments, topics, narratives
+  - Message Generator: generate message matrix
+- Backend tools: DB operations (createCampaign, createSegment, etc.)
+- LLM tool calls: Anthropic Claude API with structured outputs
+- State sync: agent receives campaign form state, sends state patches
+
+**LLM Integration:**
+- Anthropic Claude API via `@anthropic-ai/sdk`
+- Structured outputs with Zod schema validation
+- Two-step flows: Brief Normalizer → Strategy Designer
+- Error handling: network failures, rate limits, API errors
+- Rate limiting: token bucket or request queue
+- Prompt engineering: campaign_type and goal_type aware
+
+**State Management (Epic 2):**
+- AG-UI state sync for campaign form state
+- Zustand or React Context for AG-UI client state
+- Server Components for data fetching (unchanged from Epic 1)
+- Client Components for interactive AI features
+
+---
+
+### Epic 2 Integration Points
+
+**Anthropic Claude API:**
+- Environment variable: `ANTHROPIC_API_KEY`
+- Client initialization in `lib/ai/client.ts`
+- Model: `claude-3-5-sonnet-20241022` or latest
+- Structured outputs with JSON schema (Zod)
+- Streaming support for real-time responses
+- Error handling: retry logic, rate limit handling
+
+**AG-UI Protocol:**
+- Event stream endpoint: `/api/ai/stream`
+- Event types: `user_message`, `agent_message`, `tool_call`, `state_patch`, `error`
+- Bi-directional: UI → Agent (input, state) and Agent → UI (responses, suggestions)
+- Frontend integration: CopilotKit or custom AG-UI client
+- WebSocket or Server-Sent Events for real-time streaming
+
+**Internal AI Modules:**
+- `lib/ai/ag-ui/orchestrator.ts` - Campaign Orchestrator agent
+- `lib/ai/prompts/` - LLM prompt templates
+- `lib/ai/schemas.ts` - Zod validation schemas
+- Integration with existing DB operations (Epic 1 API routes)
+
+**Frontend-Backend Communication (Epic 2):**
+- AG-UI event stream for AI interactions
+- Traditional REST API fallback (Epic 1 endpoints)
+- Server Actions for form submissions (unchanged)
+- Real-time state sync via AG-UI
+
+---
+
+### Epic 2 Implementation Steps
+
+**Phase 1: LLM + AG-UI Infrastructure (Story 2.1) - 3-5 days**
+
+1. Install dependencies: `@anthropic-ai/sdk`, `zod`, AG-UI client (CopilotKit or custom)
+2. Create `lib/ai/client.ts` - Anthropic client with error handling
+3. Create `lib/ai/schemas.ts` - Zod schemas for LLM outputs
+4. Create `lib/ai/ag-ui/server.ts` - AG-UI server event handler
+5. Create `/api/ai/stream/route.ts` - AG-UI event stream endpoint
+6. Implement rate limiting and error handling
+7. Environment variables: `ANTHROPIC_API_KEY`
+8. Test AG-UI event streaming
+
+**Phase 2: Campaign Brief AI (Story 2.2) - 3-5 days**
+
+9. Create `lib/ai/prompts/brief-normalizer.ts` - Brief normalization prompt
+10. Create `lib/ai/prompts/strategy-designer.ts` - Strategy design prompt
+11. Create `lib/ai/ag-ui/orchestrator.ts` - Campaign Orchestrator agent
+12. Implement `/api/ai/campaign-brief` endpoint or AG-UI tool
+13. Create `/app/campaigns/new/ai/page.tsx` - AI-assisted campaign creation
+14. Build preview UI component for AI suggestions
+15. Implement approve/reject workflow
+16. Integration with existing campaign creation flow
+17. Test end-to-end: brief → AI structure → preview → save
+
+**Phase 3: Message Matrix AI (Story 2.3) - 3-5 days**
+
+18. Create `lib/ai/prompts/message-generator.ts` - Message generation prompt
+19. Implement `/api/ai/message-matrix` endpoint or AG-UI tool
+20. Extend `MessageMatrix.tsx` with AI generation button
+21. Implement batch message generation
+22. Build preview modal with approve/reject per message
+23. Integration with existing message CRUD
+24. Test: select segments/topics → generate → preview → selective save
+
+**Phase 4: AG-UI Frontend Integration (Story 2.4) - 3-5 days**
+
+25. Install and configure CopilotKit or implement custom AG-UI client
+26. Create `lib/ag-ui/client.ts` - AG-UI client setup
+27. Create `components/ai/CampaignAssistant.tsx` - Main AG-UI wrapper
+28. Create `components/ai/AssistantChat.tsx` - Streaming chat UI
+29. Create `components/ai/InlineSuggestions.tsx` - Field-level suggestions
+30. Implement frontend tools: highlightField, prefillField, navigateToStep
+31. Implement state sync: form state → AG-UI → agent
+32. Add floating chat button or side panel UI
+33. Test bi-directional state sync and tool execution
+34. Progressive enhancement: fallback without AG-UI
+
+**Total: 15-20 days (3-4 weeks)**
+
+---
+
+### Epic 2 Technical Details
+
+**AG-UI Event Types:**
+
+```typescript
+// User → Agent
+interface UserMessageEvent {
+  type: 'user_message';
+  content: string;
+  metadata?: { campaign_id?, step?, form_state? };
+}
+
+// Agent → UI
+interface AgentMessageEvent {
+  type: 'agent_message';
+  content: string;
+  streaming?: boolean;
+}
+
+interface ToolCallEvent {
+  type: 'tool_call';
+  tool: string;
+  args: Record<string, any>;
+}
+
+interface StatePatchEvent {
+  type: 'state_patch';
+  patch: Partial<CampaignFormState>;
+}
+```
+
+**Campaign Form State (AG-UI visible):**
+
+```typescript
+interface CampaignFormState {
+  current_step: number;
+  campaign_type: string;
+  goal_type: string;
+  start_date: string;
+  end_date: string;
+  form_fields: {
+    name: string;
+    description: string;
+    budget_estimate?: number;
+  };
+  existing_segments: Array<Segment>;
+  existing_topics: Array<Topic>;
+  existing_messages: Array<Message>;
+}
+```
+
+**LLM Output Schemas (Zod):**
+
+```typescript
+// Brief → Structure output
+const CampaignStructureSchema = z.object({
+  goals: z.array(z.object({
+    title: z.string(),
+    description: z.string(),
+    target_metric: z.record(z.any()).optional(),
+    priority: z.number()
+  })),
+  segments: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    demographics: z.record(z.any()).optional(),
+    psychographics: z.record(z.any()).optional(),
+    priority: z.number()
+  })),
+  topics: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    category: z.string().optional()
+  })),
+  narratives: z.array(z.string())
+});
+
+// Message Matrix output
+const MessageMatrixSchema = z.array(z.object({
+  segment_id: z.string().uuid(),
+  topic_id: z.string().uuid(),
+  headline: z.string(),
+  body: z.string(),
+  proof_point: z.string().optional(),
+  cta: z.string().optional(),
+  message_type: z.enum(['core', 'supporting', 'contrast'])
+}));
+```
+
+**Backend Tools (Agent can execute):**
+
+```typescript
+interface BackendTools {
+  createCampaign(data: CampaignInput): Promise<Campaign>;
+  updateCampaign(id: string, data: Partial<Campaign>): Promise<Campaign>;
+  createSegment(campaign_id: string, data: SegmentInput): Promise<Segment>;
+  createTopic(campaign_id: string, data: TopicInput): Promise<Topic>;
+  createMessage(campaign_id: string, data: MessageInput): Promise<Message>;
+  generateMessageMatrix(context: MessageContext): Promise<Message[]>;
+}
+```
+
+**Frontend Tools (Agent can call):**
+
+```typescript
+interface FrontendTools {
+  highlightField(field_id: string): void;
+  prefillField(field_id: string, value: any): void;
+  navigateToStep(step_id: number): void;
+  openSuggestionModal(type: string, payload: any): void;
+  updateFormState(patch: Partial<CampaignFormState>): void;
+}
+```
+
+---
+
+### Epic 2 Dependencies
+
+**New npm packages:**
+```json
+{
+  "@anthropic-ai/sdk": "^0.20.0",
+  "zod": "^3.22.4",
+  "@copilotkit/react-core": "^1.0.0" // Optional - CopilotKit AG-UI client
+}
+```
+
+**Environment variables:**
+```
+ANTHROPIC_API_KEY=sk-ant-...
+AG_UI_STREAM_URL=/api/ai/stream  // If custom implementation
+```
+
+**External services:**
+- Anthropic Claude API access
+- WebSocket or Server-Sent Events support (Next.js)
+
+---
+
+### Epic 2 Testing Strategy
+
+**Story 2.1 (LLM + AG-UI Infrastructure):**
+- Unit tests: AI client error handling, Zod schema validation
+- Integration tests: Mock Anthropic API responses, AG-UI event parsing
+- Manual tests: Real API calls, event streaming
+
+**Story 2.2 (Campaign Brief AI):**
+- Unit tests: Prompt templates, JSON parsing
+- Integration tests: `/api/ai/campaign-brief` with mocked LLM
+- E2E tests: Full flow brief → preview → approve → DB
+- Edge cases: Invalid brief, API timeout, malformed JSON
+
+**Story 2.3 (Message Generator):**
+- Unit tests: Message generation logic
+- Integration tests: Batch message generation
+- E2E tests: Select segments → generate → preview → selective save
+- Edge cases: Empty segments, API failure mid-batch
+
+**Story 2.4 (Frontend Integration):**
+- Unit tests: Frontend tool execution, state sync
+- Integration tests: AG-UI client-server communication
+- E2E tests: Full flow with real-time chat, tool execution, state sync
+- Edge cases: Connection loss, state sync conflicts
+
+**Manual testing checklist:**
+- [ ] AI generates valid JSON per Zod schema
+- [ ] Preview shows all fields correctly
+- [ ] Approve/reject workflow works
+- [ ] Error messages user-friendly
+- [ ] Rate limiting prevents API abuse
+- [ ] AG-UI event streaming stable
+- [ ] Bi-directional state sync accurate
+- [ ] Frontend tools execute correctly
+- [ ] Fallback to manual entry works
+
+---
+
+### Epic 2 Acceptance Criteria Summary
+
+1. ✅ Users can generate campaign structure from text brief using AI
+2. ✅ AI generates goals, segments, topics, narratives based on campaign_type and goal_type
+3. ✅ Users can generate message matrices for selected segment × topic combinations
+4. ✅ All AI outputs previewable and editable before saving
+5. ✅ Error handling works for LLM API failures and rate limits
+6. ✅ JSON schema validation ensures consistent AI outputs (Zod)
+7. ✅ User can approve/reject AI suggestions individually
+8. ✅ Zero data corruption from AI hallucinations (schema validation)
+9. ✅ AG-UI frontend integration provides real-time streaming chat
+10. ✅ Bi-directional state sync: agent sees form state and can suggest/prefill fields
+11. ✅ Frontend tools (highlightField, prefillField, navigateToStep) execute correctly
+12. ✅ Kampánysegéd provides contextual help during manual campaign creation
+
+---
+
+### Epic 2 Key Code Locations
+
+**AI Infrastructure:**
+- `lib/ai/client.ts` - Anthropic Claude client
+- `lib/ai/schemas.ts` - Zod validation schemas
+- `lib/ai/ag-ui/server.ts` - AG-UI server handler
+- `/api/ai/stream/route.ts` - AG-UI event stream endpoint
+
+**AI Endpoints:**
+- `/api/ai/campaign-brief/route.ts` - Campaign brief AI
+- `/api/ai/message-matrix/route.ts` - Message matrix AI
+
+**Frontend AI Components:**
+- `components/ai/CampaignAssistant.tsx` - Main AG-UI wrapper
+- `components/ai/AssistantChat.tsx` - Streaming chat UI
+- `components/ai/InlineSuggestions.tsx` - Field suggestions
+
+**AI Prompts:**
+- `lib/ai/prompts/brief-normalizer.ts`
+- `lib/ai/prompts/strategy-designer.ts`
+- `lib/ai/prompts/message-generator.ts`
+
+**Agent Orchestration:**
+- `lib/ai/ag-ui/orchestrator.ts` - Campaign Orchestrator agent
 

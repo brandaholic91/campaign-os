@@ -189,3 +189,281 @@ So that **I can plan my campaign messaging and track execution tasks**.
 
 ---
 
+## Epic 2: AI-Powered Campaign Orchestration
+
+**Slug:** campaign-os-sprint2-ai-orchestration
+
+### Goal
+
+Introduce AI/LLM capabilities with AG-UI frontend integration to accelerate campaign planning. Enable users to interact with an embedded "kampánysegéd" (campaign assistant) that provides real-time, contextual help during manual campaign creation, or generate complete campaign structures from briefs. This epic transforms the manual "War Room" into an intelligent, AI-assisted campaign planning tool with bi-directional state sync and human-in-the-loop workflows.
+
+### Scope
+
+**In Scope:**
+- Anthropic Claude API integration and infrastructure
+- AG-UI protocol integration (frontend ↔ backend agent communication)
+- Campaign Brief → Structure AI module (goals, segments, topics, narratives)
+- AI-powered message matrix generator
+- Frontend "kampánysegéd" UI component with real-time streaming chat
+- Bi-directional state sync (agent sees form state, can suggest/prefill fields)
+- Frontend tool integration (highlightField, prefillField, navigateToStep)
+- Error handling and rate limiting for LLM calls
+- User approval workflow for AI-generated content
+- JSON schema validation for LLM outputs (Zod)
+
+**Out of Scope (Epic 3+):**
+- AI-assisted sprint and task planning (Epic 3)
+- Full Campaign Orchestrator deep agent (multi-step autonomous planning)
+- Content calendar AI generation
+- Risk module AI
+- RAG/knowledge base integration
+- Multi-model LLM support
+- Export/PDF functionality
+- Advanced AG-UI features (multi-agent, complex workflows)
+
+### Success Criteria
+
+1. ✅ Users can generate campaign structure from a text brief using AI
+2. ✅ AI generates goals, segments, topics, and narratives based on campaign_type and goal_type
+3. ✅ Users can generate message matrices for selected segment × topic combinations
+4. ✅ All AI outputs are previewable and editable before saving
+5. ✅ Error handling works for LLM API failures and rate limits
+6. ✅ JSON schema validation ensures consistent AI outputs (Zod)
+7. ✅ User can approve/reject AI suggestions individually
+8. ✅ Zero data corruption from AI hallucinations (schema validation)
+9. ✅ AG-UI frontend integration provides real-time streaming chat with campaign assistant
+10. ✅ Bi-directional state sync: agent sees form state and can suggest/prefill fields
+11. ✅ Frontend tools (highlightField, prefillField, navigateToStep) execute correctly
+12. ✅ Kampánysegéd provides contextual help during manual campaign creation
+
+### Dependencies
+
+**External:**
+- Anthropic Claude API access and API key
+- @anthropic-ai/sdk npm package
+- AG-UI protocol implementation (CopilotKit or custom)
+- WebSocket or Server-Sent Events for real-time streaming
+- Existing Epic 1 functionality (campaigns, segments, topics, messages, sprints, tasks)
+
+**Internal:**
+- Epic 1 complete (all stories done)
+- Database schema from Epic 1
+- Existing API routes and UI components
+- Form state management (for AG-UI state sync)
+
+---
+
+## Story Map - Epic 2
+
+```
+AI + AG-UI Foundation Layer
+├── Story 2.1: LLM + AG-UI Infrastructure
+│   └── Anthropic API, AG-UI server, event streaming, state sync
+│
+AI Campaign Planning Layer
+├── Story 2.2: Campaign Brief → Structure AI
+│   └── Brief normalizer, strategy designer, DB integration (AG-UI)
+│
+AI Message Generation Layer
+├── Story 2.3: AI Message Matrix Generator
+│   └── Message generator, preview/approval workflow (AG-UI)
+│
+Frontend Integration Layer
+└── Story 2.4: AG-UI Frontend Integration
+    └── Kampánysegéd UI, real-time chat, frontend tools
+```
+
+---
+
+## Stories - Epic 2
+
+### Story 2.1: LLM + AG-UI Infrastructure
+
+As a **developer**,
+I want **Anthropic Claude API integration with AG-UI protocol support, error handling, and rate limiting**,
+So that **AI features can be reliably implemented with real-time frontend communication on top of a solid foundation**.
+
+**Acceptance Criteria:**
+
+**Given** I have an Anthropic API key
+**When** I configure the LLM client and AG-UI server
+**Then** the API client is initialized with proper authentication
+
+**And** AG-UI server endpoint handles event streams (input/output)
+
+**And** API calls include error handling for network failures, rate limits, and API errors
+
+**And** rate limiting is implemented to prevent API quota exhaustion
+
+**And** LLM responses are validated against JSON schemas (Zod)
+
+**And** AG-UI event streaming works (WebSocket or SSE)
+
+**And** State sync mechanism allows agent to read/write campaign form state
+
+**And** environment variables are properly secured
+
+**Prerequisites:** Epic 1 complete
+
+**Technical Notes:**
+- Install @anthropic-ai/sdk, AG-UI dependencies (CopilotKit or custom)
+- Create `lib/ai/client.ts` for Anthropic client
+- Create `lib/ai/ag-ui/server.ts` for AG-UI server handler
+- Implement `lib/ai/schemas.ts` for JSON validation (Zod)
+- Implement `lib/ai/ag-ui/events.ts` for AG-UI event types
+- Create `/api/ai/stream` endpoint for AG-UI event streaming
+- Add error handling utilities
+- Environment variables: ANTHROPIC_API_KEY
+- Rate limiting: implement simple token bucket or request queue
+- State sync: define campaign form state model for AG-UI
+
+**Estimated Effort:** 5 points (3-5 days)
+
+---
+
+### Story 2.2: Campaign Brief → Structure AI
+
+As a **campaign manager**,
+I want **to generate campaign structure from a text brief using AI**,
+So that **I can quickly set up campaigns without manual data entry**.
+
+**Acceptance Criteria:**
+
+**Given** I am creating a new campaign
+**When** I provide a campaign brief (text description) with campaign_type and goal_type
+**Then** AI generates goals, segments, topics, and narratives
+
+**And** I can preview the AI-generated structure before saving
+
+**And** I can edit or reject individual AI suggestions
+
+**And** approved items are saved to the database
+
+**And** the AI output respects campaign_type and goal_type parameters
+
+**Prerequisites:** Story 2.1 (LLM integration must exist)
+
+**Technical Notes:**
+- Create `/app/campaigns/new/ai` page for AI-assisted campaign creation
+- Implement `/api/ai/campaign-brief` endpoint (or AG-UI tool)
+- Two-step LLM flow: Brief Normalizer → Strategy Designer
+- AG-UI event stream output (messages, state patches, tool calls)
+- JSON schema validation for outputs (Zod)
+- Preview UI component for AI suggestions
+- Integration with existing campaign creation flow
+- AG-UI state sync: agent receives current form state
+- Frontend tools: agent can call prefillField, highlightField, navigateToStep
+
+**Estimated Effort:** 5 points (3-5 days)
+
+---
+
+### Story 2.3: AI Message Matrix Generator
+
+As a **campaign manager**,
+I want **to generate messages for segment × topic combinations using AI**,
+So that **I can quickly populate the message matrix with relevant content**.
+
+**Acceptance Criteria:**
+
+**Given** I have a campaign with segments and topics
+**When** I select segments and topics and click "Generate Messages"
+**Then** AI generates message suggestions for each combination
+
+**And** I can preview all generated messages before saving
+
+**And** I can select which messages to save and which to reject
+
+**And** generated messages respect campaign context (campaign_type, goal_type, narratives)
+
+**And** messages include headline, body, proof_point, and CTA fields
+
+**And** I can regenerate messages if not satisfied
+
+**Prerequisites:** Story 2.2 (campaign structure AI should exist for context)
+
+**Technical Notes:**
+- Extend existing MessageMatrix component with AI generation button
+- Implement `/api/ai/message-matrix` endpoint (or AG-UI tool)
+- LLM prompt includes campaign context, selected segments/topics
+- AG-UI event stream for real-time generation progress
+- Batch generation with progress indication
+- Preview modal with approve/reject per message
+- Integration with existing message CRUD
+- AG-UI integration: agent can suggest messages via chat or inline
+
+**Estimated Effort:** 5 points (3-5 days)
+
+---
+
+### Story 2.4: AG-UI Frontend Integration (Kampánysegéd)
+
+As a **campaign manager**,
+I want **an embedded AI assistant in the campaign creation UI that provides real-time help and suggestions**,
+So that **I can get contextual assistance while manually creating campaigns, with the agent understanding my current progress and form state**.
+
+**Acceptance Criteria:**
+
+**Given** I am creating or editing a campaign
+**When** I interact with the kampánysegéd (campaign assistant)
+**Then** I see a real-time streaming chat interface
+
+**And** the assistant can see my current form state (campaign_type, goal_type, filled fields)
+
+**And** the assistant can suggest field values and I can accept/reject them
+
+**And** the assistant can highlight fields that need attention
+
+**And** the assistant can navigate me to relevant wizard steps
+
+**And** I can ask questions about campaign setup and get contextual answers
+
+**And** the assistant can trigger the deep campaign orchestrator agent when I request full campaign generation
+
+**And** all AI interactions happen via AG-UI protocol with bi-directional state sync
+
+**Prerequisites:** Story 2.1 (AG-UI infrastructure must exist)
+
+**Technical Notes:**
+- Install CopilotKit or implement custom AG-UI client
+- Create `components/ai/CampaignAssistant.tsx` - main AG-UI wrapper
+- Create `components/ai/AssistantChat.tsx` - streaming chat UI
+- Create `components/ai/InlineSuggestions.tsx` - field-level suggestions
+- Implement frontend tools: highlightField, prefillField, navigateToStep, openSuggestionModal
+- AG-UI client connects to `/api/ai/stream` endpoint
+- State management integration (form state sync with AG-UI)
+- Real-time message streaming display
+- Tool execution feedback in UI
+- Floating chat button or side panel UI
+- Progressive enhancement: works without AG-UI (fallback)
+
+**Estimated Effort:** 5 points (3-5 days)
+
+---
+
+## Implementation Timeline - Epic 2
+
+**Total Story Points:** 20 points (increased from 13 due to AG-UI integration)
+
+**Estimated Timeline:** 15-20 days (approximately 3-4 weeks with buffer)
+
+**Story Sequence:**
+1. Story 2.1: LLM + AG-UI Foundation (must complete first - critical path)
+2. Story 2.2: Campaign Brief AI (depends on 2.1, uses AG-UI)
+3. Story 2.3: Message Generator (depends on 2.1, uses AG-UI, benefits from 2.2 context)
+4. Story 2.4: Frontend Integration (depends on 2.1, integrates with 2.2 and 2.3)
+
+**Notes:**
+- Story 2.1 is critical path - AG-UI foundation required for all AI features
+- Stories 2.2 and 2.3 can work in parallel after 2.1, but both use AG-UI protocol
+- Story 2.4 should start after 2.1, can integrate incrementally with 2.2 and 2.3
+- AI features require careful prompt engineering and iteration
+- Foundation-first approach: Story 2.1 establishes AG-UI + LLM patterns
+- Preview + approve workflow maintains user control
+- Bi-directional state sync enables contextual assistance
+- Frontend tool integration provides seamless UX
+- Sprint Planner AI deferred to Epic 3 (lower priority)
+- AG-UI enables future multi-frontend support (admin panel, mobile app)
+
+---
+
