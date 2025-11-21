@@ -125,6 +125,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
 
   useCampaignFormCopilotState({
     ...formData,
+    budget_estimate: formData.budget_estimate ?? undefined, // Convert null to undefined
     current_step: 1,
     existing_segments: [],
     existing_topics: [],
