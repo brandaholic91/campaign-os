@@ -3,15 +3,15 @@ import { z } from 'zod'
 export const GoalSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
-  target_metric: z.record(z.any()).optional(),
+  target_metric: z.record(z.string(), z.any()).optional(),
   priority: z.number().int().nonnegative(),
 })
 
 export const SegmentSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
-  demographics: z.record(z.any()).optional(),
-  psychographics: z.record(z.any()).optional(),
+  demographics: z.record(z.string(), z.any()).optional(),
+  psychographics: z.record(z.string(), z.any()).optional(),
   priority: z.number().int().nonnegative(),
 })
 
@@ -74,7 +74,7 @@ export const GeneratedMessagesSchema = z.array(GeneratedMessageSchema)
 export const AgentResponseSchema = z.object({
   type: z.enum(['user_message', 'agent_message', 'tool_call', 'state_patch', 'error']),
   content: z.string(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 })
 
 export type CampaignStructure = z.infer<typeof CampaignStructureSchema>
