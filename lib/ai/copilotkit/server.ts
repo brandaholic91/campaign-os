@@ -1,6 +1,8 @@
 import { CopilotRuntime, AnthropicAdapter } from '@copilotkit/runtime'
 import { getAnthropicClient } from '@/lib/ai/client'
-import { CampaignStructureSchema } from '@/lib/ai/schemas'
+import { CampaignStructureSchema, BriefNormalizerOutputSchema } from '@/lib/ai/schemas'
+import { BRIEF_NORMALIZER_SYSTEM_PROMPT, BRIEF_NORMALIZER_USER_PROMPT } from '@/lib/ai/prompts/brief-normalizer'
+import { STRATEGY_DESIGNER_SYSTEM_PROMPT, STRATEGY_DESIGNER_USER_PROMPT } from '@/lib/ai/prompts/strategy-designer'
 
 // Initialize Anthropic client
 const anthropic = getAnthropicClient()
@@ -23,6 +25,132 @@ console.log('=== AnthropicAdapter initialized ===', { model: process.env.ANTHROP
  */
 function createCopilotActions(properties: Record<string, unknown>, url?: string) {
   return [
+    {
+      name: 'generateCampaignStructure',
+      description: 'Generate campaign structure (goals, segments, topics, narratives) from a text brief using AI. This is a two-step process: first normalizes the brief, then designs the strategy.',
+      parameters: [
+        {
+          name: 'brief',
+          type: 'string' as const,
+          description: 'The campaign brief text description',
+          required: true,
+        },
+        {
+          name: 'campaignType',
+          type: 'string' as const,
+          description: 'Optional campaign type (political_election, political_issue, brand_awareness, product_launch, promo, ngo_issue)',
+          required: false,
+        },
+        {
+          name: 'goalType',
+          type: 'string' as const,
+          description: 'Optional goal type (awareness, engagement, list_building, conversion, mobilization)',
+          required: false,
+        },
+      ],
+      handler: async ({ brief, campaignType, goalType }: { brief: string; campaignType?: string; goalType?: string }) => {
+        if (!brief) {
+          throw new Error('Brief is required')
+        }
+
+        const client = getAnthropicClient()
+        const model = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
+
+        // Step 1: Brief Normalizer
+        const normalizerResponse = await client.messages.create({
+          model,
+          max_tokens: 1024,
+          system: BRIEF_NORMALIZER_SYSTEM_PROMPT,
+          messages: [
+            { role: 'user', content: BRIEF_NORMALIZER_USER_PROMPT(brief, campaignType, goalType) }
+          ]
+        })
+
+        const normalizerContent = normalizerResponse.content[0].type === 'text' 
+          ? normalizerResponse.content[0].text 
+          : ''
+        
+        if (!normalizerContent) {
+          throw new Error('Empty response from Brief Normalizer')
+        }
+
+        // Extract JSON from response (handle markdown code blocks)
+        let normalizerJsonContent = normalizerContent.trim()
+        
+        if (normalizerJsonContent.startsWith('```')) {
+          const lines = normalizerJsonContent.split('\n')
+          const firstLine = lines[0]
+          const lastLine = lines[lines.length - 1]
+          
+          if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
+            normalizerJsonContent = lines.slice(1, -1).join('\n')
+          }
+        }
+
+        let normalizedBrief
+        try {
+          normalizedBrief = JSON.parse(normalizerJsonContent)
+        } catch (parseError) {
+          console.error('Brief Normalizer JSON Parse Error:', parseError)
+          throw new Error('Failed to parse brief normalizer response as JSON')
+        }
+
+        try {
+          normalizedBrief = BriefNormalizerOutputSchema.parse(normalizedBrief)
+        } catch (validationError) {
+          console.error('Brief Normalizer Schema Validation Error:', validationError)
+          throw new Error('Failed to validate brief normalizer output')
+        }
+
+        // Step 2: Strategy Designer
+        const strategyResponse = await client.messages.create({
+          model,
+          max_tokens: 4096,
+          system: STRATEGY_DESIGNER_SYSTEM_PROMPT,
+          messages: [
+            { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(normalizedBrief) }
+          ]
+        })
+
+        const strategyContent = strategyResponse.content[0].type === 'text'
+          ? strategyResponse.content[0].text
+          : ''
+
+        if (!strategyContent) {
+          throw new Error('Empty response from Strategy Designer')
+        }
+
+        // Extract JSON from response (handle markdown code blocks)
+        let strategyJsonContent = strategyContent.trim()
+        
+        if (strategyJsonContent.startsWith('```')) {
+          const lines = strategyJsonContent.split('\n')
+          const firstLine = lines[0]
+          const lastLine = lines[lines.length - 1]
+          
+          if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
+            strategyJsonContent = lines.slice(1, -1).join('\n')
+          }
+        }
+
+        let campaignStructure
+        try {
+          campaignStructure = JSON.parse(strategyJsonContent)
+        } catch (parseError) {
+          console.error('Strategy Designer JSON Parse Error:', parseError)
+          throw new Error('Failed to parse strategy designer response as JSON')
+        }
+
+        try {
+          campaignStructure = CampaignStructureSchema.parse(campaignStructure)
+        } catch (validationError) {
+          console.error('Strategy Designer Schema Validation Error:', validationError)
+          throw new Error('Failed to validate strategy designer output')
+        }
+
+        return campaignStructure
+      },
+    },
     {
       name: 'describeCampaignState',
       description: 'Sanitize campaign structure context for the agent',

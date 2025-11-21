@@ -63,7 +63,7 @@ development_status:
   # Story 2.2: Campaign Brief → Structure AI
   # Note: Story drafted 2025-11-21 - Two-step LLM flow (Brief Normalizer → Strategy Designer)
   # Note: Status updated to in-progress (2025-11-21) - CopilotKit event streaming and state sync tasks deferred, REST API MVP implemented
-  2-2-campaign-brief-structure-ai: in-progress
+  2-2-campaign-brief-structure-ai: review
   
   # Story 2.3: AI Message Matrix Generator
   # Note: Story drafted 2025-11-21 - Batch message generation for segment × topic combinations
@@ -73,6 +73,6 @@ development_status:
   # Story 2.4: CopilotKit Frontend Integration (Kampánysegéd)
   # Note: Story drafted 2025-11-21 - Frontend CopilotKit client and kampánysegéd UI component
   # Note: Status updated to in-progress (2025-11-21) - Dev agent implementing AssistantChat, InlineSuggestions, and frontend tools
-  2-4-ag-ui-frontend-integration: review
+  2-4-ag-ui-frontend-integration: in-progress
   
   epic-2-retrospective: optional

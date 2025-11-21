@@ -1,8 +1,8 @@
 # Story 2.2: Campaign Brief → Structure AI
 
-**Status:** in-progress
+**Status:** review
 
-**Status note (2025-11-21):** REST API MVP implementálva, de CopilotKit event streaming (AC #5) és CopilotKit state sync (AC #7) deferred - Story 2.1 CopilotKit infrastructure hiányára hivatkozva. Status `review`-ról `in-progress`-re frissítve, mert kritikus AC-k még nincsenek implementálva.
+**Status note (2025-11-22):** CopilotKit event streaming (AC #5) és CopilotKit state sync (AC #7) implementálva. A frontend most CopilotKit-tel kommunikál a `/api/copilotkit` endpoint-on keresztül, valós idejű streaming-gel és state sync-cel. A `generateCampaignStructure` backend action a CopilotKit runtime-ban van implementálva.
 
 ---
 
@@ -47,14 +47,14 @@ So that **I can quickly set up campaigns without manual data entry**.
 - **And** narratives are associated with the campaign
 - **And** I am redirected to campaign detail page
 
-**AC #5:** AI output via CopilotKit event stream (deferred - MVP uses REST API)
+**AC #5:** AI output via CopilotKit event stream
 - **Given** Story 2.1 infrastructure exists
 - **When** I trigger AI campaign generation
 - **Then** AI output is streamed via CopilotKit events
 - **And** I see real-time progress (Brief Normalizer → Strategy Designer → Done)
 - **And** agent messages are displayed in real-time
 - **And** state patches update the form as AI generates content
-- **MVP Note:** REST API endpoint provides AI output. CopilotKit event streaming deferred to Story 2.1 completion (infrastructure dependency).
+- **Implementation:** CopilotKit `useCopilotChat` hook használata `visibleMessages` monitoring-mal. `generateCampaignStructure` backend action a CopilotKit runtime-ban implementálva. `ResultMessage`-ek feldolgozása `useEffect`-ben.
 
 **AC #6:** JSON schema validation ensures data quality
 - **Given** AI generates structured output
@@ -64,13 +64,13 @@ So that **I can quickly set up campaigns without manual data entry**.
 - **And** only valid, type-safe data is saved to database
 - **And** zero data corruption from AI hallucinations
 
-**AC #7:** CopilotKit state sync enables contextual assistance (deferred - MVP uses REST API)
+**AC #7:** CopilotKit state sync enables contextual assistance
 - **Given** I am in the campaign creation flow
 - **When** AI agent is active
 - **Then** agent receives current form state (campaign_type, goal_type, filled fields)
 - **And** agent can call frontend tools (prefillField, highlightField, navigateToStep)
 - **And** agent suggestions are contextually relevant to my progress
-- **MVP Note:** REST API MVP implemented. CopilotKit state sync deferred to Story 2.1 completion (infrastructure dependency).
+- **Implementation:** `useCopilotReadable` hook használata form state exposure-hez. `useCopilotAction` hook-okkal regisztrált frontend tools (`highlightField`, `prefillField`). Form state automatikusan szinkronizálva az agent-tel.
 
 ---
 
@@ -132,14 +132,14 @@ So that **I can quickly set up campaigns without manual data entry**.
   - Handle foreign key relationships
   - Add proper error handling
 
-- [-] Implement CopilotKit event streaming (AC: #5)
+- [x] Implement CopilotKit event streaming (AC: #5)
   - Connect to `/api/copilotkit` endpoint from Story 2.1
   - Display real-time agent messages
   - Show progress indicators (Brief → Structure → Done)
   - Handle state patch events
   - Update UI as AI generates content
   - Add loading states and error handling
-  - *Note: Deferred due to missing Story 2.1 infrastructure (CopilotKit provider). Follow-up: Will be implemented after Story 2.1 CopilotKit infrastructure is complete and validated.*
+  - **Implementation:** `useCopilotChat` hook használata `visibleMessages` monitoring-mal. `ResultMessage`-ek feldolgozása `useEffect`-ben `ResultMessage.decodeResult()`-tal. Progress stage tracking `ActionExecutionMessage`-ek alapján.
 
 - [x] Implement JSON schema validation (AC: #6)
   - Define Zod schemas for campaign structure output
@@ -149,13 +149,13 @@ So that **I can quickly set up campaigns without manual data entry**.
   - Log validation failures for debugging
   - Retry on validation failure if appropriate
 
-- [-] Implement CopilotKit state sync (AC: #7)
+- [x] Implement CopilotKit state sync (AC: #7)
   - Send current form state to agent
   - Include campaign_type, goal_type, filled fields
   - Implement frontend tool handlers (prefillField, highlightField, navigateToStep)
   - Handle tool execution feedback
   - Update UI based on agent tool calls
-  - *Note: Deferred due to missing Story 2.1 infrastructure (CopilotKit provider). Follow-up: Will be implemented after Story 2.1 CopilotKit infrastructure is complete and validated.*
+  - **Implementation:** `useCopilotReadable` hook használata form state exposure-hez (brief, campaign_type, goal_type, name, start_date, end_date). `useCopilotAction` hook-okkal regisztrált frontend tools (`highlightField`, `prefillField`) a `lib/ai/copilotkit/tools.ts`-ből.
 
 - [x] Add error handling and fallback (AC: #1, #5)
   - Handle AI API failures gracefully

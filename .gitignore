@@ -1,9 +1,8 @@
 # BMAD Method and tool directories
-# Note: .bmad is needed for remote Claude Code agent to access workflows
-.bmad/
-.agent/
-.claude/
-.cursor/
+#bmad/
+#agent/
+#claude/
+#cursor/
 
 # Node modules and build artifacts
 node_modules/
