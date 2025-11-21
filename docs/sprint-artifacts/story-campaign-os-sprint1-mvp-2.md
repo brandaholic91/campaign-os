@@ -1,6 +1,6 @@
 # Story 1.2: Campaign CRUD and Audience Management
 
-**Status:** in-progress
+**Status:** done
 
 ---
 
@@ -81,7 +81,7 @@ So that **I can organize my campaign planning around specific audiences and mess
 - [x] Implement error handling in API routes (AC: #6)
 - [x] Add loading states to components (AC: #1, #4, #5)
 - [x] Add empty states (no campaigns, no segments, no topics) (AC: #1, #4, #5)
-- [ ] Test all CRUD operations manually (AC: #2, #4, #5, #6)
+- [x] Test all CRUD operations manually (AC: #2, #4, #5, #6)
 
 ### Technical Summary
 

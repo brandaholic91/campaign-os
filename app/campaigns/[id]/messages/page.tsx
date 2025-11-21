@@ -1,60 +1,57 @@
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import MessageMatrix from '@/components/messages/MessageMatrix'
+import { notFound } from 'next/navigation'
 
-interface MessagesPageProps {
+export default async function MessageMatrixPage({
+  params,
+}: {
   params: Promise<{ id: string }>
-}
-
-async function getCampaign(id: string) {
+}) {
+  const { id } = await params
   const supabase = await createClient()
-  const db = supabase.schema('campaign_os')
-  const { data } = await db
+
+  const { data: campaign } = await supabase
     .from('campaigns')
-    .select('id, name')
+    .select('*')
     .eq('id', id)
     .single()
-
-  return data
-}
-
-export default async function MessagesPage({ params }: MessagesPageProps) {
-  const { id } = await params
-  const campaign = await getCampaign(id)
 
   if (!campaign) {
     notFound()
   }
 
+  const { data: segments } = await supabase
+    .from('segments')
+    .select('*')
+    .eq('campaign_id', id)
+    .order('priority', { ascending: true })
+
+  const { data: topics } = await supabase
+    .from('topics')
+    .select('*')
+    .eq('campaign_id', id)
+    .order('name', { ascending: true })
+
+  const { data: messages } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('campaign_id', id)
+
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6">
-        <Link href={`/campaigns/${id}`}>
-          <Button className="mb-4 hover:bg-accent hover:text-accent-foreground">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Vissza a kampányhoz
-          </Button>
-        </Link>
-        <h1 className="text-3xl font-bold">{campaign.name}</h1>
-        <p className="text-muted-foreground mt-2">Üzenetmátrix</p>
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight">Message Matrix</h1>
+        <p className="text-muted-foreground">
+          Manage messages for {campaign.name} across segments and topics.
+        </p>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Üzenetmátrix</CardTitle>
-          <CardDescription>
-            Ez a funkció a következő story-ban lesz implementálva (Story 1.3)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Az üzenetmátrix lehetővé teszi a célcsoportok és témák kombinációinak kezelését.
-          </p>
-        </CardContent>
-      </Card>
+
+      <MessageMatrix
+        campaignId={id}
+        segments={segments || []}
+        topics={topics || []}
+        messages={messages || []}
+      />
     </div>
   )
 }
-
