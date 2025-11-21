@@ -67,7 +67,8 @@ development_status:
   
   # Story 2.3: AI Message Matrix Generator
   # Note: Story drafted 2025-11-21 - Batch message generation for segment × topic combinations
-  2-3-ai-message-matrix-generator: drafted
+  # Note: Status updated to in-progress (2025-11-21) - Dev agent starting implementation
+  2-3-ai-message-matrix-generator: in-progress
   
   # Story 2.4: CopilotKit Frontend Integration (Kampánysegéd)
   # Note: Story drafted 2025-11-21 - Frontend CopilotKit client and kampánysegéd UI component

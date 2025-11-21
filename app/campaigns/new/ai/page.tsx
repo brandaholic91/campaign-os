@@ -12,6 +12,12 @@ import Link from 'next/link'
 import { CampaignStructurePreview } from '@/components/ai/CampaignStructurePreview'
 import { toast } from 'sonner'
 
+export default function CampaignAIPage() {
+  const [brief, setBrief] = useState('')
+  const [campaignType, setCampaignType] = useState('')
+  const [goalType, setGoalType] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generatedStructure, setGeneratedStructure] = useState<any>(null)
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
   const [endDate, setEndDate] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])

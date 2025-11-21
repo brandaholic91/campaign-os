@@ -56,6 +56,21 @@ export const MessageMatrixEntrySchema = z.object({
 
 export const MessageMatrixSchema = z.array(MessageMatrixEntrySchema)
 
+// Schema for message generation API input
+export const MessageGenerationRequestSchema = z.object({
+  campaign_id: z.string().uuid(),
+  segment_ids: z.array(z.string().uuid()),
+  topic_ids: z.array(z.string().uuid()),
+})
+
+// Schema for single message generation output
+export const GeneratedMessageSchema = MessageMatrixEntrySchema.extend({
+  campaign_id: z.string().uuid(),
+})
+
+// Schema for batch message generation output
+export const GeneratedMessagesSchema = z.array(GeneratedMessageSchema)
+
 export const AgentResponseSchema = z.object({
   type: z.enum(['user_message', 'agent_message', 'tool_call', 'state_patch', 'error']),
   content: z.string(),
@@ -64,6 +79,9 @@ export const AgentResponseSchema = z.object({
 
 export type CampaignStructure = z.infer<typeof CampaignStructureSchema>
 export type MessageMatrix = z.infer<typeof MessageMatrixSchema>
+export type MessageMatrixEntry = z.infer<typeof MessageMatrixEntrySchema>
+export type GeneratedMessage = z.infer<typeof GeneratedMessageSchema>
+export type MessageGenerationRequest = z.infer<typeof MessageGenerationRequestSchema>
 
 export function validateCampaignStructure(data: unknown): CampaignStructure {
   return CampaignStructureSchema.parse(data)
@@ -77,3 +95,14 @@ export function safeValidateCampaignStructure(data: unknown) {
   return CampaignStructureSchema.safeParse(data)
 }
 
+export function validateMessageMatrixEntry(data: unknown): MessageMatrixEntry {
+  return MessageMatrixEntrySchema.parse(data)
+}
+
+export function validateGeneratedMessage(data: unknown): GeneratedMessage {
+  return GeneratedMessageSchema.parse(data)
+}
+
+export function validateGeneratedMessages(data: unknown): GeneratedMessage[] {
+  return GeneratedMessagesSchema.parse(data)
+}
