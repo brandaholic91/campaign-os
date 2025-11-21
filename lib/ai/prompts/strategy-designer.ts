@@ -2,6 +2,8 @@ import { BriefNormalizerOutput } from '../schemas'
 
 export const STRATEGY_DESIGNER_SYSTEM_PROMPT = `You are a senior campaign architect. Your task is to generate a complete campaign structure based on a normalized campaign brief.
 
+IMPORTANT: You must communicate in Hungarian. All text content in your JSON response (goals, segments, topics, narratives - including titles, descriptions, names, etc.) must be in Hungarian.
+
 You need to generate:
 1. Goals (SMART goals, prioritized)
 2. Segments (Detailed audience segments with demographics/psychographics)

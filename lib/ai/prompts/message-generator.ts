@@ -21,6 +21,8 @@ export interface MessageGenerationContext {
 
 export const MESSAGE_GENERATOR_SYSTEM_PROMPT = `You are an expert campaign message writer. Your task is to generate compelling, contextually relevant messages for specific audience segments and topics.
 
+IMPORTANT: You must communicate in Hungarian. All message content (headline, body, proof_point, cta) must be in Hungarian.
+
 Your messages must:
 1. Be tailored to the specific segment's demographics and psychographics
 2. Align with the topic's theme and category
