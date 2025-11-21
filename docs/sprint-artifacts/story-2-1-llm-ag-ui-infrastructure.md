@@ -1,6 +1,6 @@
 # Story 2.1: LLM + AG-UI Infrastructure
 
-**Status:** drafted
+**Status:** review
 
 ---
 
@@ -74,21 +74,21 @@ So that **AI features can be reliably implemented with real-time frontend commun
 
 ### Tasks / Subtasks
 
-- [ ] Install Anthropic SDK and CopilotKit dependencies (AC: #1)
+- [x] Install Anthropic SDK and CopilotKit dependencies (AC: #1)
   - Install `@anthropic-ai/sdk@^0.20.0` for Anthropic Claude API
   - Install `zod@3.22.4` for schema validation
   - Install CopilotKit runtime: `@copilotkit/runtime` (for backend/self-hosting)
   - Install CopilotKit frontend: `@copilotkit/react-core@^1.0.0` and `@copilotkit/react-ui@^1.0.0`
   - Note: Self-hosting requires `@copilotkit/runtime`, frontend requires `@copilotkit/react-core` and `@copilotkit/react-ui`
 
-- [ ] Create Anthropic client in `lib/ai/client.ts` (AC: #1, #7)
+- [x] Create Anthropic client in `lib/ai/client.ts` (AC: #1, #7)
   - Initialize Anthropic client with API key from environment
   - Create singleton pattern for client instance
   - Add client configuration (model, temperature, max_tokens)
   - Implement environment variable validation
   - Add error handling for missing API key
 
-- [ ] Create CopilotKit runtime configuration (AC: #2)
+- [x] Create CopilotKit runtime configuration (AC: #2)
   - Import `CopilotRuntime` and `AnthropicAdapter` from `@copilotkit/runtime`
   - Import `Anthropic` from `@anthropic-ai/sdk`
   - Initialize Anthropic client with API key
@@ -97,7 +97,7 @@ So that **AI features can be reliably implemented with real-time frontend commun
   - Configure runtime with actions generator function
   - Set up streaming and event handling
 
-- [ ] Create `/api/copilotkit` endpoint (AC: #2)
+- [x] Create `/api/copilotkit` endpoint (AC: #2)
   - Create `app/api/copilotkit/route.ts` for Next.js App Router
   - Import `CopilotRuntime`, `AnthropicAdapter`, `copilotRuntimeNextJSAppRouterEndpoint` from `@copilotkit/runtime`
   - Import `Anthropic` from `@anthropic-ai/sdk`
@@ -108,27 +108,27 @@ So that **AI features can be reliably implemented with real-time frontend commun
   - Handle NextRequest and return streaming response
   - Note: Vercel timeout limits may require `vercel.json` config: `{"functions": {"api/copilotkit/**/*": {"maxDuration": 60}}}`
 
-- [ ] Implement Zod schemas in `lib/ai/schemas.ts` (AC: #5)
+- [x] Implement Zod schemas in `lib/ai/schemas.ts` (AC: #5)
   - Define schemas for LLM outputs (goals, segments, topics, messages)
   - Create type-safe interfaces from schemas
   - Add validation helpers
   - Document expected LLM output formats
 
-- [ ] Implement error handling utilities (AC: #3)
+- [x] Implement error handling utilities (AC: #3)
   - Create `lib/ai/errors.ts` for error types
   - Implement retry logic with exponential backoff
   - Add error logging
   - Create user-friendly error messages
   - Handle specific error types (rate limit, network, API errors)
 
-- [ ] Implement rate limiting (AC: #4)
+- [x] Implement rate limiting (AC: #4)
   - Create `lib/ai/rate-limit.ts` utility
   - Implement token bucket or request queue
   - Add rate limit headers/messages
   - Configure limits based on API quota
   - Add rate limit status to responses
 
-- [ ] Implement CopilotKit state sync mechanism (AC: #6)
+- [x] Implement CopilotKit state sync mechanism (AC: #6)
   - Use `useCopilotReadable` hook from `@copilotkit/react-core`
   - Define campaign form state model for CopilotKit context
   - Implement `useCopilotReadable` in form components to expose state to agent
@@ -137,13 +137,13 @@ So that **AI features can be reliably implemented with real-time frontend commun
   - Implement state validation and type safety
   - Note: State is exposed via `useCopilotReadable` hook, agent can read it as context
 
-- [ ] Add environment variable configuration (AC: #7)
+- [x] Add environment variable configuration (AC: #7)
   - Update `.env.local.example` with `ANTHROPIC_API_KEY`
   - Add environment variable validation on app startup
   - Add error handling for missing keys
   - Document required environment variables
 
-- [ ] Create CopilotKit backend actions (AC: #2, #6)
+- [x] Create CopilotKit backend actions (AC: #2, #6)
   - Define backend actions in `CopilotRuntime` constructor `actions` parameter
   - Actions is a generator function: `actions: ({properties, url}) => [...]`
   - Each action has: `name`, `description`, `parameters`, `handler`
@@ -269,13 +269,18 @@ export const POST = async (req: NextRequest) => {
 
 ### Agent Model Used
 
-_To be filled by Dev Agent during implementation_
+Anthropic Claude (`@anthropic-ai/sdk` + Claude-3.5 parameters) routed through `@copilotkit/runtime` for AG‑UI streaming inside `/api/copilotkit/route.ts`.
 
 ### Debug Log References
 
-_To be filled by Dev Agent during implementation_
+1. Added Anthropic + CopilotKit + Zod dependencies and installed them so runtime imports resolve.
+2. Built `lib/ai/client.ts`, `schemas.ts`, `errors.ts`, and `rate-limit.ts` to cover authentication, validation, retries, logging, and throttling.
+3. Authored CopilotKit runtime endpoint with actions, rate limiting, and error sanitization; validated schema before returning contextual summaries.
+4. Hooked `CampaignForm` to `useCopilotReadable` via `lib/ai/copilot-state.ts` so AG‑UI can read the campaign form state.
 
 ### Completion Notes
 
-_To be filled when story is complete_
+- Implemented the story’s ACs: Anthropic client, Zod validation, Copilot runtime + actions, rate limiting, Copilot-readable state, and documented env enforcement.
+- Manual validation plan: run local dev server, POST to `/api/copilotkit`, confirm rate limiting and error handling logging, check form state appears in Copilot inspector.
+- `npm run lint` currently fails with `Invalid project directory provided, no such directory: /root/campaign-os/lint`; Next.js appears to misinterpret the `lint` command directory. Investigate Next.js lint configuration if that remains blocking.
 

@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Database } from '@/lib/supabase/types'
+import { useCampaignFormCopilotState } from '@/lib/ai/copilot-state'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 type CampaignInsert = Database['campaign_os']['Tables']['campaigns']['Insert']
@@ -121,6 +122,14 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
       setLoading(false)
     }
   }
+
+  useCampaignFormCopilotState({
+    ...formData,
+    current_step: 1,
+    existing_segments: [],
+    existing_topics: [],
+    existing_messages: [],
+  })
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">

@@ -57,7 +57,7 @@ development_status:
   
   # Story 2.1: LLM + AG-UI Infrastructure
   # Note: Story drafted 2025-11-21 - Foundation for all Epic 2 AI features
-  2-1-llm-ag-ui-infrastructure: drafted
+  2-1-llm-ag-ui-infrastructure: review
   
   # Story 2.2: Campaign Brief → Structure AI
   # Note: Story drafted 2025-11-21 - Two-step LLM flow (Brief Normalizer → Strategy Designer)
