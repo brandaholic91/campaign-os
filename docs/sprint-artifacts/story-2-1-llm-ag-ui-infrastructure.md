@@ -90,21 +90,23 @@ So that **AI features can be reliably implemented with real-time frontend commun
   - Implement environment variable validation
   - Add error handling for missing API key
 
-- [ ] Create CopilotKit runtime configuration (AC: #2)
+- [x] Create CopilotKit runtime configuration (AC: #2)
   - Create `lib/ai/copilotkit/server.ts` for CopilotRuntime configuration
   - Import `CopilotRuntime` and `AnthropicAdapter` from `@copilotkit/runtime`
   - Import `Anthropic` from `@anthropic-ai/sdk` or use `getAnthropicClient()` from `lib/ai/client.ts`
   - Initialize Anthropic client with API key
   - Create `AnthropicAdapter` instance with Anthropic client
-  - Create `CopilotRuntime` instance with `AnthropicAdapter` as serviceAdapter
-  - Configure runtime with actions generator function
+  - Create `CopilotRuntime` instance with actions generator function
+  - Configure runtime with actions generator function (Parameter[] format, not JSON Schema)
   - Set up middleware (onBeforeRequest, etc.)
   - Export `getCopilotRuntime()` function for reusability
+  - Export `serviceAdapter` for use in endpoint
   - Note: Separating CopilotRuntime configuration enables reusability, testability, and future extensibility
+  - Note: serviceAdapter is passed to copilotRuntimeNextJSAppRouterEndpoint, not to CopilotRuntime constructor
 
-- [ ] Create `/api/copilotkit` endpoint (AC: #2)
+- [x] Create `/api/copilotkit` endpoint (AC: #2)
   - Create `app/api/copilotkit/route.ts` for Next.js App Router
-  - Import `getCopilotRuntime` from `@/lib/ai/copilotkit/server`
+  - Import `getCopilotRuntime` and `serviceAdapter` from `@/lib/ai/copilotkit/server`
   - Import `copilotRuntimeNextJSAppRouterEndpoint` from `@copilotkit/runtime`
   - Get CopilotRuntime instance: `const runtime = getCopilotRuntime()`
   - Implement POST handler using `copilotRuntimeNextJSAppRouterEndpoint({ runtime, serviceAdapter, endpoint: '/api/copilotkit' })`
