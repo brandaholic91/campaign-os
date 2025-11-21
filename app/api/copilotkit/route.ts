@@ -10,7 +10,12 @@ import { TokenBucket } from '@/lib/ai/rate-limit'
 import { RateLimitError, formatApiError } from '@/lib/ai/errors'
 
 const anthropic = getAnthropicClient()
-const serviceAdapter = new AnthropicAdapter({ anthropic })
+const serviceAdapter = new AnthropicAdapter({
+  anthropic,
+  model: 'claude-haiku-4-5'
+})
+
+console.log('=== AnthropicAdapter initialized ===', { model: 'claude-haiku-4-5' })
 
 function createCopilotActions(properties: Record<string, unknown>, url?: string) {
   return [
@@ -71,16 +76,17 @@ const runtime = new CopilotRuntime({
   actions: ({ properties, url }) => createCopilotActions(properties, url),
   middleware: {
     onBeforeRequest: async ({ inputMessages, properties }) => {
-      console.debug('Copilot runtime request', { length: inputMessages.length, properties })
+      console.log('=== CopilotRuntime onBeforeRequest ===')
+      console.log('Messages:', JSON.stringify(inputMessages, null, 2))
+      console.log('Properties:', JSON.stringify(properties, null, 2))
     },
   },
 })
 
-const server = copilotRuntimeNextJSAppRouterEndpoint({
+const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
   runtime,
   serviceAdapter,
   endpoint: '/api/copilotkit',
-  logLevel: 'info',
 })
 
 const rateLimiter = new TokenBucket({
@@ -89,29 +95,30 @@ const rateLimiter = new TokenBucket({
   tokensPerInterval: 3,
 })
 
-async function handleRequestWithThrottling(req: NextRequest) {
-  if (!rateLimiter.tryRemoveTokens()) {
-    throw new RateLimitError()
-  }
-
-  try {
-    return await server.POST(req)
-  } catch (error) {
-    throw new Error(formatApiError(error))
-  }
-}
-
-export const config = server.config
-
 export async function POST(req: NextRequest) {
+  console.log('=== POST handler called ===')
+
+  if (!rateLimiter.tryRemoveTokens()) {
+    console.log('=== Rate limit exceeded ===')
+    return NextResponse.json(
+      { error: 'API rate limit exceeded. Please retry in a moment.' },
+      { status: 429 }
+    )
+  }
+
   try {
-    return await handleRequestWithThrottling(req)
+    console.log('=== Calling handleRequest ===')
+    const result = await handleRequest(req)
+    console.log('=== handleRequest result ===', { status: result.status })
+    return result
   } catch (error) {
-    if (error instanceof RateLimitError) {
-      return NextResponse.json({ error: error.message }, { status: 429 })
-    }
-    console.error('CopilotKit runtime failed', error)
-    return NextResponse.json({ error: formatApiError(error) }, { status: 500 })
+    console.error('=== CopilotKit runtime error ===')
+    console.error('Error:', error)
+    console.error('Stack:', error instanceof Error ? error.stack : 'no stack')
+    return NextResponse.json(
+      { error: formatApiError(error) },
+      { status: 500 }
+    )
   }
 }
 
