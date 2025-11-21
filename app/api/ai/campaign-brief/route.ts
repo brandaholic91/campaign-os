@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     // Step 1: Brief Normalizer
     const normalizerResponse = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
       max_tokens: 1024,
       system: BRIEF_NORMALIZER_SYSTEM_PROMPT,
       messages: [
@@ -29,22 +29,53 @@ export async function POST(req: NextRequest) {
       : ''
     
     if (!normalizerContent) {
+      console.error('Brief Normalizer: Empty response')
       throw new Error('Empty response from Brief Normalizer')
+    }
+
+    // Extract JSON from response (handle markdown code blocks)
+    let normalizerJsonContent = normalizerContent.trim()
+    
+    // Remove markdown code blocks if present
+    if (normalizerJsonContent.startsWith('```')) {
+      const lines = normalizerJsonContent.split('\n')
+      const firstLine = lines[0]
+      const lastLine = lines[lines.length - 1]
+      
+      // Remove first and last line if they are code block markers
+      if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
+        normalizerJsonContent = lines.slice(1, -1).join('\n')
+      }
     }
 
     let normalizedBrief
     try {
-      normalizedBrief = JSON.parse(normalizerContent)
-      normalizedBrief = BriefNormalizerOutputSchema.parse(normalizedBrief)
-    } catch (e) {
-      console.error('Brief Normalizer Validation Error:', e)
+      normalizedBrief = JSON.parse(normalizerJsonContent)
+    } catch (parseError) {
+      console.error('Brief Normalizer JSON Parse Error:', parseError)
       console.error('Raw Output:', normalizerContent)
-      return NextResponse.json({ error: 'Failed to normalize brief' }, { status: 500 })
+      console.error('Extracted JSON:', normalizerJsonContent)
+      return NextResponse.json({ 
+        error: 'Failed to parse brief normalizer response as JSON',
+        details: parseError instanceof Error ? parseError.message : 'Unknown parse error'
+      }, { status: 500 })
+    }
+
+    try {
+      normalizedBrief = BriefNormalizerOutputSchema.parse(normalizedBrief)
+    } catch (validationError) {
+      console.error('Brief Normalizer Schema Validation Error:', validationError)
+      console.error('Parsed JSON:', normalizedBrief)
+      console.error('Raw Output:', normalizerContent)
+      return NextResponse.json({ 
+        error: 'Failed to validate brief normalizer output',
+        details: validationError instanceof Error ? validationError.message : 'Schema validation failed'
+      }, { status: 500 })
     }
 
     // Step 2: Strategy Designer
     const strategyResponse = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
       max_tokens: 4096,
       system: STRATEGY_DESIGNER_SYSTEM_PROMPT,
       messages: [
@@ -57,17 +88,48 @@ export async function POST(req: NextRequest) {
       : ''
 
     if (!strategyContent) {
+      console.error('Strategy Designer: Empty response')
       throw new Error('Empty response from Strategy Designer')
+    }
+
+    // Extract JSON from response (handle markdown code blocks)
+    let strategyJsonContent = strategyContent.trim()
+    
+    // Remove markdown code blocks if present
+    if (strategyJsonContent.startsWith('```')) {
+      const lines = strategyJsonContent.split('\n')
+      const firstLine = lines[0]
+      const lastLine = lines[lines.length - 1]
+      
+      // Remove first and last line if they are code block markers
+      if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
+        strategyJsonContent = lines.slice(1, -1).join('\n')
+      }
     }
 
     let campaignStructure
     try {
-      campaignStructure = JSON.parse(strategyContent)
-      campaignStructure = CampaignStructureSchema.parse(campaignStructure)
-    } catch (e) {
-      console.error('Strategy Designer Validation Error:', e)
+      campaignStructure = JSON.parse(strategyJsonContent)
+    } catch (parseError) {
+      console.error('Strategy Designer JSON Parse Error:', parseError)
       console.error('Raw Output:', strategyContent)
-      return NextResponse.json({ error: 'Failed to generate strategy' }, { status: 500 })
+      console.error('Extracted JSON:', strategyJsonContent)
+      return NextResponse.json({ 
+        error: 'Failed to parse strategy designer response as JSON',
+        details: parseError instanceof Error ? parseError.message : 'Unknown parse error'
+      }, { status: 500 })
+    }
+
+    try {
+      campaignStructure = CampaignStructureSchema.parse(campaignStructure)
+    } catch (validationError) {
+      console.error('Strategy Designer Schema Validation Error:', validationError)
+      console.error('Parsed JSON:', campaignStructure)
+      console.error('Raw Output:', strategyContent)
+      return NextResponse.json({ 
+        error: 'Failed to validate strategy designer output',
+        details: validationError instanceof Error ? validationError.message : 'Schema validation failed'
+      }, { status: 500 })
     }
 
     return NextResponse.json(campaignStructure)

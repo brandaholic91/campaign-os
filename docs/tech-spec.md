@@ -1156,7 +1156,7 @@ campaign-os/
 **Anthropic Claude API:**
 - Environment variable: `ANTHROPIC_API_KEY`
 - Client initialization in `lib/ai/client.ts`
-- Model: `claude-3-5-sonnet-20241022` or latest
+- Model: Configurable via `ANTHROPIC_MODEL` env var, defaults to `claude-haiku-4-5`
 - Structured outputs with JSON schema (Zod)
 - Streaming support for real-time responses
 - Error handling: retry logic, rate limit handling

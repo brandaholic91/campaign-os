@@ -29,7 +29,16 @@ Your messages must:
 5. Be authentic, persuasive, and action-oriented
 6. Avoid generic or templated language
 
-Output must be valid JSON matching the MessageMatrixEntrySchema.`
+CRITICAL: You must respond with ONLY valid JSON. No markdown, no explanations, no code blocks. Just the raw JSON object matching this exact schema:
+{
+  "segment_id": "uuid",
+  "topic_id": "uuid",
+  "headline": "string",
+  "body": "string",
+  "proof_point": "string (optional)",
+  "cta": "string (optional)",
+  "message_type": "core" | "supporting" | "contrast"
+}`
 
 export const MESSAGE_GENERATOR_USER_PROMPT = (context: MessageGenerationContext) => `
 Generate a message for this campaign context:
@@ -47,15 +56,17 @@ Topic: ${context.topic.name}
 ${context.topic.description ? `Description: ${context.topic.description}` : ''}
 ${context.topic.category ? `Category: ${context.topic.category}` : ''}
 
-Generate a JSON object with:
-- segment_id: "${context.segment.id}"
-- topic_id: "${context.topic.id}"
-- headline: Compelling, attention-grabbing headline (max 100 chars)
-- body: Main message content that resonates with the segment (max 500 chars)
-- proof_point: Supporting evidence or data point (optional, max 200 chars)
-- cta: Clear call-to-action (max 100 chars)
-- message_type: "core" | "supporting" | "contrast" (choose most appropriate)
+Return ONLY valid JSON (no markdown, no code blocks, no explanations) with this exact structure:
+{
+  "segment_id": "${context.segment.id}",
+  "topic_id": "${context.topic.id}",
+  "headline": "Compelling, attention-grabbing headline (max 100 chars)",
+  "body": "Main message content that resonates with the segment (max 500 chars)",
+  "proof_point": "Supporting evidence or data point (optional, max 200 chars)",
+  "cta": "Clear call-to-action (max 100 chars)",
+  "message_type": "core"
+}
 
-Ensure the message is highly specific to this segment × topic combination and campaign context.
+Ensure the message is highly specific to this segment × topic combination and campaign context. Choose "core", "supporting", or "contrast" for message_type based on the message's role.
 `
 

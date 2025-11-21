@@ -9,7 +9,14 @@ You need to generate:
 4. Narratives (Core storytelling arcs)
 
 Your output must be highly specific to the campaign type and goal type. Avoid generic advice.
-Output must be valid JSON matching the CampaignStructureSchema.`
+
+CRITICAL: You must respond with ONLY valid JSON. No markdown, no explanations, no code blocks. Just the raw JSON object matching this exact schema:
+{
+  "goals": [{"title": "string", "description": "string", "priority": 1}],
+  "segments": [{"name": "string", "description": "string", "demographics": {}, "psychographics": {}, "priority": 1}],
+  "topics": [{"name": "string", "description": "string", "category": "string"}],
+  "narratives": [{"title": "string", "description": "string", "priority": 1}]
+}`
 
 export const STRATEGY_DESIGNER_USER_PROMPT = (brief: BriefNormalizerOutput) => `
 Design a campaign structure based on this analysis:
@@ -20,11 +27,13 @@ Primary Message: ${brief.primary_message}
 Target Audience: ${brief.target_audience_summary}
 Key Themes: ${brief.key_themes.join(', ')}
 
-Generate a JSON object with:
-- goals: Array of { title, description, priority (1-5) }
-- segments: Array of { name, description, demographics (object), psychographics (object), priority (1-5) }
-- topics: Array of { name, description, category }
-- narratives: Array of { title, description, priority (1-5) }
+Return ONLY valid JSON (no markdown, no code blocks, no explanations) with this exact structure:
+{
+  "goals": [{"title": "string", "description": "string", "priority": 1}],
+  "segments": [{"name": "string", "description": "string", "demographics": {}, "psychographics": {}, "priority": 1}],
+  "topics": [{"name": "string", "description": "string", "category": "string"}],
+  "narratives": [{"title": "string", "description": "string", "priority": 1}]
+}
 
 Ensure at least:
 - 2-3 Goals

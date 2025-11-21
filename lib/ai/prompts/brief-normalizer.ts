@@ -9,7 +9,14 @@ You need to identify:
 
 If the user explicitly provides campaign_type or goal_type, strictly use those. If not, infer them from the text.
 
-Output must be valid JSON matching the BriefNormalizerOutputSchema.`
+CRITICAL: You must respond with ONLY valid JSON. No markdown, no explanations, no code blocks. Just the raw JSON object matching this exact schema:
+{
+  "campaign_type": "one of: political_election, political_issue, brand_awareness, product_launch, promo, ngo_issue",
+  "goal_type": "one of: awareness, engagement, list_building, conversion, mobilization",
+  "key_themes": ["array", "of", "strings"],
+  "target_audience_summary": "string",
+  "primary_message": "string"
+}`
 
 export const BRIEF_NORMALIZER_USER_PROMPT = (brief: string, campaignType?: string, goalType?: string) => `
 Analyze the following campaign brief:
@@ -20,10 +27,12 @@ Context:
 ${campaignType ? `- Explicit Campaign Type: ${campaignType}` : '- Campaign Type: Infer from text'}
 ${goalType ? `- Explicit Goal Type: ${goalType}` : '- Goal Type: Infer from text'}
 
-Return a JSON object with:
-- campaign_type
-- goal_type
-- key_themes (array of strings)
-- target_audience_summary (string)
-- primary_message (string)
+Return ONLY valid JSON (no markdown, no code blocks, no explanations) with this exact structure:
+{
+  "campaign_type": "value from enum",
+  "goal_type": "value from enum",
+  "key_themes": ["array", "of", "strings"],
+  "target_audience_summary": "string",
+  "primary_message": "string"
+}
 `

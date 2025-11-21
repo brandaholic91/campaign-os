@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
         campaign_type: campaign.campaignType as any,
         primary_goal_type: campaign.goalType as any,
         status: 'planning',
-        narratives: structure.narratives as any // Cast to any because column might not exist in types yet
-      } as any)
+        narratives: structure.narratives || []
+      })
       .select()
       .single()
 

@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
 
         try {
           const response = await client.messages.create({
-            model: 'claude-3-5-sonnet-20241022',
+            model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
             max_tokens: 1024,
             system: MESSAGE_GENERATOR_SYSTEM_PROMPT,
             messages: [
@@ -99,27 +99,50 @@ export async function POST(req: NextRequest) {
             : ''
 
           if (!content) {
-            console.warn(`Empty response for segment ${segment.id}, topic ${topic.id}`)
+            console.warn(`Empty response for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id})`)
             continue
+          }
+
+          // Extract JSON from response (handle markdown code blocks)
+          let jsonContent = content.trim()
+          
+          // Remove markdown code blocks if present
+          if (jsonContent.startsWith('```')) {
+            const lines = jsonContent.split('\n')
+            const firstLine = lines[0]
+            const lastLine = lines[lines.length - 1]
+            
+            // Remove first and last line if they are code block markers
+            if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
+              jsonContent = lines.slice(1, -1).join('\n')
+            }
           }
 
           let messageData
           try {
-            messageData = JSON.parse(content)
-            // Validate and add campaign_id
+            messageData = JSON.parse(jsonContent)
+          } catch (parseError) {
+            console.error(`JSON parse error for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id}):`, parseError)
+            console.error('Raw output:', content)
+            console.error('Extracted JSON:', jsonContent)
+            continue
+          }
+
+          // Validate and add campaign_id
+          try {
             const validated = validateGeneratedMessage({
               ...messageData,
               campaign_id,
             })
             generatedMessages.push(validated)
-          } catch (e) {
-            console.error(`Validation error for segment ${segment.id}, topic ${topic.id}:`, e)
+          } catch (validationError) {
+            console.error(`Validation error for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id}):`, validationError)
+            console.error('Parsed messageData:', messageData)
             console.error('Raw output:', content)
-            // Continue with next combination instead of failing entire batch
             continue
           }
         } catch (error) {
-          console.error(`Error generating message for segment ${segment.id}, topic ${topic.id}:`, error)
+          console.error(`Error generating message for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id}):`, error)
           // Continue with next combination
           continue
         }
@@ -127,7 +150,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (generatedMessages.length === 0) {
-      return NextResponse.json({ error: 'Failed to generate any messages' }, { status: 500 })
+      console.error('No messages generated. Total combinations attempted:', segments.length * topics.length)
+      console.error('Segments:', segments.map(s => s.name))
+      console.error('Topics:', topics.map(t => t.name))
+      return NextResponse.json({ 
+        error: 'Failed to generate any messages',
+        details: `Attempted ${segments.length * topics.length} combinations but none succeeded. Check server logs for details.`
+      }, { status: 500 })
     }
 
     return NextResponse.json({ messages: generatedMessages })

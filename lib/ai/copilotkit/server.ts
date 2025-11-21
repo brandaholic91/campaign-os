@@ -9,10 +9,10 @@ const anthropic = getAnthropicClient()
 // Note: AnthropicAdapter accepts the Anthropic client instance from @anthropic-ai/sdk
 const serviceAdapter = new AnthropicAdapter({
   anthropic: anthropic as any,
-  model: 'claude-haiku-4-5',
+  model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
 })
 
-console.log('=== AnthropicAdapter initialized ===', { model: 'claude-haiku-4-5' })
+console.log('=== AnthropicAdapter initialized ===', { model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5' })
 
 /**
  * Creates CopilotKit actions for backend operations

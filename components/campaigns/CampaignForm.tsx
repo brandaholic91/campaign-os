@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select'
 import { Database } from '@/lib/supabase/types'
 import { useCampaignFormCopilotState } from '@/lib/ai/copilot-state'
+import { AssistantChat } from '@/components/ai/AssistantChat'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 type CampaignInsert = Database['campaign_os']['Tables']['campaigns']['Insert']
@@ -163,6 +164,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
         <Label htmlFor="name">Kampány neve *</Label>
         <Input
           id="name"
+          data-field-id="name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
@@ -178,7 +180,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
             onValueChange={(value) => setFormData({ ...formData, campaign_type: value as Campaign['campaign_type'] })}
             required
           >
-            <SelectTrigger id="campaign_type">
+            <SelectTrigger id="campaign_type" data-field-id="campaign_type">
               <SelectValue placeholder="Válassz típust" />
             </SelectTrigger>
             <SelectContent>
@@ -198,7 +200,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
             onValueChange={(value) => setFormData({ ...formData, primary_goal_type: value as Campaign['primary_goal_type'] })}
             required
           >
-            <SelectTrigger id="primary_goal_type">
+            <SelectTrigger id="primary_goal_type" data-field-id="primary_goal_type">
               <SelectValue placeholder="Válassz célt" />
             </SelectTrigger>
             <SelectContent>
@@ -217,6 +219,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
           <Label htmlFor="start_date">Kezdési dátum *</Label>
           <Input
             id="start_date"
+            data-field-id="start_date"
             type="date"
             value={formData.start_date}
             onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
@@ -228,6 +231,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
           <Label htmlFor="end_date">Befejezési dátum *</Label>
           <Input
             id="end_date"
+            data-field-id="end_date"
             type="date"
             value={formData.end_date}
             onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
@@ -240,6 +244,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
         <Label htmlFor="description">Leírás</Label>
         <Textarea
           id="description"
+          data-field-id="description"
           value={formData.description || ''}
           onChange={(e) => setFormData({ ...formData, description: e.target.value || null })}
           placeholder="Kampány rövid leírása..."
@@ -251,6 +256,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
         <Label htmlFor="budget_estimate">Költségvetési becslés</Label>
         <Input
           id="budget_estimate"
+          data-field-id="budget_estimate"
           type="number"
           value={formData.budget_estimate || ''}
           onChange={(e) => setFormData({ ...formData, budget_estimate: e.target.value ? parseFloat(e.target.value) : undefined })}
@@ -273,6 +279,9 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
           Mégse
         </Button>
       </div>
+
+      {/* Kampánysegéd Assistant Chat */}
+      <AssistantChat />
     </form>
   )
 }

@@ -1,2 +1,3 @@
 -- Add narratives column to campaigns table
-ALTER TABLE campaigns ADD COLUMN narratives JSONB DEFAULT '[]'::jsonb;
+-- Using IF NOT EXISTS to prevent errors if column already exists
+ALTER TABLE campaign_os.campaigns ADD COLUMN IF NOT EXISTS narratives JSONB DEFAULT '[]'::jsonb;
