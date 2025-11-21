@@ -1,9 +1,47 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+// GET /api/sprints - List sprints, optionally filtered by campaign_id
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const campaignId = searchParams.get('campaign_id')
+    
+    const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
+    
+    let query = db
+      .from('sprints')
+      .select('*')
+    
+    if (campaignId) {
+      query = query.eq('campaign_id', campaignId)
+    }
+    
+    const { data, error } = await query.order('start_date', { ascending: true })
+    
+    if (error) {
+      console.error('Error fetching sprints:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch sprints' },
+        { status: 500 }
+      )
+    }
+    
+    return NextResponse.json(data || [])
+  } catch (error) {
+    console.error('Unexpected error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     const body = await request.json()
 
     // Validate dates
@@ -14,7 +52,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('sprints')
       .insert({
         campaign_id: body.campaign_id,
@@ -41,6 +79,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     const body = await request.json()
 
     if (!body.id) {
@@ -59,7 +98,7 @@ export async function PUT(request: Request) {
       )
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('sprints')
       .update({
         name: body.name,
@@ -87,6 +126,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
@@ -94,7 +134,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Sprint ID required' }, { status: 400 })
     }
 
-    const { error } = await supabase.from('sprints').delete().eq('id', id)
+    const { error } = await db.from('sprints').delete().eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

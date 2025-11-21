@@ -9,8 +9,9 @@ export default async function SprintsPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
+  const db = supabase.schema('campaign_os')
 
-  const { data: campaign } = await supabase
+  const { data: campaign } = await db
     .from('campaigns')
     .select('*')
     .eq('id', id)
@@ -20,18 +21,18 @@ export default async function SprintsPage({
     notFound()
   }
 
-  const { data: sprints } = await supabase
+  const { data: sprints } = await db
     .from('sprints')
     .select('*')
     .eq('campaign_id', id)
     .order('start_date', { ascending: true })
 
-  const { data: tasks } = await supabase
+  const { data: tasks } = await db
     .from('tasks')
     .select('*')
     .eq('campaign_id', id)
 
-  const { data: channels } = await supabase
+  const { data: channels } = await db
     .from('channels')
     .select('*')
     .order('name', { ascending: true })

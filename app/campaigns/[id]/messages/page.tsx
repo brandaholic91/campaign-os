@@ -9,8 +9,9 @@ export default async function MessageMatrixPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
+  const db = supabase.schema('campaign_os')
 
-  const { data: campaign } = await supabase
+  const { data: campaign } = await db
     .from('campaigns')
     .select('*')
     .eq('id', id)
@@ -20,19 +21,19 @@ export default async function MessageMatrixPage({
     notFound()
   }
 
-  const { data: segments } = await supabase
+  const { data: segments } = await db
     .from('segments')
     .select('*')
     .eq('campaign_id', id)
     .order('priority', { ascending: true })
 
-  const { data: topics } = await supabase
+  const { data: topics } = await db
     .from('topics')
     .select('*')
     .eq('campaign_id', id)
     .order('name', { ascending: true })
 
-  const { data: messages } = await supabase
+  const { data: messages } = await db
     .from('messages')
     .select('*')
     .eq('campaign_id', id)

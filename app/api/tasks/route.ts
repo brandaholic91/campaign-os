@@ -1,12 +1,55 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+// GET /api/tasks - List tasks, optionally filtered by campaign_id or sprint_id
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const campaignId = searchParams.get('campaign_id')
+    const sprintId = searchParams.get('sprint_id')
+    
+    const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
+    
+    let query = db
+      .from('tasks')
+      .select('*')
+    
+    if (campaignId) {
+      query = query.eq('campaign_id', campaignId)
+    }
+    
+    if (sprintId) {
+      query = query.eq('sprint_id', sprintId)
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching tasks:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch tasks' },
+        { status: 500 }
+      )
+    }
+    
+    return NextResponse.json(data || [])
+  } catch (error) {
+    console.error('Unexpected error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     const body = await request.json()
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('tasks')
       .insert({
         campaign_id: body.campaign_id,
@@ -34,13 +77,14 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     const body = await request.json()
 
     if (!body.id) {
       return NextResponse.json({ error: 'Task ID required' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('tasks')
       .update({
         title: body.title,
@@ -69,6 +113,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const supabase = await createClient()
+    const db = supabase.schema('campaign_os')
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
@@ -76,7 +121,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Task ID required' }, { status: 400 })
     }
 
-    const { error } = await supabase.from('tasks').delete().eq('id', id)
+    const { error } = await db.from('tasks').delete().eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
