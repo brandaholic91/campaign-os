@@ -1,6 +1,6 @@
 # Story 2.2: Campaign Brief → Structure AI
 
-**Status:** drafted
+**Status:** review
 
 ---
 
@@ -74,29 +74,29 @@ So that **I can quickly set up campaigns without manual data entry**.
 
 ### Tasks / Subtasks
 
-- [ ] Create AI-assisted campaign creation page (AC: #1, #2, #3)
+- [x] Create AI-assisted campaign creation page (AC: #1, #2, #3)
   - Create `/app/campaigns/new/ai` page
   - Add "Create with AI" entry point on campaigns page
   - Implement brief input UI (large textarea + campaign_type/goal_type selectors)
   - Add loading state with progress indication
   - Implement preview UI component (accordion/card layout)
 
-- [ ] Implement `/api/ai/campaign-brief` endpoint or AG-UI tool (AC: #1, #5)
+- [x] Implement `/api/ai/campaign-brief` endpoint or AG-UI tool (AC: #1, #5)
   - Create API route or AG-UI tool handler
   - Implement two-step LLM flow: Brief Normalizer → Strategy Designer
   - Add prompt templates in `lib/ai/prompts/brief-normalizer.ts`
   - Add prompt templates in `lib/ai/prompts/strategy-designer.ts`
   - Integrate with Anthropic client from Story 2.1
-  - Stream output via AG-UI events
+  - Stream output via AG-UI events (Implemented as REST API for MVP)
 
-- [ ] Implement Brief Normalizer LLM step (AC: #1)
+- [x] Implement Brief Normalizer LLM step (AC: #1)
   - Create prompt template for brief normalization
   - Extract key information from unstructured brief
   - Identify campaign_type and goal_type if not provided
   - Output structured brief summary
   - Validate output with Zod schema
 
-- [ ] Implement Strategy Designer LLM step (AC: #1)
+- [x] Implement Strategy Designer LLM step (AC: #1)
   - Create prompt template for strategy design
   - Generate goals based on campaign_type and goal_type
   - Generate segments (audience demographics/psychographics)
@@ -105,7 +105,7 @@ So that **I can quickly set up campaigns without manual data entry**.
   - Include campaign context in prompt
   - Validate output with Zod schema
 
-- [ ] Implement preview UI component (AC: #2, #3)
+- [x] Implement preview UI component (AC: #2, #3)
   - Create `components/ai/CampaignStructurePreview.tsx`
   - Display goals, segments, topics, narratives
   - Add approve/reject checkboxes per item
@@ -113,7 +113,7 @@ So that **I can quickly set up campaigns without manual data entry**.
   - Show AI-generated vs manual distinction
   - Implement "Save Selected" CTA
 
-- [ ] Implement approval workflow (AC: #3, #4)
+- [x] Implement approval workflow (AC: #3, #4)
   - Add selection state management
   - Implement save logic for approved items
   - Create database transactions for atomic saves
@@ -121,22 +121,23 @@ So that **I can quickly set up campaigns without manual data entry**.
   - Add success feedback and redirect
   - Handle partial saves (some items approved, some rejected)
 
-- [ ] Integrate with existing campaign creation flow (AC: #4)
+- [x] Integrate with existing campaign creation flow (AC: #4)
   - Connect to existing campaign CRUD API
   - Use existing segment/topic creation endpoints
   - Maintain data consistency with Epic 1 schema
   - Handle foreign key relationships
   - Add proper error handling
 
-- [ ] Implement AG-UI event streaming (AC: #5)
+- [-] Implement AG-UI event streaming (AC: #5)
   - Connect to `/api/ai/stream` endpoint from Story 2.1
   - Display real-time agent messages
   - Show progress indicators (Brief → Structure → Done)
   - Handle state patch events
   - Update UI as AI generates content
   - Add loading states and error handling
+  - *Note: Deferred due to missing Story 2.1 infrastructure (CopilotKit provider)*
 
-- [ ] Implement JSON schema validation (AC: #6)
+- [x] Implement JSON schema validation (AC: #6)
   - Define Zod schemas for campaign structure output
   - Add validation in `lib/ai/schemas.ts`
   - Validate goals, segments, topics, narratives
@@ -144,14 +145,15 @@ So that **I can quickly set up campaigns without manual data entry**.
   - Log validation failures for debugging
   - Retry on validation failure if appropriate
 
-- [ ] Implement AG-UI state sync (AC: #7)
+- [-] Implement AG-UI state sync (AC: #7)
   - Send current form state to agent
   - Include campaign_type, goal_type, filled fields
   - Implement frontend tool handlers (prefillField, highlightField, navigateToStep)
   - Handle tool execution feedback
   - Update UI based on agent tool calls
+  - *Note: Deferred due to missing Story 2.1 infrastructure (CopilotKit provider)*
 
-- [ ] Add error handling and fallback (AC: #1, #5)
+- [x] Add error handling and fallback (AC: #1, #5)
   - Handle AI API failures gracefully
   - Show "AI temporarily unavailable, create manually" message
   - Provide fallback to manual campaign creation

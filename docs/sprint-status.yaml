@@ -61,7 +61,7 @@ development_status:
   
   # Story 2.2: Campaign Brief → Structure AI
   # Note: Story drafted 2025-11-21 - Two-step LLM flow (Brief Normalizer → Strategy Designer)
-  2-2-campaign-brief-structure-ai: drafted
+  2-2-campaign-brief-structure-ai: review
   
   # Story 2.3: AI Message Matrix Generator
   # Note: Story drafted 2025-11-21 - Batch message generation for segment × topic combinations

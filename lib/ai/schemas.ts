@@ -21,12 +21,28 @@ export const TopicSchema = z.object({
   category: z.string().optional(),
 })
 
+export const NarrativeSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  priority: z.number().int().nonnegative().optional(),
+})
+
 export const CampaignStructureSchema = z.object({
   goals: z.array(GoalSchema),
   segments: z.array(SegmentSchema),
   topics: z.array(TopicSchema),
-  narratives: z.array(z.string()),
+  narratives: z.array(NarrativeSchema),
 })
+
+export const BriefNormalizerOutputSchema = z.object({
+  campaign_type: z.enum(['political_election', 'political_issue', 'brand_awareness', 'product_launch', 'promo', 'ngo_issue']),
+  goal_type: z.enum(['awareness', 'engagement', 'list_building', 'conversion', 'mobilization']),
+  key_themes: z.array(z.string()),
+  target_audience_summary: z.string(),
+  primary_message: z.string(),
+})
+
+export type BriefNormalizerOutput = z.infer<typeof BriefNormalizerOutputSchema>
 
 export const MessageMatrixEntrySchema = z.object({
   segment_id: z.string().uuid(),
