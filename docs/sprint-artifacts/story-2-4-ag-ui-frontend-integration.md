@@ -1,4 +1,4 @@
-# Story 2.4: AG-UI Frontend Integration (Kampánysegéd)
+# Story 2.4: CopilotKit Frontend Integration (Kampánysegéd)
 
 **Status:** drafted
 
@@ -70,16 +70,16 @@ So that **I can get contextual assistance while manually creating campaigns, wit
 - **And** I see progress of the orchestrator
 - **And** results are integrated into the current form state
 
-**AC #8:** All interactions via AG-UI protocol with bi-directional state sync
-- **Given** AG-UI infrastructure exists (Story 2.1)
+**AC #8:** All interactions via CopilotKit protocol with bi-directional state sync
+- **Given** CopilotKit infrastructure exists (Story 2.1)
 - **When** I interact with the assistant
-- **Then** all communication happens via AG-UI protocol
+- **Then** all communication happens via CopilotKit protocol
 - **And** bi-directional state sync works reliably
 - **And** frontend tools execute correctly
 - **And** event streaming is stable
 
-**AC #9:** Progressive enhancement - works without AG-UI
-- **Given** AG-UI is unavailable or fails
+**AC #9:** Progressive enhancement - works without CopilotKit
+- **Given** CopilotKit is unavailable or fails
 - **When** I try to use the assistant
 - **Then** fallback to manual campaign creation is available
 - **And** error message is user-friendly
@@ -92,19 +92,19 @@ So that **I can get contextual assistance while manually creating campaigns, wit
 
 ### Tasks / Subtasks
 
-- [ ] Install and configure AG-UI client (AC: #1, #8)
-  - Install `@copilotkit/react-core@^1.0.0` or implement custom AG-UI client
-  - Configure AG-UI client to connect to `/api/ai/stream`
+- [ ] Install and configure CopilotKit client (AC: #1, #8)
+  - Install `@copilotkit/react-core@^1.0.0` and `@copilotkit/react-ui@^1.0.0`
+  - Configure CopilotKit client to connect to `/api/copilotkit`
   - Set up WebSocket or SSE connection
   - Implement connection lifecycle management
   - Add error handling and reconnection logic
 
 - [ ] Create CampaignAssistant wrapper component (AC: #1, #8)
-  - Create `components/ai/CampaignAssistant.tsx` - main AG-UI wrapper
-  - Wrap campaign creation/editing forms with AG-UI provider
-  - Configure AG-UI context and state management
+  - Create `components/ai/CampaignAssistant.tsx` - main CopilotKit wrapper
+  - Wrap campaign creation/editing forms with CopilotKit provider
+  - Configure CopilotKit context and state management
   - Set up bi-directional state sync
-  - Handle AG-UI initialization and cleanup
+  - Handle CopilotKit initialization and cleanup
 
 - [ ] Create AssistantChat component (AC: #1)
   - Create `components/ai/AssistantChat.tsx` - streaming chat UI
@@ -132,15 +132,15 @@ So that **I can get contextual assistance while manually creating campaigns, wit
   - Handle tool execution errors gracefully
 
 - [ ] Implement state management integration (AC: #2, #8)
-  - Integrate AG-UI state sync with form state
+  - Integrate CopilotKit state sync with form state
   - Send form state updates to agent in real-time
   - Receive state patches from agent
   - Update form fields based on agent state patches
   - Maintain state consistency
   - Handle state sync conflicts
 
-- [ ] Implement AG-UI client connection (AC: #8)
-  - Connect AG-UI client to `/api/ai/stream` endpoint
+- [ ] Implement CopilotKit client connection (AC: #8)
+  - Connect CopilotKit client to `/api/copilotkit` endpoint
   - Handle WebSocket or SSE connection
   - Implement event stream parsing
   - Handle connection errors and reconnection
@@ -155,11 +155,11 @@ So that **I can get contextual assistance while manually creating campaigns, wit
   - Add accessibility features (keyboard navigation, ARIA labels)
 
 - [ ] Implement progressive enhancement (AC: #9)
-  - Add fallback when AG-UI is unavailable
+  - Add fallback when CopilotKit is unavailable
   - Show user-friendly error messages
   - Ensure manual campaign creation still works
   - Implement graceful degradation
-  - Add feature detection for AG-UI availability
+  - Add feature detection for CopilotKit availability
 
 - [ ] Integrate with campaign creation flow (AC: #2, #5, #7)
   - Add assistant to `/app/campaigns/new/page.tsx`
@@ -184,7 +184,7 @@ So that **I can get contextual assistance while manually creating campaigns, wit
   - Handle tool execution errors
 
 - [ ] Implement real-time message streaming display (AC: #1)
-  - Parse AG-UI event stream
+  - Parse CopilotKit event stream
   - Display messages as they stream
   - Add typing indicators
   - Handle message formatting (markdown, code blocks)
@@ -193,31 +193,31 @@ So that **I can get contextual assistance while manually creating campaigns, wit
 
 ### Technical Summary
 
-This story implements the frontend AG-UI integration, creating the "Kampánysegéd" (campaign assistant) UI component. The assistant provides real-time, contextual help during manual campaign creation with bi-directional state sync. Frontend tools enable the agent to interact with the UI (prefill fields, highlight, navigate). Progressive enhancement ensures the core functionality works even if AG-UI is unavailable.
+This story implements the frontend CopilotKit integration, creating the "Kampánysegéd" (campaign assistant) UI component. The assistant provides real-time, contextual help during manual campaign creation with bi-directional state sync. Frontend tools enable the agent to interact with the UI (prefill fields, highlight, navigate). Progressive enhancement ensures the core functionality works even if CopilotKit is unavailable.
 
 **Key technical decisions:**
-- CopilotKit or custom AG-UI client implementation
+- CopilotKit client implementation
 - Floating chat button or side panel UI
 - Bi-directional state sync with form state
 - Frontend tool execution (prefillField, highlightField, navigateToStep)
 - Real-time message streaming display
 - Progressive enhancement with graceful degradation
 
-**Dependencies:** Story 2.1 (AG-UI infrastructure) must be complete. Can integrate with Stories 2.2 and 2.3 as they are implemented.
+**Dependencies:** Story 2.1 (CopilotKit infrastructure) must be complete. Can integrate with Stories 2.2 and 2.3 as they are implemented.
 
 ### Project Structure Notes
 
 - **Files to create:**
-  - `components/ai/CampaignAssistant.tsx` - AG-UI wrapper component
+  - `components/ai/CampaignAssistant.tsx` - CopilotKit wrapper component
   - `components/ai/AssistantChat.tsx` - Streaming chat UI
   - `components/ai/InlineSuggestions.tsx` - Field-level suggestions
-  - Update `lib/ai/ag-ui/` - Frontend tool definitions and handlers
+  - Update `lib/copilotkit/tools.ts` - Frontend tool definitions and handlers
 
 - **Files to update:**
   - `app/campaigns/new/page.tsx` - Integrate assistant
   - `app/campaigns/[id]/edit/page.tsx` - Integrate assistant (if exists)
   - Campaign form components - Add state sync integration
-  - `package.json` - Add AG-UI client dependencies
+  - `package.json` - Add CopilotKit client dependencies
 
 - **Expected test locations:** Manual testing
   - Test real-time chat streaming
@@ -231,19 +231,19 @@ This story implements the frontend AG-UI integration, creating the "Kampányseg�
 
 - **Estimated effort:** 5 story points (3-5 days)
 
-- **Prerequisites:** Story 2.1 (AG-UI infrastructure must exist)
+- **Prerequisites:** Story 2.1 (CopilotKit infrastructure must exist)
 
 ### Key Code References
 
 **Existing code to reference:**
 - `app/campaigns/new/page.tsx` - Campaign creation flow
 - Campaign form components from Epic 1
-- Story 2.1 AG-UI infrastructure (`/api/ai/stream`)
+- Story 2.1 CopilotKit infrastructure (`/api/copilotkit`)
 - Story 2.2 orchestrator functionality (if available)
 
 **Reference documentation:**
-- CopilotKit AG-UI documentation (if using CopilotKit)
-- AG-UI protocol specification
+- CopilotKit documentation
+- CopilotKit protocol specification
 - WebSocket/SSE patterns for real-time streaming
 - React state management patterns
 - Progressive enhancement best practices
@@ -253,7 +253,7 @@ This story implements the frontend AG-UI integration, creating the "Kampányseg�
 ## Context References
 
 **Tech-Spec:** [tech-spec.md](../tech-spec.md) - Contains:
-- Epic 2 AG-UI frontend integration requirements
+- Epic 2 CopilotKit frontend integration requirements
 - Kampánysegéd concept and UX considerations
 - Frontend tool definitions
 - State sync approach
@@ -264,7 +264,7 @@ This story implements the frontend AG-UI integration, creating the "Kampányseg�
 - Success criteria
 
 **Epic Planning:** [epic-2-draft.md](../epic-2-draft.md) - Party mode planning
-- Winston's architecture: AG-UI frontend integration, CopilotKit vs custom
+- Winston's architecture: CopilotKit frontend integration
 - Sally's UX: floating chat button, inline suggestions, tool execution feedback
 - Amelia's implementation: file structure, dependencies, frontend tools
 - John's product strategy: 10x better UX, real-time contextual assistance

@@ -98,10 +98,10 @@ lib/ai/
 
 Winston architektúrájával egyetértek. **Crisp, actionable stories** kell.
 
-**Story 2.1: LLM Integration** (Foundation)
+**Story 2.1: LLM + CopilotKit Infrastructure** (Foundation)
 - **Must have first** - minden AI feature erre épül
-- AC: API client, error handling, rate limiting, Zod validation
-- **3 points** - 2-3 nap, mert új dependency (Anthropic SDK)
+- AC: API client, error handling, rate limiting, Zod validation, CopilotKit server endpoint
+- **5 points** - 3-5 nap (frissítve: eredetileg 3 points volt, de CopilotKit protokoll integration miatt 5 points)
 
 **Story 2.2: Campaign Brief AI**
 - **High value** - user pain point: manual data entry
@@ -122,7 +122,7 @@ Winston architektúrájával egyetértek. **Crisp, actionable stories** kell.
 
 **Velocity consideration:**
 - Epic 1: 13 points, 3 stories, mind done
-- Epic 2: 13 points, 3 stories - **realisztikus** ha foundation first
+- Epic 2: 20 points, 4 stories (frissítve: 13 → 20 points az CopilotKit integration miatt, Story 2.4 hozzáadva) - **realisztikus** ha foundation first
 
 **Critical path:**
 2.1 → 2.2 → 2.3 (sequential dependency chain)
@@ -265,10 +265,10 @@ Epic 1 manual tool működik, de **time-consuming**. AI integration **10x speedu
 
 ---
 
-## AG-UI Integration Discussion - Updated Planning
+## CopilotKit Integration Discussion - Updated Planning
 
 **New Information from Balazs:**
-- AG-UI protokoll beépítése a frontendbe
+- CopilotKit protokoll beépítése a frontendbe
 - "Kampánysegéd" koncepció: frontendbe épített AI assistant
 - Real-time streaming chat, bi-directional state sync
 - Frontend tool integration, human-in-the-loop workflow
@@ -280,21 +280,21 @@ Epic 1 manual tool működik, de **time-consuming**. AI integration **10x speedu
 
 #### Winston (Architect) 🏗️
 
-**AG-UI architektúra értékelés:**
+**CopilotKit architektúra értékelés:**
 
-AG-UI **perfect fit** a use case-hez. Event-alapú protokoll, ami standardizálja a UI-agent kommunikációt.
+CopilotKit **perfect fit** a use case-hez. Event-alapú protokoll, ami standardizálja a UI-agent kommunikációt.
 
 **Javasolt architektúra frissítés:**
 
 ```
 Frontend (Next.js/React):
-├── AG-UI Client (CopilotKit vagy custom)
+├── CopilotKit Client (CopilotKit vagy custom)
 │   ├── Real-time event stream handling
 │   ├── State sync (campaign form state)
 │   └── Frontend tool execution
 │
 Backend (Next.js API):
-├── AG-UI Server endpoint
+├── CopilotKit Server endpoint
 │   ├── Event stream handler
 │   ├── Campaign Orchestrator Agent
 │   │   ├── Brief Normalizer
@@ -305,13 +305,13 @@ Backend (Next.js API):
 
 **Kritikus döntések:**
 
-1. **AG-UI kliens választás:**
-   - CopilotKit AG-UI integráció (React-ready, kész komponensek)
-   - Vagy custom AG-UI kliens implementáció
+1. **CopilotKit kliens választás:**
+   - CopilotKit CopilotKit integráció (React-ready, kész komponensek)
+   - Vagy custom CopilotKit kliens implementáció
    - **Ajánlás:** CopilotKit MVP-hez, custom ha specifikus igények
 
 2. **State management:**
-   - Campaign form state sync AG-UI-n keresztül
+   - Campaign form state sync CopilotKit-n keresztül
    - Agent látja: current_step, form fields, campaign_type, goal_type
    - Agent módosíthat: field prefill, navigation, suggestions
 
@@ -324,21 +324,21 @@ Backend (Next.js API):
 4. **Backend agent toolok:**
    - DB toolok: createCampaign, updateCampaign, createSegment, etc.
    - LLM toolok: generateMessageMatrix, generateContentCalendar
-   - AG-UI event stream output
+   - CopilotKit event stream output
 
 **Epic 2 scope frissítés:**
-- **Story 2.1:** LLM + AG-UI infrastructure (kritikus!)
-- **Story 2.2:** Campaign Brief AI (AG-UI-n keresztül)
-- **Story 2.3:** Message Generator (AG-UI-n keresztül)
-- **Story 2.4 (új):** AG-UI Frontend Integration (kampánysegéd UI)
+- **Story 2.1:** LLM + CopilotKit infrastructure (kritikus!)
+- **Story 2.2:** Campaign Brief AI (CopilotKit-n keresztül)
+- **Story 2.3:** Message Generator (CopilotKit-n keresztül)
+- **Story 2.4 (új):** CopilotKit Frontend Integration (kampánysegéd UI)
 
-**Ajánlás:** AG-UI foundation Story 2.1-ben, frontend integration Story 2.4-ben.
+**Ajánlás:** CopilotKit foundation Story 2.1-ben, frontend integration Story 2.4-ben.
 
 ---
 
 #### Mary (Analyst) 📊
 
-**AG-UI use case elemzés:**
+**CopilotKit use case elemzés:**
 
 Kettős workflow támogatás:
 1. **Manuális kampány + AI segéd:** User wizard-ban, agent real-time segít
@@ -347,12 +347,12 @@ Kettős workflow támogatás:
 **Requirements frissítés:**
 
 **Story 2.1 új AC-k:**
-- AG-UI server endpoint implementálva
+- CopilotKit server endpoint implementálva
 - Event stream handling (input/output)
 - State sync mechanism
 
 **Story 2.4 (új story):**
-- Frontend AG-UI kliens integráció
+- Frontend CopilotKit kliens integráció
 - Kampánysegéd UI komponens (chat/sidekick panel)
 - Frontend tool execution
 - Real-time streaming chat display
@@ -370,31 +370,31 @@ Kettős workflow támogatás:
 
 **Story breakdown frissítés:**
 
-**Story 2.1: LLM + AG-UI Infrastructure** (3 → 5 points)
-- **Frissített scope:** LLM client + AG-UI server endpoint
-- AG-UI event stream handling
+**Story 2.1: LLM + CopilotKit Infrastructure** (3 → 5 points)
+- **Frissített scope:** LLM client + CopilotKit server endpoint
+- CopilotKit event stream handling
 - State sync mechanism
-- **5 points** - komplexebb, mert AG-UI protokoll is kell
+- **5 points** - komplexebb, mert CopilotKit protokoll is kell
 
 **Story 2.2: Campaign Brief AI** (5 points, változatlan)
-- Most AG-UI-n keresztül működik
+- Most CopilotKit-n keresztül működik
 - Event stream output
 - State patch events
 
 **Story 2.3: Message Generator** (5 points, változatlan)
-- AG-UI event stream
+- CopilotKit event stream
 - Frontend tool integration
 
-**Story 2.4: AG-UI Frontend Integration** (új, 5 points)
-- CopilotKit vagy custom AG-UI kliens
+**Story 2.4: CopilotKit Frontend Integration** (új, 5 points)
+- CopilotKit vagy custom CopilotKit kliens
 - Kampánysegéd UI komponens
 - Frontend tool execution
 - Real-time chat display
 - State sync UI
 
-**Total: 20 points** (13 → 20, mert AG-UI integration)
+**Total: 20 points** (13 → 20, mert CopilotKit integration)
 
-**Alternative:** AG-UI frontend → Epic 3, ha túl nagy scope.
+**Alternative:** CopilotKit frontend → Epic 3, ha túl nagy scope.
 
 ---
 
@@ -403,16 +403,16 @@ Kettős workflow támogatás:
 **Implementation concerns:**
 
 **New dependencies:**
-- `@copilotkit/react-core` vagy custom AG-UI kliens
-- WebSocket vagy Server-Sent Events AG-UI stream-hez
-- State management (Zustand/Recoil) AG-UI state sync-hez
+- `@copilotkit/react-core` vagy custom CopilotKit kliens
+- WebSocket vagy Server-Sent Events CopilotKit stream-hez
+- State management (Zustand/Recoil) CopilotKit state sync-hez
 
 **File structure:**
 ```
 lib/ai/
 ├── client.ts (Anthropic)
-├── ag-ui/
-│   ├── server.ts (AG-UI server handler)
+├── copilotkit/
+│   ├── server.ts (CopilotKit server handler)
 │   ├── events.ts (event types)
 │   └── tools.ts (backend tools)
 ├── schemas.ts (Zod)
@@ -420,20 +420,20 @@ lib/ai/
 
 components/
 └── ai/
-    ├── CampaignAssistant.tsx (AG-UI kliens wrapper)
+    ├── CampaignAssistant.tsx (CopilotKit kliens wrapper)
     ├── AssistantChat.tsx (chat UI)
     └── InlineSuggestions.tsx (field suggestions)
 ```
 
 **AC mapping:**
-- Story 2.1: `lib/ai/ag-ui/server.ts`, `/api/ai/stream` endpoint
-- Story 2.4: `components/ai/CampaignAssistant.tsx`, AG-UI kliens setup
+- Story 2.1: `lib/ai/copilotkit/server.ts` (CopilotRuntime configuration), `app/api/copilotkit/route.ts` (endpoint)
+- Story 2.4: `components/ai/CampaignAssistant.tsx`, CopilotKit kliens setup
 
 ---
 
 #### Sally (UX Designer) 🎨
 
-**UX considerations - AG-UI integration:**
+**UX considerations - CopilotKit integration:**
 
 **Kampánysegéd UI design:**
 
@@ -458,18 +458,18 @@ components/
    - Navigation automatikus, ha agent "next step" tool-t hív
    - Loading states tool execution-nél
 
-**Progressive enhancement:** AG-UI nélkül is működik (fallback manual flow).
+**Progressive enhancement:** CopilotKit nélkül is működik (fallback manual flow).
 
 ---
 
 #### Murat (TEA) 🧪
 
-**Testing strategy - AG-UI:**
+**Testing strategy - CopilotKit:**
 
 **New test scenarios:**
 
 **Story 2.1:**
-- AG-UI event stream parsing
+- CopilotKit event stream parsing
 - State sync correctness
 - Tool execution error handling
 - WebSocket/SSE connection stability
@@ -481,7 +481,7 @@ components/
 - Connection recovery
 
 **E2E tests:**
-- Full flow: user input → AG-UI event → agent response → UI update
+- Full flow: user input → CopilotKit event → agent response → UI update
 - Tool execution: agent calls prefillField → form updates
 - State sync: agent sees form changes → adapts response
 
@@ -489,28 +489,28 @@ components/
 
 #### John (PM) 📋
 
-**Product strategy - AG-UI integration:**
+**Product strategy - CopilotKit integration:**
 
-**WHY AG-UI matters:**
+**WHY CopilotKit matters:**
 - **10x better UX** - real-time, contextual assistance
 - **Flexible workflows** - manuális + full agent egy protokollon
 - **Future-proof** - más frontend-ek is ráakaszthatók
 
 **Scope decision:**
 
-**Option A: Epic 2 with AG-UI** (20 points)
-- Story 2.1: LLM + AG-UI infrastructure
-- Story 2.2: Brief AI (AG-UI)
-- Story 2.3: Message Generator (AG-UI)
+**Option A: Epic 2 with CopilotKit** (20 points)
+- Story 2.1: LLM + CopilotKit infrastructure
+- Story 2.2: Brief AI (CopilotKit)
+- Story 2.3: Message Generator (CopilotKit)
 - Story 2.4: Frontend integration
 - **Timeline:** 3-4 weeks
 
-**Option B: AG-UI → Epic 3** (13 points Epic 2)
+**Option B: CopilotKit → Epic 3** (13 points Epic 2)
 - Epic 2: Traditional REST API AI endpoints
-- Epic 3: AG-UI upgrade + frontend integration
+- Epic 3: CopilotKit upgrade + frontend integration
 - **Timeline:** 2-3 weeks Epic 2
 
-**Recommendation:** **Option A** - AG-UI foundation most, mert:
+**Recommendation:** **Option A** - CopilotKit foundation most, mert:
 1. Később refactor nehezebb
 2. Real-time UX jelentős érték
 3. 20 points még realisztikus 1 epic-ben
@@ -525,15 +525,15 @@ components/
 ## Updated Consensus
 
 **Epic 2 Definition (Updated):**
-- **Goal:** AI-powered campaign orchestration with AG-UI frontend integration
-- **Stories:** 4 (LLM+AG-UI Foundation, Brief AI, Message Generator, Frontend Integration)
-- **Points:** 20 (increased from 13 due to AG-UI complexity)
+- **Goal:** AI-powered campaign orchestration with CopilotKit frontend integration
+- **Stories:** 4 (LLM+CopilotKit Foundation, Brief AI, Message Generator, Frontend Integration)
+- **Points:** 20 (increased from 13 due to CopilotKit complexity)
 - **Timeline:** 3-4 weeks
 - **Dependencies:** Epic 1 complete ✅
 
 **Key Decisions (Updated):**
-1. ✅ AG-UI protokoll foundation Story 2.1-ben
-2. ✅ CopilotKit vagy custom AG-UI kliens
+1. ✅ CopilotKit protokoll foundation Story 2.1-ben
+2. ✅ CopilotKit vagy custom CopilotKit kliens
 3. ✅ Kampánysegéd UI komponens (Story 2.4)
 4. ✅ Bi-directional state sync
 5. ✅ Frontend tool integration
@@ -543,24 +543,24 @@ components/
 9. ✅ Sprint Planner AI → Epic 3
 
 **Architecture:**
-- AG-UI event stream: UI ↔ Agent backend
-- Campaign Orchestrator agent AG-UI-n keresztül
+- CopilotKit event stream: UI ↔ Agent backend
+- Campaign Orchestrator agent CopilotKit-n keresztül
 - Frontend tools: prefill, highlight, navigate
 - Backend tools: DB operations, LLM calls
 
 **Next Steps:**
-1. ✅ Update `epics.md` with AG-UI integration
+1. ✅ Update `epics.md` with CopilotKit integration
 2. ✅ Add Story 2.4 to epic definition
 3. Create story files for 2.1, 2.2, 2.3, 2.4
-4. Begin Story 2.1 implementation (LLM + AG-UI foundation)
+4. Begin Story 2.1 implementation (LLM + CopilotKit foundation)
 
 ---
 
-## AG-UI Architecture Details
+## CopilotKit Architecture Details
 
 ### Protocol Overview
 
-**AG-UI (Agent-UI Protocol)** standardizálja a frontend és backend agent közötti kommunikációt:
+**CopilotKit (Agent-UI Protocol)** standardizálja a frontend és backend agent közötti kommunikációt:
 
 - **Event-based:** JSON event stream (chat messages, tool calls, state patches)
 - **Bi-directional:** UI → Agent (user input, UI events) és Agent → UI (responses, suggestions)
@@ -574,13 +574,13 @@ components/
 
 ```
 components/ai/
-├── CampaignAssistant.tsx      # Main AG-UI wrapper, connects to stream
+├── CampaignAssistant.tsx      # Main CopilotKit wrapper, connects to stream
 ├── AssistantChat.tsx          # Streaming chat UI component
 ├── InlineSuggestions.tsx      # Field-level AI suggestions
 └── AssistantButton.tsx        # Floating chat button
 
-lib/ag-ui/
-├── client.ts                  # AG-UI client implementation
+lib/copilotkit/
+├── client.ts                  # CopilotKit client implementation
 ├── events.ts                  # Event type definitions
 └── tools.ts                  # Frontend tool implementations
 ```
@@ -597,9 +597,9 @@ lib/ag-ui/
 ```
 lib/ai/
 ├── client.ts                  # Anthropic Claude client
-├── ag-ui/
-│   ├── server.ts             # AG-UI server event handler
-│   ├── events.ts             # AG-UI event types
+├── copilotkit/
+│   ├── server.ts             # CopilotKit server event handler
+│   ├── events.ts             # CopilotKit event types
 │   ├── tools.ts              # Backend tool definitions
 │   └── orchestrator.ts       # Campaign Orchestrator agent
 ├── schemas.ts                # Zod validation schemas
@@ -608,10 +608,11 @@ lib/ai/
     ├── strategy-designer.ts
     └── message-generator.ts
 
-app/api/ai/
-├── stream/route.ts           # AG-UI event stream endpoint
-├── campaign-brief/route.ts   # Traditional REST (fallback)
-└── message-matrix/route.ts   # Traditional REST (fallback)
+app/api/
+├── copilotkit/route.ts       # CopilotKit endpoint (HTTP handler, imports getCopilotRuntime from lib/ai/copilotkit/server)
+├── ai/
+│   ├── campaign-brief/route.ts   # Traditional REST (fallback)
+│   └── message-matrix/route.ts   # Traditional REST (fallback)
 ```
 
 **Backend Tools (Agent can execute):**
@@ -627,9 +628,9 @@ app/api/ai/
 #### Flow 1: Manuális Kampány + AI Segéd
 
 1. User starts campaign creation wizard
-2. Frontend sends AG-UI event: `{ type: "ui_state", payload: { step: 1, campaign_type: "brand_awareness" } }`
+2. Frontend sends CopilotKit event: `{ type: "ui_state", payload: { step: 1, campaign_type: "brand_awareness" } }`
 3. Agent receives state, analyzes context
-4. Agent sends AG-UI event: `{ type: "message", content: "Milyen célcsoportra fókuszálsz?" }`
+4. Agent sends CopilotKit event: `{ type: "message", content: "Milyen célcsoportra fókuszálsz?" }`
 5. User answers in chat or fills form
 6. Agent suggests: `{ type: "tool_call", tool: "prefillField", args: { field: "segments", value: [...] } }`
 7. Frontend executes tool, updates UI
@@ -640,12 +641,12 @@ app/api/ai/
 
 1. User clicks "Create with AI" button
 2. User provides brief text
-3. Frontend sends AG-UI event: `{ type: "user_message", content: brief }`
+3. Frontend sends CopilotKit event: `{ type: "user_message", content: brief }`
 4. Agent triggers Campaign Orchestrator:
    - Brief Normalizer → normalized brief
    - Strategy Designer → goals, segments, topics, narratives
    - Message Generator → message matrix
-5. Agent sends AG-UI events: state patches for each generated item
+5. Agent sends CopilotKit events: state patches for each generated item
 6. Frontend displays preview, user approves/rejects
 7. Agent calls backend tools to save approved items
 8. Campaign created, user redirected to campaign detail
@@ -654,11 +655,11 @@ app/api/ai/
 
 **Option A: CopilotKit (Recommended for MVP)**
 - Pre-built React components
-- AG-UI protocol support
+- CopilotKit protocol support
 - Easy integration
 - `@copilotkit/react-core` package
 
-**Option B: Custom AG-UI Client**
+**Option B: Custom CopilotKit Client**
 - Full control
 - Lighter weight
 - More implementation work
@@ -668,7 +669,7 @@ app/api/ai/
 
 ### State Sync Model
 
-**Campaign Form State (AG-UI visible):**
+**Campaign Form State (CopilotKit visible):**
 ```typescript
 {
   current_step: number,

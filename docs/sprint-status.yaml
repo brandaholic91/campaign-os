@@ -55,20 +55,22 @@ development_status:
   # Note: Tech context available in tech-spec.md and epic-2-draft.md (2025-11-21)
   epic-2: contexted
   
-  # Story 2.1: LLM + AG-UI Infrastructure
+  # Story 2.1: LLM + CopilotKit Infrastructure
   # Note: Story drafted 2025-11-21 - Foundation for all Epic 2 AI features
-  2-1-llm-ag-ui-infrastructure: review
+  # Note: Status updated to in-progress (2025-11-21) - CopilotKit provider infrastructure needs validation for Story 2.2 CopilotKit integration
+  2-1-llm-ag-ui-infrastructure: in-progress
   
   # Story 2.2: Campaign Brief → Structure AI
   # Note: Story drafted 2025-11-21 - Two-step LLM flow (Brief Normalizer → Strategy Designer)
-  2-2-campaign-brief-structure-ai: review
+  # Note: Status updated to in-progress (2025-11-21) - CopilotKit event streaming and state sync tasks deferred, REST API MVP implemented
+  2-2-campaign-brief-structure-ai: in-progress
   
   # Story 2.3: AI Message Matrix Generator
   # Note: Story drafted 2025-11-21 - Batch message generation for segment × topic combinations
   2-3-ai-message-matrix-generator: drafted
   
-  # Story 2.4: AG-UI Frontend Integration (Kampánysegéd)
-  # Note: Story drafted 2025-11-21 - Frontend AG-UI client and kampánysegéd UI component
+  # Story 2.4: CopilotKit Frontend Integration (Kampánysegéd)
+  # Note: Story drafted 2025-11-21 - Frontend CopilotKit client and kampánysegéd UI component
   2-4-ag-ui-frontend-integration: drafted
   
   epic-2-retrospective: optional

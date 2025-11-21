@@ -1,6 +1,8 @@
 # Story 2.2: Campaign Brief → Structure AI
 
-**Status:** review
+**Status:** in-progress
+
+**Status note (2025-11-21):** REST API MVP implementálva, de CopilotKit event streaming (AC #5) és CopilotKit state sync (AC #7) deferred - Story 2.1 CopilotKit infrastructure hiányára hivatkozva. Status `review`-ról `in-progress`-re frissítve, mert kritikus AC-k még nincsenek implementálva.
 
 ---
 
@@ -45,13 +47,14 @@ So that **I can quickly set up campaigns without manual data entry**.
 - **And** narratives are associated with the campaign
 - **And** I am redirected to campaign detail page
 
-**AC #5:** AI output via AG-UI event stream
+**AC #5:** AI output via CopilotKit event stream (deferred - MVP uses REST API)
 - **Given** Story 2.1 infrastructure exists
 - **When** I trigger AI campaign generation
-- **Then** AI output is streamed via AG-UI events
+- **Then** AI output is streamed via CopilotKit events
 - **And** I see real-time progress (Brief Normalizer → Strategy Designer → Done)
 - **And** agent messages are displayed in real-time
 - **And** state patches update the form as AI generates content
+- **MVP Note:** REST API endpoint provides AI output. CopilotKit event streaming deferred to Story 2.1 completion (infrastructure dependency).
 
 **AC #6:** JSON schema validation ensures data quality
 - **Given** AI generates structured output
@@ -61,12 +64,13 @@ So that **I can quickly set up campaigns without manual data entry**.
 - **And** only valid, type-safe data is saved to database
 - **And** zero data corruption from AI hallucinations
 
-**AC #7:** AG-UI state sync enables contextual assistance
+**AC #7:** CopilotKit state sync enables contextual assistance (deferred - MVP uses REST API)
 - **Given** I am in the campaign creation flow
 - **When** AI agent is active
 - **Then** agent receives current form state (campaign_type, goal_type, filled fields)
 - **And** agent can call frontend tools (prefillField, highlightField, navigateToStep)
 - **And** agent suggestions are contextually relevant to my progress
+- **MVP Note:** REST API MVP implemented. CopilotKit state sync deferred to Story 2.1 completion (infrastructure dependency).
 
 ---
 
@@ -81,13 +85,13 @@ So that **I can quickly set up campaigns without manual data entry**.
   - Add loading state with progress indication
   - Implement preview UI component (accordion/card layout)
 
-- [x] Implement `/api/ai/campaign-brief` endpoint or AG-UI tool (AC: #1, #5)
-  - Create API route or AG-UI tool handler
+- [x] Implement `/api/ai/campaign-brief` endpoint or CopilotKit tool (AC: #1, #5)
+  - Create API route or CopilotKit tool handler
   - Implement two-step LLM flow: Brief Normalizer → Strategy Designer
   - Add prompt templates in `lib/ai/prompts/brief-normalizer.ts`
   - Add prompt templates in `lib/ai/prompts/strategy-designer.ts`
   - Integrate with Anthropic client from Story 2.1
-  - Stream output via AG-UI events (Implemented as REST API for MVP)
+  - Stream output via CopilotKit events (Implemented as REST API for MVP)
 
 - [x] Implement Brief Normalizer LLM step (AC: #1)
   - Create prompt template for brief normalization
@@ -128,14 +132,14 @@ So that **I can quickly set up campaigns without manual data entry**.
   - Handle foreign key relationships
   - Add proper error handling
 
-- [-] Implement AG-UI event streaming (AC: #5)
-  - Connect to `/api/ai/stream` endpoint from Story 2.1
+- [-] Implement CopilotKit event streaming (AC: #5)
+  - Connect to `/api/copilotkit` endpoint from Story 2.1
   - Display real-time agent messages
   - Show progress indicators (Brief → Structure → Done)
   - Handle state patch events
   - Update UI as AI generates content
   - Add loading states and error handling
-  - *Note: Deferred due to missing Story 2.1 infrastructure (CopilotKit provider)*
+  - *Note: Deferred due to missing Story 2.1 infrastructure (CopilotKit provider). Follow-up: Will be implemented after Story 2.1 CopilotKit infrastructure is complete and validated.*
 
 - [x] Implement JSON schema validation (AC: #6)
   - Define Zod schemas for campaign structure output
@@ -145,13 +149,13 @@ So that **I can quickly set up campaigns without manual data entry**.
   - Log validation failures for debugging
   - Retry on validation failure if appropriate
 
-- [-] Implement AG-UI state sync (AC: #7)
+- [-] Implement CopilotKit state sync (AC: #7)
   - Send current form state to agent
   - Include campaign_type, goal_type, filled fields
   - Implement frontend tool handlers (prefillField, highlightField, navigateToStep)
   - Handle tool execution feedback
   - Update UI based on agent tool calls
-  - *Note: Deferred due to missing Story 2.1 infrastructure (CopilotKit provider)*
+  - *Note: Deferred due to missing Story 2.1 infrastructure (CopilotKit provider). Follow-up: Will be implemented after Story 2.1 CopilotKit infrastructure is complete and validated.*
 
 - [x] Add error handling and fallback (AC: #1, #5)
   - Handle AI API failures gracefully
@@ -162,17 +166,17 @@ So that **I can quickly set up campaigns without manual data entry**.
 
 ### Technical Summary
 
-This story implements AI-powered campaign structure generation from a text brief. The two-step LLM flow (Brief Normalizer → Strategy Designer) ensures high-quality, contextually relevant outputs. AG-UI integration provides real-time streaming and bi-directional state sync. Preview + approve workflow maintains user control while accelerating campaign setup from 30+ minutes to under 5 minutes.
+This story implements AI-powered campaign structure generation from a text brief. The two-step LLM flow (Brief Normalizer → Strategy Designer) ensures high-quality, contextually relevant outputs. CopilotKit integration provides real-time streaming and bi-directional state sync. Preview + approve workflow maintains user control while accelerating campaign setup from 30+ minutes to under 5 minutes.
 
 **Key technical decisions:**
 - Two-step LLM flow for better output quality
-- AG-UI event streaming for real-time UX
+- CopilotKit event streaming for real-time UX
 - Zod schema validation to prevent hallucinations
 - Preview + approve workflow (not auto-save)
 - Integration with existing Epic 1 database schema
 - Frontend tool integration for contextual assistance
 
-**Dependencies:** Story 2.1 (LLM + AG-UI Infrastructure) must be complete
+**Dependencies:** Story 2.1 (LLM + CopilotKit Infrastructure) must be complete
 
 ### Project Structure Notes
 
@@ -181,19 +185,19 @@ This story implements AI-powered campaign structure generation from a text brief
   - `components/ai/CampaignStructurePreview.tsx` - Preview component
   - `lib/ai/prompts/brief-normalizer.ts` - Brief normalization prompt
   - `lib/ai/prompts/strategy-designer.ts` - Strategy design prompt
-  - `app/api/ai/campaign-brief/route.ts` - API endpoint (if not using AG-UI tools)
+  - `app/api/ai/campaign-brief/route.ts` - API endpoint (if not using CopilotKit tools)
   - Update `lib/ai/schemas.ts` - Add campaign structure schemas
 
 - **Files to update:**
   - `app/campaigns/page.tsx` - Add "Create with AI" button
-  - `lib/ai/ag-ui/tools.ts` - Add campaign-brief tool (if using AG-UI tools)
+  - `lib/ai/copilotkit/tools.ts` - Add campaign-brief tool (if using CopilotKit tools)
   - Existing campaign, segment, topic API routes - Handle AI-generated data
 
 - **Expected test locations:** Manual testing
   - Test brief input and AI generation
   - Test preview and approval workflow
   - Test database saves
-  - Test AG-UI event streaming
+  - Test CopilotKit event streaming
   - Test error handling and fallback
   - Test state sync and frontend tools
 
@@ -209,11 +213,11 @@ This story implements AI-powered campaign structure generation from a text brief
 - `app/api/segments/route.ts` - Segment CRUD API
 - `app/api/topics/route.ts` - Topic CRUD API
 - Epic 1 database schema for data model
-- Story 2.1 AG-UI infrastructure
+- Story 2.1 CopilotKit infrastructure
 
 **Reference documentation:**
 - Anthropic Claude API: structured outputs, streaming
-- AG-UI protocol: event streaming, state sync, tools
+- CopilotKit protocol: event streaming, state sync, tools
 - Zod: schema validation, type inference
 - Prompt engineering best practices
 
@@ -224,7 +228,7 @@ This story implements AI-powered campaign structure generation from a text brief
 **Tech-Spec:** [tech-spec.md](../tech-spec.md) - Contains:
 - Epic 2 AI requirements
 - Campaign structure data model
-- AG-UI integration approach
+- CopilotKit integration approach
 - Database schema from Epic 1
 
 **Epic Definition:** [epics.md](../epics.md) - Epic 2: AI-Powered Campaign Orchestration

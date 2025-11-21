@@ -54,10 +54,10 @@ So that **I can quickly populate the message matrix with relevant content**.
 - **And** previous messages are replaced or I can choose to keep them
 - **And** regeneration respects campaign context
 
-**AC #6:** AI output via AG-UI event stream
+**AC #6:** AI output via CopilotKit event stream
 - **Given** Story 2.1 infrastructure exists
 - **When** I trigger AI message generation
-- **Then** AI output is streamed via AG-UI events
+- **Then** AI output is streamed via CopilotKit events
 - **And** I see real-time generation progress
 - **And** batch generation shows progress indication
 - **And** agent messages are displayed in real-time
@@ -88,16 +88,16 @@ So that **I can quickly populate the message matrix with relevant content**.
   - Add "Generate Messages" button to existing MessageMatrix component
   - Implement segment and topic selection UI
   - Add loading state with progress indication
-  - Integrate with AG-UI event streaming
+  - Integrate with CopilotKit event streaming
   - Show real-time generation progress
 
-- [ ] Implement `/api/ai/message-matrix` endpoint or AG-UI tool (AC: #1, #6)
-  - Create API route or AG-UI tool handler
+- [ ] Implement `/api/ai/message-matrix` endpoint or CopilotKit tool (AC: #1, #6)
+  - Create API route or CopilotKit tool handler
   - Implement message generation LLM flow
   - Add prompt template in `lib/ai/prompts/message-generator.ts`
   - Include campaign context in prompt (campaign_type, goal_type, narratives)
   - Include selected segments and topics in prompt
-  - Stream output via AG-UI events
+  - Stream output via CopilotKit events
   - Handle batch generation for multiple combinations
 
 - [ ] Implement message generation LLM flow (AC: #1, #4)
@@ -147,8 +147,8 @@ So that **I can quickly populate the message matrix with relevant content**.
   - Maintain database integrity
   - Add proper error handling
 
-- [ ] Implement AG-UI integration (AC: #6)
-  - Connect to `/api/ai/stream` endpoint from Story 2.1
+- [ ] Implement CopilotKit integration (AC: #6)
+  - Connect to `/api/copilotkit` endpoint from Story 2.1
   - Display real-time agent messages
   - Show batch generation progress
   - Handle state patch events
@@ -173,29 +173,29 @@ So that **I can quickly populate the message matrix with relevant content**.
 
 ### Technical Summary
 
-This story implements AI-powered message generation for the message matrix. The AI generates tailored messages for each segment × topic combination, respecting campaign context and narratives. AG-UI integration provides real-time streaming with batch generation progress. Preview + approve workflow maintains user control while dramatically reducing time to populate the message matrix.
+This story implements AI-powered message generation for the message matrix. The AI generates tailored messages for each segment × topic combination, respecting campaign context and narratives. CopilotKit integration provides real-time streaming with batch generation progress. Preview + approve workflow maintains user control while dramatically reducing time to populate the message matrix.
 
 **Key technical decisions:**
 - Batch generation for multiple segment × topic combinations
-- AG-UI event streaming for real-time progress
+- CopilotKit event streaming for real-time progress
 - Zod schema validation to prevent hallucinations
 - Preview + approve workflow (not auto-save)
 - Integration with existing Epic 1 message CRUD
 - Campaign context included in prompts for relevance
 
-**Dependencies:** Story 2.1 (LLM + AG-UI Infrastructure) must be complete. Story 2.2 provides campaign context patterns but not strictly required.
+**Dependencies:** Story 2.1 (LLM + CopilotKit Infrastructure) must be complete. Story 2.2 provides campaign context patterns but not strictly required.
 
 ### Project Structure Notes
 
 - **Files to create:**
   - `components/ai/MessageMatrixPreview.tsx` - Preview modal component
   - `lib/ai/prompts/message-generator.ts` - Message generation prompt
-  - `app/api/ai/message-matrix/route.ts` - API endpoint (if not using AG-UI tools)
+  - `app/api/ai/message-matrix/route.ts` - API endpoint (if not using CopilotKit tools)
   - Update `lib/ai/schemas.ts` - Add message generation schemas
 
 - **Files to update:**
   - `components/messages/MessageMatrix.tsx` - Add AI generation button and integration
-  - `lib/ai/ag-ui/tools.ts` - Add message-matrix tool (if using AG-UI tools)
+  - `lib/ai/copilotkit/tools.ts` - Add message-matrix tool (if using CopilotKit tools)
   - Existing message API routes - Handle AI-generated messages
 
 - **Expected test locations:** Manual testing
@@ -204,12 +204,12 @@ This story implements AI-powered message generation for the message matrix. The 
   - Test batch generation progress
   - Test regeneration functionality
   - Test database saves and integrity
-  - Test AG-UI event streaming
+  - Test CopilotKit event streaming
   - Test error handling and fallback
 
 - **Estimated effort:** 5 story points (3-5 days)
 
-- **Prerequisites:** Story 2.1 (LLM integration must exist). Story 2.2 provides context but not strictly required.
+- **Prerequisites:** Story 2.1 (LLM + CopilotKit integration must exist). Story 2.2 provides context but not strictly required.
 
 ### Key Code References
 
@@ -217,12 +217,12 @@ This story implements AI-powered message generation for the message matrix. The 
 - `components/messages/MessageMatrix.tsx` - Existing message matrix component
 - `app/api/messages/route.ts` - Message CRUD API
 - Epic 1 database schema for message data model
-- Story 2.1 AG-UI infrastructure
+- Story 2.1 CopilotKit infrastructure
 - Story 2.2 campaign context patterns
 
 **Reference documentation:**
 - Anthropic Claude API: structured outputs, streaming, batch processing
-- AG-UI protocol: event streaming, batch progress
+- CopilotKit protocol: event streaming, batch progress
 - Zod: schema validation, type inference
 - Prompt engineering: context inclusion, multi-output generation
 
@@ -233,7 +233,7 @@ This story implements AI-powered message generation for the message matrix. The 
 **Tech-Spec:** [tech-spec.md](../tech-spec.md) - Contains:
 - Epic 2 AI requirements
 - Message matrix data model from Epic 1
-- AG-UI integration approach
+- CopilotKit integration approach
 - Database schema for messages
 
 **Epic Definition:** [epics.md](../epics.md) - Epic 2: AI-Powered Campaign Orchestration

@@ -1,13 +1,15 @@
-# Story 2.1: LLM + AG-UI Infrastructure
+# Story 2.1: LLM + CopilotKit Infrastructure
 
-**Status:** review
+**Status:** in-progress
+
+**Status note (2025-11-21):** CopilotKit endpoint és alapvető infrastructure implementálva, de CopilotKit provider működésének validálása szükséges Story 2.2 CopilotKit event streaming és state sync integrációjához. Status `review`-ról `in-progress`-re frissítve, mert Story 2.2 deferred tasks Story 2.1 infrastructure hiányára hivatkoznak.
 
 ---
 
 ## User Story
 
 As a **developer**,
-I want **Anthropic Claude API integration with CopilotKit AG-UI protocol support, error handling, and rate limiting**,
+I want **Anthropic Claude API integration with CopilotKit protocol support, error handling, and rate limiting**,
 So that **AI features can be reliably implemented with real-time frontend communication on top of a solid foundation**.
 
 ---
@@ -88,25 +90,29 @@ So that **AI features can be reliably implemented with real-time frontend commun
   - Implement environment variable validation
   - Add error handling for missing API key
 
-- [x] Create CopilotKit runtime configuration (AC: #2)
+- [ ] Create CopilotKit runtime configuration (AC: #2)
+  - Create `lib/ai/copilotkit/server.ts` for CopilotRuntime configuration
   - Import `CopilotRuntime` and `AnthropicAdapter` from `@copilotkit/runtime`
-  - Import `Anthropic` from `@anthropic-ai/sdk`
+  - Import `Anthropic` from `@anthropic-ai/sdk` or use `getAnthropicClient()` from `lib/ai/client.ts`
   - Initialize Anthropic client with API key
   - Create `AnthropicAdapter` instance with Anthropic client
   - Create `CopilotRuntime` instance with `AnthropicAdapter` as serviceAdapter
   - Configure runtime with actions generator function
-  - Set up streaming and event handling
+  - Set up middleware (onBeforeRequest, etc.)
+  - Export `getCopilotRuntime()` function for reusability
+  - Note: Separating CopilotRuntime configuration enables reusability, testability, and future extensibility
 
-- [x] Create `/api/copilotkit` endpoint (AC: #2)
+- [ ] Create `/api/copilotkit` endpoint (AC: #2)
   - Create `app/api/copilotkit/route.ts` for Next.js App Router
-  - Import `CopilotRuntime`, `AnthropicAdapter`, `copilotRuntimeNextJSAppRouterEndpoint` from `@copilotkit/runtime`
-  - Import `Anthropic` from `@anthropic-ai/sdk`
-  - Initialize Anthropic client: `new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })`
-  - Create AnthropicAdapter: `new AnthropicAdapter({ anthropic })`
-  - Create CopilotRuntime with actions: `new CopilotRuntime({ serviceAdapter: anthropicAdapter, actions: ({properties, url}) => [...] })`
+  - Import `getCopilotRuntime` from `@/lib/ai/copilotkit/server`
+  - Import `copilotRuntimeNextJSAppRouterEndpoint` from `@copilotkit/runtime`
+  - Get CopilotRuntime instance: `const runtime = getCopilotRuntime()`
   - Implement POST handler using `copilotRuntimeNextJSAppRouterEndpoint({ runtime, serviceAdapter, endpoint: '/api/copilotkit' })`
+  - Add rate limiting and error handling in POST handler
   - Handle NextRequest and return streaming response
+  - Implement GET handler for method validation
   - Note: Vercel timeout limits may require `vercel.json` config: `{"functions": {"api/copilotkit/**/*": {"maxDuration": 60}}}`
+  - Note: Endpoint focuses on HTTP handling, CopilotRuntime logic is in server.ts
 
 - [x] Implement Zod schemas in `lib/ai/schemas.ts` (AC: #5)
   - Define schemas for LLM outputs (goals, segments, topics, messages)
@@ -154,11 +160,11 @@ So that **AI features can be reliably implemented with real-time frontend commun
 
 ### Technical Summary
 
-This story establishes the AI and CopilotKit AG-UI foundation for Epic 2. We're integrating Anthropic Claude API for LLM capabilities and implementing CopilotKit for AG-UI protocol-based real-time frontend-agent communication. The infrastructure includes proper error handling, rate limiting, and JSON schema validation to ensure reliable AI features. CopilotKit state sync enables bi-directional communication between the frontend and AI agent.
+This story establishes the AI and CopilotKit foundation for Epic 2. We're integrating Anthropic Claude API for LLM capabilities and implementing CopilotKit for real-time frontend-agent communication. The infrastructure includes proper error handling, rate limiting, and JSON schema validation to ensure reliable AI features. CopilotKit state sync enables bi-directional communication between the frontend and AI agent.
 
 **Key technical decisions:**
 - Anthropic Claude API for LLM (reliable, structured outputs)
-- CopilotKit for AG-UI protocol implementation (standardized frontend-agent communication)
+- CopilotKit for standardized frontend-agent communication
 - CopilotKit backend with Anthropic provider integration
 - Zod schema validation for type-safe LLM outputs
 - CopilotKit streaming for real-time communication
@@ -170,12 +176,14 @@ This story establishes the AI and CopilotKit AG-UI foundation for Epic 2. We're 
 ### Project Structure Notes
 
 - **Files to create:**
-  - `lib/ai/client.ts` - Anthropic client (optional, can use directly in route)
+  - `lib/ai/client.ts` - Anthropic client
   - `lib/ai/schemas.ts` - Zod schemas for LLM outputs
-  - `app/api/copilotkit/route.ts` - CopilotKit runtime endpoint (main backend file)
+  - `lib/ai/copilotkit/server.ts` - CopilotKit runtime configuration (CopilotRuntime, AnthropicAdapter, actions, middleware)
+  - `app/api/copilotkit/route.ts` - CopilotKit endpoint (HTTP handler, rate limiting, error handling)
   - `lib/ai/errors.ts` - Error handling utilities
   - `lib/ai/rate-limit.ts` - Rate limiting
-  - Note: CopilotRuntime and actions are defined in `/api/copilotkit/route.ts`, not separate files
+  - Note: `lib/ai/copilotkit/server.ts` exports `getCopilotRuntime()` for reusability and testability
+  - Note: `app/api/copilotkit/route.ts` imports and uses the CopilotRuntime from server.ts
   - Note: State management uses `useCopilotReadable` hooks in React components (frontend)
 
 - **Files to update:**
@@ -205,16 +213,40 @@ This story establishes the AI and CopilotKit AG-UI foundation for Epic 2. We're 
 - `app/api/*/route.ts` - API route patterns for Next.js App Router
 - Epic 1 database schema for state sync model and backend actions
 
-**Example CopilotKit endpoint structure:**
+**Example CopilotKit structure:**
 ```typescript
-// app/api/copilotkit/route.ts
-import { CopilotRuntime, AnthropicAdapter, copilotRuntimeNextJSAppRouterEndpoint } from '@copilotkit/runtime';
-import Anthropic from '@anthropic-ai/sdk';
-import { NextRequest } from 'next/server';
+// lib/ai/copilotkit/server.ts
+import { CopilotRuntime, AnthropicAdapter } from '@copilotkit/runtime';
+import { getAnthropicClient } from '@/lib/ai/client';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const serviceAdapter = new AnthropicAdapter({ anthropic });
-const runtime = new CopilotRuntime({
+const anthropic = getAnthropicClient();
+const serviceAdapter = new AnthropicAdapter({ anthropic, model: 'claude-haiku-4-5' });
+
+export function getCopilotRuntime() {
+  return new CopilotRuntime({
+    serviceAdapter,
+    actions: ({ properties, url }) => createCopilotActions(properties, url),
+    middleware: { /* ... */ }
+  });
+}
+
+// app/api/copilotkit/route.ts
+import { getCopilotRuntime } from '@/lib/ai/copilotkit/server';
+import { copilotRuntimeNextJSAppRouterEndpoint } from '@copilotkit/runtime';
+import { NextRequest, NextResponse } from 'next/server';
+
+const runtime = getCopilotRuntime();
+const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
+  runtime,
+  serviceAdapter: runtime.serviceAdapter,
+  endpoint: '/api/copilotkit',
+});
+
+export async function POST(req: NextRequest) {
+  // Rate limiting, error handling
+  return handleRequest(req);
+}
+```
   serviceAdapter,
   actions: ({properties, url}) => [
     // Define backend actions here
@@ -246,9 +278,9 @@ export const POST = async (req: NextRequest) => {
 ## Context References
 
 **Tech-Spec:** [tech-spec.md](../tech-spec.md) - Contains:
-- Epic 2 AI/CopilotKit AG-UI requirements
+- Epic 2 AI/CopilotKit requirements
 - Anthropic Claude API integration details
-- CopilotKit AG-UI protocol implementation approach
+- CopilotKit protocol implementation approach
 - Environment variable configuration
 - Dependencies and versions
 
@@ -258,7 +290,7 @@ export const POST = async (req: NextRequest) => {
 - Success criteria
 
 **Epic Planning:** [epic-2-draft.md](../epic-2-draft.md) - Party mode planning discussion
-- CopilotKit AG-UI integration architecture decisions
+- CopilotKit integration architecture decisions
 - Winston's technical architecture recommendations
 - Mary's requirements analysis
 - Bob's story breakdown and dependencies

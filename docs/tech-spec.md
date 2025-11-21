@@ -3,7 +3,7 @@
 **Author:** Balazs
 **Date:** 2025-11-20
 **Project Level:** quick-flow
-**Change Type:** Greenfield projekt inicializálása - Epic 1 (Sprint 1 MVP) + Epic 2 (AI/AG-UI)
+**Change Type:** Greenfield projekt inicializálása - Epic 1 (Sprint 1 MVP) + Epic 2 (AI/CopilotKit)
 **Development Context:** Greenfield - új codebase, Campaign OS kommunikációs és social média kampánytervező
 **Last Updated:** 2025-11-21 (Epic 2 planning added)
 
@@ -104,14 +104,14 @@ Campaign OS - egy webes kommunikációs és social média kampánytervező eszk�
 
 **Out of Scope (Sprint 2-3-re halasztva):**
 
-1. LLM/AI integráció (Campaign Orchestrator agent, message generator) - **Epic 2: AG-UI + AI integration**
+1. LLM/AI integráció (Campaign Orchestrator agent, message generator) - **Epic 2: CopilotKit + AI integration**
 2. Content calendar generálás - Epic 3
 3. Risk modul - Epic 3
 4. Export/PDF funkcionalitás - Epic 3+
 5. Multi-user/auth rendszer (v1-ben single-user) - Future
 6. Politikai specifikus modulok (risk tracker, scenario board) - Future
 
-**Note:** Epic 2 will introduce AG-UI protocol for frontend-agent communication, enabling real-time "kampánysegéd" (campaign assistant) with bi-directional state sync.
+**Note:** Epic 2 will introduce CopilotKit protocol for frontend-agent communication, enabling real-time "kampánysegéd" (campaign assistant) with bi-directional state sync.
 
 ---
 
@@ -240,7 +240,7 @@ campaign-os/
 
 **External API-k (Sprint 1-ben nincs):**
 - Anthropic Claude API (Epic 2) - LLM integration
-- AG-UI Protocol (Epic 2) - Frontend-agent communication (CopilotKit or custom)
+- CopilotKit Protocol (Epic 2) - Frontend-agent communication (CopilotKit or custom)
 - Meta/Google Ads API (jövőbeli)
 - Email service integráció (jövőbeli)
 
@@ -310,8 +310,8 @@ campaign-os/
 - @anthropic-ai/sdk@^0.20.0 (Anthropic Claude API client)
 - zod@3.22.4 (LLM output validation, kötelező)
 
-**AG-UI Protocol (Epic 2):**
-- @copilotkit/react-core@^1.0.0 (AG-UI React client, opcionális - vagy custom implementation)
+**CopilotKit Protocol (Epic 2):**
+- @copilotkit/react-core@^1.0.0 (CopilotKit React client, opcionális - vagy custom implementation)
 - WebSocket vagy Server-Sent Events for real-time streaming
 
 **Internal Modules:**
@@ -335,11 +335,10 @@ NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
-**Epic 2 (AI/AG-UI):**
+**Epic 2 (AI/CopilotKit):**
 ```
 ANTHROPIC_API_KEY=your-anthropic-api-key
-# AG-UI stream endpoint configuration (if custom implementation)
-AG_UI_STREAM_URL=/api/ai/stream
+# CopilotKit endpoint: /api/copilotkit (hardcoded, no environment variable needed)
 ```
 
 **Next.js konfiguráció (next.config.js):**
@@ -410,13 +409,13 @@ AG_UI_STREAM_URL=/api/ai/stream
 - Tailwind CSS 3.4.0
 - Shadcn/ui komponenskönyvtár
 - Lucide React icons
-- AG-UI Protocol (Epic 2: CopilotKit or custom client)
+- CopilotKit Protocol (Epic 2: CopilotKit or custom client)
 
 **Backend:**
 - Next.js API Routes (App Router)
 - Supabase Postgres (PostgreSQL 15+)
 - Anthropic Claude API (Epic 2: LLM integration)
-- AG-UI Server (Epic 2: event streaming)
+- CopilotKit Server (Epic 2: event streaming)
 
 **Database:**
 - Supabase (managed PostgreSQL)
@@ -424,7 +423,7 @@ AG_UI_STREAM_URL=/api/ai/stream
 
 **AI/LLM (Epic 2):**
 - Anthropic Claude API (@anthropic-ai/sdk)
-- AG-UI Protocol for frontend-agent communication
+- CopilotKit Protocol for frontend-agent communication
 - Zod schemas for structured LLM outputs
 
 **Development Tools:**
@@ -584,15 +583,14 @@ npm run dev
 ```bash
 # 6. Epic 2 dependencies telepítése
 npm install @anthropic-ai/sdk zod
-npm install @copilotkit/react-core  # Optional - AG-UI client
+npm install @copilotkit/react-core  # Optional - CopilotKit client
 
 # 7. Environment változók frissítése (Epic 2)
 # .env.local-hez hozzáadni:
 # ANTHROPIC_API_KEY=sk-ant-...
-# AG_UI_STREAM_URL=/api/ai/stream  # If custom implementation
 
 # 8. Epic 2 development
-# AG-UI stream endpoint: /api/ai/stream
+# CopilotKit endpoint: /api/copilotkit
 # AI endpoints: /api/ai/campaign-brief, /api/ai/message-matrix
 ```
 
@@ -1018,11 +1016,11 @@ npm install @copilotkit/react-core  # Optional - AG-UI client
 
 ---
 
-## Epic 2: AI-Powered Campaign Orchestration with AG-UI
+## Epic 2: AI-Powered Campaign Orchestration with CopilotKit
 
 **Date:** 2025-11-21
 **Epic:** Epic 2 - AI-Powered Campaign Orchestration
-**Change Type:** AI/LLM integration + AG-UI frontend protocol
+**Change Type:** AI/LLM integration + CopilotKit frontend protocol
 **Development Context:** Building on Epic 1 foundation, adding intelligent campaign assistance
 
 ---
@@ -1038,7 +1036,7 @@ npm install @copilotkit/react-core  # Optional - AG-UI client
 - ✅ Next.js 16 + TypeScript + Tailwind + Supabase
 
 **Epic 2 Goal:**
-Introduce AI/LLM capabilities with AG-UI frontend integration to accelerate campaign planning. Enable users to interact with an embedded "kampánysegéd" (campaign assistant) that provides real-time, contextual help during manual campaign creation, or generate complete campaign structures from briefs.
+Introduce AI/LLM capabilities with CopilotKit frontend integration to accelerate campaign planning. Enable users to interact with an embedded "kampánysegéd" (campaign assistant) that provides real-time, contextual help during manual campaign creation, or generate complete campaign structures from briefs.
 
 ---
 
@@ -1046,7 +1044,7 @@ Introduce AI/LLM capabilities with AG-UI frontend integration to accelerate camp
 
 **In Scope:**
 1. **Anthropic Claude API integration** - LLM client setup, error handling, rate limiting
-2. **AG-UI protocol integration** - Frontend ↔ backend agent communication
+2. **CopilotKit protocol integration** - Frontend ↔ backend agent communication
 3. **Campaign Brief → Structure AI** - Generate goals, segments, topics, narratives from text brief
 4. **AI Message Matrix Generator** - Generate messages for segment × topic combinations
 5. **Frontend "kampánysegéd" UI** - Real-time streaming chat, bi-directional state sync
@@ -1078,34 +1076,34 @@ campaign-os/
 │   │           └── page.tsx                   # MODIFY - Add AI generation button
 │   └── api/
 │       └── ai/
-│           ├── stream/route.ts                # CREATE - AG-UI event stream endpoint
+│           ├── stream/route.ts                # CREATE - CopilotKit event stream endpoint
 │           ├── campaign-brief/route.ts        # CREATE - Campaign brief AI endpoint
 │           └── message-matrix/route.ts         # CREATE - Message matrix AI endpoint
 ├── lib/
 │   ├── ai/
 │   │   ├── client.ts                          # CREATE - Anthropic Claude client
 │   │   ├── schemas.ts                         # CREATE - Zod schemas for LLM outputs
-│   │   ├── ag-ui/
-│   │   │   ├── server.ts                      # CREATE - AG-UI server event handler
-│   │   │   ├── events.ts                      # CREATE - AG-UI event type definitions
+│   │   ├── copilotkit/
+│   │   │   ├── server.ts                      # CREATE - CopilotKit server event handler
+│   │   │   ├── events.ts                      # CREATE - CopilotKit event type definitions
 │   │   │   ├── tools.ts                       # CREATE - Backend tool definitions
 │   │   │   └── orchestrator.ts                # CREATE - Campaign Orchestrator agent
 │   │   └── prompts/
 │   │       ├── brief-normalizer.ts            # CREATE - Brief normalization prompt
 │   │       ├── strategy-designer.ts           # CREATE - Strategy design prompt
 │   │       └── message-generator.ts           # CREATE - Message generation prompt
-│   └── ag-ui/
-│       ├── client.ts                          # CREATE - AG-UI client (or use CopilotKit)
+│   └── copilotkit/
+│       ├── client.ts                          # CREATE - CopilotKit client
 │       ├── events.ts                          # CREATE - Frontend event types
 │       └── tools.ts                           # CREATE - Frontend tool implementations
 ├── components/
 │   └── ai/
-│       ├── CampaignAssistant.tsx             # CREATE - Main AG-UI wrapper
+│       ├── CampaignAssistant.tsx             # CREATE - Main CopilotKit wrapper
 │       ├── AssistantChat.tsx                 # CREATE - Streaming chat UI
 │       ├── InlineSuggestions.tsx             # CREATE - Field-level suggestions
 │       └── AssistantButton.tsx               # CREATE - Floating chat button
 ├── .env.local                                 # MODIFY - Add ANTHROPIC_API_KEY
-└── package.json                               # MODIFY - Add @anthropic-ai/sdk, zod, AG-UI deps
+└── package.json                               # MODIFY - Add @anthropic-ai/sdk, zod, CopilotKit deps
 ```
 
 **Modified files:**
@@ -1117,18 +1115,18 @@ campaign-os/
 
 ### Epic 2 Technical Approach
 
-**AG-UI Protocol Architecture:**
+**CopilotKit Protocol Architecture:**
 
 **Frontend (Next.js/React):**
-- AG-UI client connects to `/api/ai/stream` endpoint
+- CopilotKit client connects to `/api/copilotkit` endpoint
 - Real-time event streaming (WebSocket or Server-Sent Events)
 - Bi-directional state sync: agent sees form state, can suggest/prefill
 - Frontend tools: `highlightField()`, `prefillField()`, `navigateToStep()`, `openSuggestionModal()`
 - Kampánysegéd UI: floating chat button or side panel
-- Progressive enhancement: works without AG-UI (fallback to manual)
+- Progressive enhancement: works without CopilotKit (fallback to manual)
 
 **Backend (Next.js API):**
-- AG-UI server endpoint handles event streams
+- CopilotKit server endpoint handles event streams
 - Campaign Orchestrator agent with sub-modules:
   - Brief Normalizer: structure chaotic input
   - Strategy Designer: generate goals, segments, topics, narratives
@@ -1146,8 +1144,8 @@ campaign-os/
 - Prompt engineering: campaign_type and goal_type aware
 
 **State Management (Epic 2):**
-- AG-UI state sync for campaign form state
-- Zustand or React Context for AG-UI client state
+- CopilotKit state sync for campaign form state
+- Zustand or React Context for CopilotKit client state
 - Server Components for data fetching (unchanged from Epic 1)
 - Client Components for interactive AI features
 
@@ -1163,46 +1161,46 @@ campaign-os/
 - Streaming support for real-time responses
 - Error handling: retry logic, rate limit handling
 
-**AG-UI Protocol:**
-- Event stream endpoint: `/api/ai/stream`
+**CopilotKit Protocol:**
+- Event stream endpoint: `/api/copilotkit`
 - Event types: `user_message`, `agent_message`, `tool_call`, `state_patch`, `error`
 - Bi-directional: UI → Agent (input, state) and Agent → UI (responses, suggestions)
-- Frontend integration: CopilotKit or custom AG-UI client
+- Frontend integration: CopilotKit or custom CopilotKit client
 - WebSocket or Server-Sent Events for real-time streaming
 
 **Internal AI Modules:**
-- `lib/ai/ag-ui/orchestrator.ts` - Campaign Orchestrator agent
+- `lib/ai/copilotkit/orchestrator.ts` - Campaign Orchestrator agent
 - `lib/ai/prompts/` - LLM prompt templates
 - `lib/ai/schemas.ts` - Zod validation schemas
 - Integration with existing DB operations (Epic 1 API routes)
 
 **Frontend-Backend Communication (Epic 2):**
-- AG-UI event stream for AI interactions
+- CopilotKit event stream for AI interactions
 - Traditional REST API fallback (Epic 1 endpoints)
 - Server Actions for form submissions (unchanged)
-- Real-time state sync via AG-UI
+- Real-time state sync via CopilotKit
 
 ---
 
 ### Epic 2 Implementation Steps
 
-**Phase 1: LLM + AG-UI Infrastructure (Story 2.1) - 3-5 days**
+**Phase 1: LLM + CopilotKit Infrastructure (Story 2.1) - 3-5 days**
 
-1. Install dependencies: `@anthropic-ai/sdk`, `zod`, AG-UI client (CopilotKit or custom)
+1. Install dependencies: `@anthropic-ai/sdk`, `zod`, `@copilotkit/runtime`, `@copilotkit/react-core`
 2. Create `lib/ai/client.ts` - Anthropic client with error handling
 3. Create `lib/ai/schemas.ts` - Zod schemas for LLM outputs
-4. Create `lib/ai/ag-ui/server.ts` - AG-UI server event handler
-5. Create `/api/ai/stream/route.ts` - AG-UI event stream endpoint
+4. Create `lib/ai/copilotkit/server.ts` - CopilotKit runtime configuration (CopilotRuntime, AnthropicAdapter, actions)
+5. Create `app/api/copilotkit/route.ts` - CopilotKit endpoint (HTTP handler, imports getCopilotRuntime from server.ts)
 6. Implement rate limiting and error handling
 7. Environment variables: `ANTHROPIC_API_KEY`
-8. Test AG-UI event streaming
+8. Test CopilotKit event streaming
 
 **Phase 2: Campaign Brief AI (Story 2.2) - 3-5 days**
 
 9. Create `lib/ai/prompts/brief-normalizer.ts` - Brief normalization prompt
 10. Create `lib/ai/prompts/strategy-designer.ts` - Strategy design prompt
-11. Create `lib/ai/ag-ui/orchestrator.ts` - Campaign Orchestrator agent
-12. Implement `/api/ai/campaign-brief` endpoint or AG-UI tool
+11. Create `lib/ai/copilotkit/orchestrator.ts` - Campaign Orchestrator agent
+12. Implement `/api/ai/campaign-brief` endpoint or CopilotKit tool
 13. Create `/app/campaigns/new/ai/page.tsx` - AI-assisted campaign creation
 14. Build preview UI component for AI suggestions
 15. Implement approve/reject workflow
@@ -1212,25 +1210,25 @@ campaign-os/
 **Phase 3: Message Matrix AI (Story 2.3) - 3-5 days**
 
 18. Create `lib/ai/prompts/message-generator.ts` - Message generation prompt
-19. Implement `/api/ai/message-matrix` endpoint or AG-UI tool
+19. Implement `/api/ai/message-matrix` endpoint or CopilotKit tool
 20. Extend `MessageMatrix.tsx` with AI generation button
 21. Implement batch message generation
 22. Build preview modal with approve/reject per message
 23. Integration with existing message CRUD
 24. Test: select segments/topics → generate → preview → selective save
 
-**Phase 4: AG-UI Frontend Integration (Story 2.4) - 3-5 days**
+**Phase 4: CopilotKit Frontend Integration (Story 2.4) - 3-5 days**
 
-25. Install and configure CopilotKit or implement custom AG-UI client
-26. Create `lib/ag-ui/client.ts` - AG-UI client setup
-27. Create `components/ai/CampaignAssistant.tsx` - Main AG-UI wrapper
+25. Install and configure CopilotKit or implement custom CopilotKit client
+26. Create `lib/copilotkit/client.ts` - CopilotKit client setup
+27. Create `components/ai/CampaignAssistant.tsx` - Main CopilotKit wrapper
 28. Create `components/ai/AssistantChat.tsx` - Streaming chat UI
 29. Create `components/ai/InlineSuggestions.tsx` - Field-level suggestions
 30. Implement frontend tools: highlightField, prefillField, navigateToStep
-31. Implement state sync: form state → AG-UI → agent
+31. Implement state sync: form state → CopilotKit → agent
 32. Add floating chat button or side panel UI
 33. Test bi-directional state sync and tool execution
-34. Progressive enhancement: fallback without AG-UI
+34. Progressive enhancement: fallback without CopilotKit
 
 **Total: 15-20 days (3-4 weeks)**
 
@@ -1238,7 +1236,7 @@ campaign-os/
 
 ### Epic 2 Technical Details
 
-**AG-UI Event Types:**
+**CopilotKit Event Types:**
 
 ```typescript
 // User → Agent
@@ -1267,7 +1265,7 @@ interface StatePatchEvent {
 }
 ```
 
-**Campaign Form State (AG-UI visible):**
+**Campaign Form State (CopilotKit visible):**
 
 ```typescript
 interface CampaignFormState {
@@ -1359,14 +1357,14 @@ interface FrontendTools {
 {
   "@anthropic-ai/sdk": "^0.20.0",
   "zod": "^3.22.4",
-  "@copilotkit/react-core": "^1.0.0" // Optional - CopilotKit AG-UI client
+  "@copilotkit/react-core": "^1.0.0" // Optional - CopilotKit CopilotKit client
 }
 ```
 
 **Environment variables:**
 ```
 ANTHROPIC_API_KEY=sk-ant-...
-AG_UI_STREAM_URL=/api/ai/stream  // If custom implementation
+# CopilotKit endpoint: /api/copilotkit (hardcoded, no environment variable needed)
 ```
 
 **External services:**
@@ -1377,9 +1375,9 @@ AG_UI_STREAM_URL=/api/ai/stream  // If custom implementation
 
 ### Epic 2 Testing Strategy
 
-**Story 2.1 (LLM + AG-UI Infrastructure):**
+**Story 2.1 (LLM + CopilotKit Infrastructure):**
 - Unit tests: AI client error handling, Zod schema validation
-- Integration tests: Mock Anthropic API responses, AG-UI event parsing
+- Integration tests: Mock Anthropic API responses, CopilotKit event parsing
 - Manual tests: Real API calls, event streaming
 
 **Story 2.2 (Campaign Brief AI):**
@@ -1396,7 +1394,7 @@ AG_UI_STREAM_URL=/api/ai/stream  // If custom implementation
 
 **Story 2.4 (Frontend Integration):**
 - Unit tests: Frontend tool execution, state sync
-- Integration tests: AG-UI client-server communication
+- Integration tests: CopilotKit client-server communication
 - E2E tests: Full flow with real-time chat, tool execution, state sync
 - Edge cases: Connection loss, state sync conflicts
 
@@ -1406,7 +1404,7 @@ AG_UI_STREAM_URL=/api/ai/stream  // If custom implementation
 - [ ] Approve/reject workflow works
 - [ ] Error messages user-friendly
 - [ ] Rate limiting prevents API abuse
-- [ ] AG-UI event streaming stable
+- [ ] CopilotKit event streaming stable
 - [ ] Bi-directional state sync accurate
 - [ ] Frontend tools execute correctly
 - [ ] Fallback to manual entry works
@@ -1423,7 +1421,7 @@ AG_UI_STREAM_URL=/api/ai/stream  // If custom implementation
 6. ✅ JSON schema validation ensures consistent AI outputs (Zod)
 7. ✅ User can approve/reject AI suggestions individually
 8. ✅ Zero data corruption from AI hallucinations (schema validation)
-9. ✅ AG-UI frontend integration provides real-time streaming chat
+9. ✅ CopilotKit frontend integration provides real-time streaming chat
 10. ✅ Bi-directional state sync: agent sees form state and can suggest/prefill fields
 11. ✅ Frontend tools (highlightField, prefillField, navigateToStep) execute correctly
 12. ✅ Kampánysegéd provides contextual help during manual campaign creation
@@ -1435,15 +1433,15 @@ AG_UI_STREAM_URL=/api/ai/stream  // If custom implementation
 **AI Infrastructure:**
 - `lib/ai/client.ts` - Anthropic Claude client
 - `lib/ai/schemas.ts` - Zod validation schemas
-- `lib/ai/ag-ui/server.ts` - AG-UI server handler
-- `/api/ai/stream/route.ts` - AG-UI event stream endpoint
+- `lib/ai/copilotkit/server.ts` - CopilotKit runtime configuration (CopilotRuntime, AnthropicAdapter, actions)
+- `app/api/copilotkit/route.ts` - CopilotKit endpoint (HTTP handler, imports getCopilotRuntime from server.ts)
 
 **AI Endpoints:**
 - `/api/ai/campaign-brief/route.ts` - Campaign brief AI
 - `/api/ai/message-matrix/route.ts` - Message matrix AI
 
 **Frontend AI Components:**
-- `components/ai/CampaignAssistant.tsx` - Main AG-UI wrapper
+- `components/ai/CampaignAssistant.tsx` - Main CopilotKit wrapper
 - `components/ai/AssistantChat.tsx` - Streaming chat UI
 - `components/ai/InlineSuggestions.tsx` - Field suggestions
 
@@ -1453,5 +1451,5 @@ AG_UI_STREAM_URL=/api/ai/stream  // If custom implementation
 - `lib/ai/prompts/message-generator.ts`
 
 **Agent Orchestration:**
-- `lib/ai/ag-ui/orchestrator.ts` - Campaign Orchestrator agent
+- `lib/ai/copilotkit/orchestrator.ts` - Campaign Orchestrator agent
 

@@ -195,13 +195,13 @@ So that **I can plan my campaign messaging and track execution tasks**.
 
 ### Goal
 
-Introduce AI/LLM capabilities with AG-UI frontend integration to accelerate campaign planning. Enable users to interact with an embedded "kampánysegéd" (campaign assistant) that provides real-time, contextual help during manual campaign creation, or generate complete campaign structures from briefs. This epic transforms the manual "War Room" into an intelligent, AI-assisted campaign planning tool with bi-directional state sync and human-in-the-loop workflows.
+Introduce AI/LLM capabilities with CopilotKit frontend integration to accelerate campaign planning. Enable users to interact with an embedded "kampánysegéd" (campaign assistant) that provides real-time, contextual help during manual campaign creation, or generate complete campaign structures from briefs. This epic transforms the manual "War Room" into an intelligent, AI-assisted campaign planning tool with bi-directional state sync and human-in-the-loop workflows.
 
 ### Scope
 
 **In Scope:**
 - Anthropic Claude API integration and infrastructure
-- AG-UI protocol integration (frontend ↔ backend agent communication)
+- CopilotKit protocol integration (frontend ↔ backend agent communication)
 - Campaign Brief → Structure AI module (goals, segments, topics, narratives)
 - AI-powered message matrix generator
 - Frontend "kampánysegéd" UI component with real-time streaming chat
@@ -219,7 +219,7 @@ Introduce AI/LLM capabilities with AG-UI frontend integration to accelerate camp
 - RAG/knowledge base integration
 - Multi-model LLM support
 - Export/PDF functionality
-- Advanced AG-UI features (multi-agent, complex workflows)
+- Advanced CopilotKit features (multi-agent, complex workflows)
 
 ### Success Criteria
 
@@ -231,7 +231,7 @@ Introduce AI/LLM capabilities with AG-UI frontend integration to accelerate camp
 6. ✅ JSON schema validation ensures consistent AI outputs (Zod)
 7. ✅ User can approve/reject AI suggestions individually
 8. ✅ Zero data corruption from AI hallucinations (schema validation)
-9. ✅ AG-UI frontend integration provides real-time streaming chat with campaign assistant
+9. ✅ CopilotKit frontend integration provides real-time streaming chat with campaign assistant
 10. ✅ Bi-directional state sync: agent sees form state and can suggest/prefill fields
 11. ✅ Frontend tools (highlightField, prefillField, navigateToStep) execute correctly
 12. ✅ Kampánysegéd provides contextual help during manual campaign creation
@@ -241,7 +241,7 @@ Introduce AI/LLM capabilities with AG-UI frontend integration to accelerate camp
 **External:**
 - Anthropic Claude API access and API key
 - @anthropic-ai/sdk npm package
-- AG-UI protocol implementation (CopilotKit or custom)
+- CopilotKit protocol implementation (CopilotKit or custom)
 - WebSocket or Server-Sent Events for real-time streaming
 - Existing Epic 1 functionality (campaigns, segments, topics, messages, sprints, tasks)
 
@@ -249,27 +249,27 @@ Introduce AI/LLM capabilities with AG-UI frontend integration to accelerate camp
 - Epic 1 complete (all stories done)
 - Database schema from Epic 1
 - Existing API routes and UI components
-- Form state management (for AG-UI state sync)
+- Form state management (for CopilotKit state sync)
 
 ---
 
 ## Story Map - Epic 2
 
 ```
-AI + AG-UI Foundation Layer
-├── Story 2.1: LLM + AG-UI Infrastructure
-│   └── Anthropic API, AG-UI server, event streaming, state sync
+AI + CopilotKit Foundation Layer
+├── Story 2.1: LLM + CopilotKit Infrastructure
+│   └── Anthropic API, CopilotKit server, event streaming, state sync
 │
 AI Campaign Planning Layer
 ├── Story 2.2: Campaign Brief → Structure AI
-│   └── Brief normalizer, strategy designer, DB integration (AG-UI)
+│   └── Brief normalizer, strategy designer, DB integration (CopilotKit)
 │
 AI Message Generation Layer
 ├── Story 2.3: AI Message Matrix Generator
-│   └── Message generator, preview/approval workflow (AG-UI)
+│   └── Message generator, preview/approval workflow (CopilotKit)
 │
 Frontend Integration Layer
-└── Story 2.4: AG-UI Frontend Integration
+└── Story 2.4: CopilotKit Frontend Integration
     └── Kampánysegéd UI, real-time chat, frontend tools
 ```
 
@@ -277,19 +277,19 @@ Frontend Integration Layer
 
 ## Stories - Epic 2
 
-### Story 2.1: LLM + AG-UI Infrastructure
+### Story 2.1: LLM + CopilotKit Infrastructure
 
 As a **developer**,
-I want **Anthropic Claude API integration with AG-UI protocol support, error handling, and rate limiting**,
+I want **Anthropic Claude API integration with CopilotKit protocol support, error handling, and rate limiting**,
 So that **AI features can be reliably implemented with real-time frontend communication on top of a solid foundation**.
 
 **Acceptance Criteria:**
 
 **Given** I have an Anthropic API key
-**When** I configure the LLM client and AG-UI server
+**When** I configure the LLM client and CopilotKit server
 **Then** the API client is initialized with proper authentication
 
-**And** AG-UI server endpoint handles event streams (input/output)
+**And** CopilotKit server endpoint handles event streams (input/output)
 
 **And** API calls include error handling for network failures, rate limits, and API errors
 
@@ -297,7 +297,7 @@ So that **AI features can be reliably implemented with real-time frontend commun
 
 **And** LLM responses are validated against JSON schemas (Zod)
 
-**And** AG-UI event streaming works (WebSocket or SSE)
+**And** CopilotKit event streaming works (WebSocket or SSE)
 
 **And** State sync mechanism allows agent to read/write campaign form state
 
@@ -306,16 +306,16 @@ So that **AI features can be reliably implemented with real-time frontend commun
 **Prerequisites:** Epic 1 complete
 
 **Technical Notes:**
-- Install @anthropic-ai/sdk, AG-UI dependencies (CopilotKit or custom)
+- Install @anthropic-ai/sdk, CopilotKit dependencies
 - Create `lib/ai/client.ts` for Anthropic client
-- Create `lib/ai/ag-ui/server.ts` for AG-UI server handler
+- Create `lib/ai/copilotkit/server.ts` for CopilotKit runtime configuration (CopilotRuntime, AnthropicAdapter, actions)
+- Create `app/api/copilotkit/route.ts` for CopilotKit endpoint (HTTP handler, rate limiting, error handling)
 - Implement `lib/ai/schemas.ts` for JSON validation (Zod)
-- Implement `lib/ai/ag-ui/events.ts` for AG-UI event types
-- Create `/api/ai/stream` endpoint for AG-UI event streaming
 - Add error handling utilities
 - Environment variables: ANTHROPIC_API_KEY
 - Rate limiting: implement simple token bucket or request queue
-- State sync: define campaign form state model for AG-UI
+- State sync: define campaign form state model for CopilotKit
+- Note: `lib/ai/copilotkit/server.ts` contains CopilotRuntime configuration for reusability and testability
 
 **Estimated Effort:** 5 points (3-5 days)
 
@@ -345,13 +345,13 @@ So that **I can quickly set up campaigns without manual data entry**.
 
 **Technical Notes:**
 - Create `/app/campaigns/new/ai` page for AI-assisted campaign creation
-- Implement `/api/ai/campaign-brief` endpoint (or AG-UI tool)
+- Implement `/api/ai/campaign-brief` endpoint (or CopilotKit tool)
 - Two-step LLM flow: Brief Normalizer → Strategy Designer
-- AG-UI event stream output (messages, state patches, tool calls)
+- CopilotKit event stream output (messages, state patches, tool calls)
 - JSON schema validation for outputs (Zod)
 - Preview UI component for AI suggestions
 - Integration with existing campaign creation flow
-- AG-UI state sync: agent receives current form state
+- CopilotKit state sync: agent receives current form state
 - Frontend tools: agent can call prefillField, highlightField, navigateToStep
 
 **Estimated Effort:** 5 points (3-5 days)
@@ -380,23 +380,23 @@ So that **I can quickly populate the message matrix with relevant content**.
 
 **And** I can regenerate messages if not satisfied
 
-**Prerequisites:** Story 2.2 (campaign structure AI should exist for context)
+**Prerequisites:** Story 2.1 (LLM + CopilotKit Infrastructure) must be complete. Story 2.2 provides campaign context patterns but not strictly required.
 
 **Technical Notes:**
 - Extend existing MessageMatrix component with AI generation button
-- Implement `/api/ai/message-matrix` endpoint (or AG-UI tool)
+- Implement `/api/ai/message-matrix` endpoint (or CopilotKit tool)
 - LLM prompt includes campaign context, selected segments/topics
-- AG-UI event stream for real-time generation progress
+- CopilotKit event stream for real-time generation progress
 - Batch generation with progress indication
 - Preview modal with approve/reject per message
 - Integration with existing message CRUD
-- AG-UI integration: agent can suggest messages via chat or inline
+- CopilotKit integration: agent can suggest messages via chat or inline
 
 **Estimated Effort:** 5 points (3-5 days)
 
 ---
 
-### Story 2.4: AG-UI Frontend Integration (Kampánysegéd)
+### Story 2.4: CopilotKit Frontend Integration (Kampánysegéd)
 
 As a **campaign manager**,
 I want **an embedded AI assistant in the campaign creation UI that provides real-time help and suggestions**,
@@ -420,22 +420,22 @@ So that **I can get contextual assistance while manually creating campaigns, wit
 
 **And** the assistant can trigger the deep campaign orchestrator agent when I request full campaign generation
 
-**And** all AI interactions happen via AG-UI protocol with bi-directional state sync
+**And** all AI interactions happen via CopilotKit protocol with bi-directional state sync
 
-**Prerequisites:** Story 2.1 (AG-UI infrastructure must exist)
+**Prerequisites:** Story 2.1 (CopilotKit infrastructure must exist)
 
 **Technical Notes:**
-- Install CopilotKit or implement custom AG-UI client
-- Create `components/ai/CampaignAssistant.tsx` - main AG-UI wrapper
+- Install CopilotKit or implement custom CopilotKit client
+- Create `components/ai/CampaignAssistant.tsx` - main CopilotKit wrapper
 - Create `components/ai/AssistantChat.tsx` - streaming chat UI
 - Create `components/ai/InlineSuggestions.tsx` - field-level suggestions
 - Implement frontend tools: highlightField, prefillField, navigateToStep, openSuggestionModal
-- AG-UI client connects to `/api/ai/stream` endpoint
-- State management integration (form state sync with AG-UI)
+- CopilotKit client connects to `/api/copilotkit` endpoint
+- State management integration (form state sync with CopilotKit)
 - Real-time message streaming display
 - Tool execution feedback in UI
 - Floating chat button or side panel UI
-- Progressive enhancement: works without AG-UI (fallback)
+- Progressive enhancement: works without CopilotKit (fallback)
 
 **Estimated Effort:** 5 points (3-5 days)
 
@@ -443,27 +443,27 @@ So that **I can get contextual assistance while manually creating campaigns, wit
 
 ## Implementation Timeline - Epic 2
 
-**Total Story Points:** 20 points (increased from 13 due to AG-UI integration)
+**Total Story Points:** 20 points (increased from 13 due to CopilotKit integration)
 
 **Estimated Timeline:** 15-20 days (approximately 3-4 weeks with buffer)
 
 **Story Sequence:**
-1. Story 2.1: LLM + AG-UI Foundation (must complete first - critical path)
-2. Story 2.2: Campaign Brief AI (depends on 2.1, uses AG-UI)
-3. Story 2.3: Message Generator (depends on 2.1, uses AG-UI, benefits from 2.2 context)
+1. Story 2.1: LLM + CopilotKit Foundation (must complete first - critical path)
+2. Story 2.2: Campaign Brief AI (depends on 2.1, uses CopilotKit)
+3. Story 2.3: Message Generator (depends on 2.1, uses CopilotKit, benefits from 2.2 context)
 4. Story 2.4: Frontend Integration (depends on 2.1, integrates with 2.2 and 2.3)
 
 **Notes:**
-- Story 2.1 is critical path - AG-UI foundation required for all AI features
-- Stories 2.2 and 2.3 can work in parallel after 2.1, but both use AG-UI protocol
+- Story 2.1 is critical path - CopilotKit foundation required for all AI features
+- Stories 2.2 and 2.3 can work in parallel after 2.1, but both use CopilotKit protocol
 - Story 2.4 should start after 2.1, can integrate incrementally with 2.2 and 2.3
 - AI features require careful prompt engineering and iteration
-- Foundation-first approach: Story 2.1 establishes AG-UI + LLM patterns
+- Foundation-first approach: Story 2.1 establishes CopilotKit + LLM patterns
 - Preview + approve workflow maintains user control
 - Bi-directional state sync enables contextual assistance
 - Frontend tool integration provides seamless UX
 - Sprint Planner AI deferred to Epic 3 (lower priority)
-- AG-UI enables future multi-frontend support (admin panel, mobile app)
+- CopilotKit enables future multi-frontend support (admin panel, mobile app)
 
 ---
 
