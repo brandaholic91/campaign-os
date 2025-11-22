@@ -469,9 +469,15 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 - campaign_id (uuid, fk → campaigns)
 - name (text, not null)
 - description (text)
-- demographics (jsonb)
-- psychographics (jsonb)
-- priority (int 1-5)
+- short_label (text, nullable) - UI display label (e.g., "20–35 városi")
+- demographics (jsonb) - Legacy field, migrated to demographic_profile
+- psychographics (jsonb) - Legacy field, migrated to psychographic_profile
+- demographic_profile (jsonb) - Structured: age_range, location_type, income_level, other_demographics
+- psychographic_profile (jsonb) - Structured: values[], attitudes_to_campaign_topic[], motivations[], pain_points[]
+- media_habits (jsonb) - Structured: primary_channels[], secondary_channels[], notes
+- funnel_stage_focus (text) - Enum: awareness, engagement, consideration, conversion, mobilization
+- example_persona (jsonb) - Structured: name, one_sentence_story
+- priority (text) - Enum: 'primary' | 'secondary' (migrated from INTEGER 1-5)
 - created_at, updated_at (timestamps)
 
 **topics tábla:**
@@ -479,8 +485,24 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 - campaign_id (uuid, fk → campaigns)
 - name (text, not null)
 - description (text)
-- category (text, nullable)
+- short_label (text, nullable) - UI display label (e.g., "Zöld = spórolás")
+- category (text, nullable) - Legacy field, kept for backward compatibility
+- topic_type (text) - Enum: benefit, problem, value, proof, story
+- related_goal_types (jsonb) - Array of strings (e.g., ["awareness", "engagement"])
+- core_narrative (text) - 1-2 sentence narrative description
+- content_angles (jsonb) - Array of strings (content approach ideas)
+- recommended_channels (jsonb) - Array of strings (e.g., ["instagram_reels", "tiktok"])
+- risk_notes (jsonb) - Array of strings (warnings/guidelines)
+- priority (text) - Enum: 'primary' | 'secondary'
 - created_at, updated_at (timestamps)
+
+**segment_topic_matrix tábla (NEW):**
+- segment_id (uuid, fk → segments, on delete cascade)
+- topic_id (uuid, fk → topics, on delete cascade)
+- importance (text) - Enum: 'high' | 'medium' | 'low'
+- role (text) - Enum: 'core_message' | 'support' | 'experimental'
+- Primary key: (segment_id, topic_id)
+- Indexes on segment_id and topic_id for query performance
 
 **messages tábla:**
 - id (uuid, pk)
@@ -1482,15 +1504,16 @@ Refactor the Message Matrix from concrete messages to communication strategies. 
 ### Epic 3.0 Scope
 
 **In Scope:**
-1. **New `message_strategies` database table** - JSONB structure (4 main categories, 16 sub-fields)
-2. **Message Matrix UI refactor** - Display communication strategies instead of concrete messages
-3. **Strategy preview cards** - Short AI-generated summary (editable) in matrix cells
-4. **Strategy detail modal** - Full strategy view with all 16 sub-fields (4 sections)
-5. **Strategy AI Generator** - Generate complete communication strategies (refactor Story 2.3)
-6. **Strategy CRUD operations** - Create, edit, view, delete strategies
-7. **Strategy form** - 4 main sections (Strategy Core, Style & Tone, CTA & Funnel, Extra Fields)
-8. **Zod schema validation** - All strategy JSONB structures validated
-9. **Migration** - Existing `messages` table remains for Content Calendar use
+1. **Enhanced segments and topics schema** - Detailed profiles, priority system, segment-topic matrix (Story 3.0.5)
+2. **New `message_strategies` database table** - JSONB structure (4 main categories, 16 sub-fields)
+3. **Message Matrix UI refactor** - Display communication strategies instead of concrete messages
+4. **Strategy preview cards** - Short AI-generated summary (editable) in matrix cells
+5. **Strategy detail modal** - Full strategy view with all 16 sub-fields (4 sections)
+6. **Strategy AI Generator** - Generate complete communication strategies (refactor Story 2.3)
+7. **Strategy CRUD operations** - Create, edit, view, delete strategies
+8. **Strategy form** - 4 main sections (Strategy Core, Style & Tone, CTA & Funnel, Extra Fields)
+9. **Zod schema validation** - All strategy JSONB structures validated
+10. **Migration** - Existing `messages` table remains for Content Calendar use
 
 **Out of Scope (Epic 3.1+):**
 - Content Calendar AI generation (Epic 3.1)
@@ -1508,40 +1531,63 @@ Refactor the Message Matrix from concrete messages to communication strategies. 
 campaign-os/
 ├── supabase/
 │   └── migrations/
-│       └── YYYYMMDD_message_strategies.sql    # CREATE - message_strategies table
+│       ├── YYYYMMDD_enhanced_segments_topics.sql  # CREATE - Enhanced segments/topics schema + matrix table
+│       └── YYYYMMDD_message_strategies.sql       # CREATE - message_strategies table
 ├── app/
 │   └── api/
-│       └── strategies/
-│           ├── route.ts                       # CREATE - GET, POST strategies
-│           └── [id]/route.ts                 # CREATE - GET, PUT, DELETE strategy
+│       ├── strategies/
+│       │   ├── route.ts                          # CREATE - GET, POST strategies
+│       │   └── [id]/route.ts                    # CREATE - GET, PUT, DELETE strategy
+│       └── segment-topic-matrix/
+│           └── route.ts                          # CREATE - Matrix CRUD operations
 ├── lib/
 │   └── ai/
-│       ├── schemas.ts                         # MODIFY - Add strategy Zod schemas
+│       ├── schemas.ts                            # MODIFY - Add strategy Zod schemas + enhanced segment/topic schemas
 │       └── prompts/
-│           └── strategy-generator.ts          # CREATE - Strategy generation prompt (refactor message-generator.ts)
+│           ├── strategy-designer.ts              # MODIFY - Update with new segment/topic schema
+│           └── strategy-generator.ts             # CREATE - Strategy generation prompt (refactor message-generator.ts)
 ├── components/
+│   ├── campaigns/
+│   │   └── CampaignWizard.tsx                    # MODIFY - Add new segment/topic fields
+│   ├── segments/
+│   │   └── SegmentManager.tsx                   # MODIFY - Display/edit new structured fields
+│   ├── topics/
+│   │   └── TopicManager.tsx                     # MODIFY - Display/edit new fields
 │   └── messages/
-│       ├── MessageMatrix.tsx                  # MODIFY - Refactor to display strategies
-│       ├── StrategyCell.tsx                   # CREATE - Cell component with preview
-│       ├── StrategyPreviewCard.tsx            # CREATE - Short summary card
-│       ├── StrategyDetailModal.tsx            # CREATE - Full strategy view modal
-│       ├── StrategyForm.tsx                   # CREATE - Strategy create/edit form
+│       ├── MessageMatrix.tsx                    # MODIFY - Refactor to display strategies, use matrix
+│       ├── StrategyCell.tsx                      # CREATE - Cell component with preview
+│       ├── StrategyPreviewCard.tsx               # CREATE - Short summary card
+│       ├── StrategyDetailModal.tsx               # CREATE - Full strategy view modal
+│       ├── StrategyForm.tsx                      # CREATE - Strategy create/edit form
 │       └── StrategyFormSections/
-│           ├── StrategyCoreSection.tsx        # CREATE - Strategy Core form section
-│           ├── StyleToneSection.tsx          # CREATE - Style & Tone form section
-│           ├── CTAFunnelSection.tsx          # CREATE - CTA & Funnel form section
-│           └── ExtraFieldsSection.tsx        # CREATE - Extra Fields form section
+│           ├── StrategyCoreSection.tsx           # CREATE - Strategy Core form section
+│           ├── StyleToneSection.tsx              # CREATE - Style & Tone form section
+│           ├── CTAFunnelSection.tsx              # CREATE - CTA & Funnel form section
+│           └── ExtraFieldsSection.tsx            # CREATE - Extra Fields form section
 └── app/
     └── api/
-        └── ai/
-            └── strategy-matrix/
-                └── route.ts                   # CREATE - Strategy AI generator (refactor message-matrix)
+        ├── ai/
+        │   ├── campaign-brief/
+        │   │   └── route.ts                      # MODIFY - Handle new segment/topic schema
+        │   └── strategy-matrix/
+        │       └── route.ts                      # CREATE - Strategy AI generator (refactor message-matrix)
+        └── campaigns/
+            └── structure/
+                └── route.ts                      # MODIFY - Save new fields and matrix
 ```
 
 **Modified files:**
-- `components/messages/MessageMatrix.tsx` - Refactor to display strategies instead of messages
+- `components/messages/MessageMatrix.tsx` - Refactor to display strategies instead of messages, use segment-topic matrix
 - `app/campaigns/[id]/messages/page.tsx` - Fetch strategies instead of messages
-- `lib/ai/schemas.ts` - Add strategy Zod schemas
+- `components/campaigns/CampaignWizard.tsx` - Add new segment/topic fields and matrix editor
+- `components/segments/SegmentManager.tsx` - Display/edit structured demographic/psychographic profiles, media habits, persona
+- `components/topics/TopicManager.tsx` - Display/edit topic_type, content_angles, recommended_channels, risk_notes
+- `lib/ai/schemas.ts` - Add strategy Zod schemas + enhanced segment/topic schemas + matrix schema
+- `lib/ai/prompts/strategy-designer.ts` - Update with new schema requirements (priority, matrix generation)
+- `app/api/ai/campaign-brief/route.ts` - Handle new segment/topic schema in response
+- `app/api/campaigns/structure/route.ts` - Save new fields and segment-topic matrix
+- `app/api/segments/route.ts` - CRUD with new structured fields
+- `app/api/topics/route.ts` - CRUD with new fields
 - `lib/ai/prompts/message-generator.ts` - Deprecated (replaced by strategy-generator.ts)
 
 **Unchanged files (for Content Calendar use):**
@@ -1735,44 +1781,58 @@ const MessageStrategySchema = z.object({
 
 ### Epic 3.0 Implementation Steps
 
-**Phase 1: Database Migration (Story 3.0.1) - 2-3 days**
+**Phase 1: Enhanced Segments & Topics Schema (Story 3.0.5) - 5-7 days**
 
-1. Create migration: `supabase/migrations/YYYYMMDD_message_strategies.sql`
-2. Define JSONB structure for 4 main categories (16 sub-fields)
-3. Create Zod schemas in `lib/ai/schemas.ts`
-4. Generate TypeScript types: `supabase gen types`
-5. Test migration and schema validation
+1. Create migration: `supabase/migrations/YYYYMMDD_enhanced_segments_topics.sql`
+2. Enhance segments table: add structured profiles, media_habits, funnel_stage_focus, example_persona
+3. Migrate priority from INTEGER to TEXT enum (primary/secondary)
+4. Enhance topics table: add topic_type, related_goal_types, core_narrative, content_angles, recommended_channels, risk_notes
+5. Create segment_topic_matrix table with importance and role fields
+6. Update Zod schemas for enhanced segment/topic structures
+7. Update AI prompt (strategy-designer.ts) with new schema requirements
+8. Update API endpoints to handle new fields and matrix
+9. Update UI components (CampaignWizard, SegmentManager, TopicManager) for new fields
+10. Test migration, backward compatibility, and new field validation
 
-**Phase 2: UI Refactor (Story 3.0.2) - 3-4 days**
+**Phase 2: Database Migration (Story 3.0.1) - 2-3 days**
 
-6. Refactor `MessageMatrix.tsx` to fetch and display strategies
-7. Create `StrategyCell.tsx` component
-8. Create `StrategyPreviewCard.tsx` component
-9. Create `StrategyDetailModal.tsx` component
-10. Update `/app/campaigns/[id]/messages/page.tsx` to fetch strategies
-11. Test UI components and cell states
+11. Create migration: `supabase/migrations/YYYYMMDD_message_strategies.sql`
+12. Define JSONB structure for 4 main categories (16 sub-fields)
+13. Create Zod schemas in `lib/ai/schemas.ts`
+14. Generate TypeScript types: `supabase gen types`
+15. Test migration and schema validation
 
-**Phase 3: Strategy AI Generator (Story 3.0.3) - 4-5 days**
+**Phase 3: UI Refactor (Story 3.0.2) - 3-4 days**
 
-12. Create `lib/ai/prompts/strategy-generator.ts` prompt template
-13. Refactor `/api/ai/message-matrix` → `/api/ai/strategy-matrix`
-14. Implement 16-field JSON output generation
-15. Add preview summary generation (from strategy_core)
-16. Integrate CopilotKit event streaming
-17. Build preview modal with approve/reject per strategy
-18. Test AI generation and validation
+16. Refactor `MessageMatrix.tsx` to fetch and display strategies
+17. Create `StrategyCell.tsx` component
+18. Create `StrategyPreviewCard.tsx` component
+19. Create `StrategyDetailModal.tsx` component
+20. Update `/app/campaigns/[id]/messages/page.tsx` to fetch strategies
+21. Integrate segment-topic matrix display (importance/role indicators)
+22. Test UI components and cell states
 
-**Phase 4: Strategy Form + CRUD (Story 3.0.4) - 3-4 days**
+**Phase 4: Strategy AI Generator (Story 3.0.3) - 4-5 days**
 
-19. Create `/api/strategies` endpoints (GET, POST, PUT, DELETE)
-20. Create `StrategyForm.tsx` component with 4 sections
-21. Create form section components (StrategyCoreSection, StyleToneSection, etc.)
-22. Implement form validation (Zod schemas)
-23. Add preview summary editor (auto-generated, editable)
-24. Integrate with StrategyDetailModal (edit mode)
-25. Test CRUD operations and form validation
+23. Create `lib/ai/prompts/strategy-generator.ts` prompt template
+24. Refactor `/api/ai/message-matrix` → `/api/ai/strategy-matrix`
+25. Implement 16-field JSON output generation
+26. Add preview summary generation (from strategy_core)
+27. Integrate CopilotKit event streaming
+28. Build preview modal with approve/reject per strategy
+29. Test AI generation and validation
 
-**Total: 15-20 days (3-4 weeks)**
+**Phase 5: Strategy Form + CRUD (Story 3.0.4) - 3-4 days**
+
+30. Create `/api/strategies` endpoints (GET, POST, PUT, DELETE)
+31. Create `StrategyForm.tsx` component with 4 sections
+32. Create form section components (StrategyCoreSection, StyleToneSection, etc.)
+33. Implement form validation (Zod schemas)
+34. Add preview summary editor (auto-generated, editable)
+35. Integrate with StrategyDetailModal (edit mode)
+36. Test CRUD operations and form validation
+
+**Total: 20-25 days (4-5 weeks)**
 
 ---
 
@@ -1852,6 +1912,12 @@ User can edit preview summary manually.
 
 ### Epic 3.0 Testing Strategy
 
+**Story 3.0.5 (Enhanced Segments & Topics Schema):**
+- Unit tests: Zod schema validation for new structured fields
+- Integration tests: Database migration script, priority migration, JSONB structure migration
+- Manual tests: Verify table structures, segment-topic matrix CRUD, backward compatibility
+- Edge cases: Priority migration (INTEGER → TEXT), existing data preservation, UNIQUE constraint
+
 **Story 3.0.1 (Database Migration):**
 - Unit tests: Zod schema validation
 - Integration tests: Database migration script
@@ -1887,38 +1953,69 @@ User can edit preview summary manually.
 
 ### Epic 3.0 Acceptance Criteria Summary
 
-1. ✅ Users can create communication strategies for segment × topic combinations
-2. ✅ Strategy contains 4 main categories: Strategy Core, Style & Tone, CTA & Funnel, Extra Fields
-3. ✅ AI generates complete strategies (16 sub-fields) for selected segment × topic combinations
-4. ✅ Preview cards show short summary (AI-generated, editable) in matrix cells
-5. ✅ Detail modal displays full strategy with all 16 sub-fields
-6. ✅ Strategy form allows editing all strategy fields organized by category
-7. ✅ One strategy per cell (segment × topic) - UNIQUE constraint enforced
-8. ✅ All strategy data validated against Zod schemas
-9. ✅ Existing `messages` table remains functional for Content Calendar use
-10. ✅ Migration preserves backward compatibility
+**Story 3.0.5 (Enhanced Segments & Topics Schema):**
+1. ✅ Segments table enhanced with structured profiles (demographic_profile, psychographic_profile, media_habits, example_persona)
+2. ✅ Topics table enhanced with content pillar fields (topic_type, content_angles, recommended_channels, risk_notes)
+3. ✅ Priority system migrated from INTEGER to TEXT enum (primary/secondary)
+4. ✅ Segment-topic matrix table created with importance and role mapping
+5. ✅ AI prompt updated to generate 3-5 primary segments (max 7), 4-7 primary topics (max 9) with priority
+6. ✅ AI generates segment-topic matrix with importance (high/medium/low) and role (core_message/support/experimental)
+7. ✅ All new fields validated against Zod schemas
+8. ✅ Backward compatibility maintained (existing data preserved, old fields as fallback)
+
+**Story 3.0.1-3.0.4 (Message Strategies):**
+9. ✅ Users can create communication strategies for segment × topic combinations
+10. ✅ Strategy contains 4 main categories: Strategy Core, Style & Tone, CTA & Funnel, Extra Fields
+11. ✅ AI generates complete strategies (16 sub-fields) for selected segment × topic combinations
+12. ✅ Preview cards show short summary (AI-generated, editable) in matrix cells
+13. ✅ Detail modal displays full strategy with all 16 sub-fields
+14. ✅ Strategy form allows editing all strategy fields organized by category
+15. ✅ One strategy per cell (segment × topic) - UNIQUE constraint enforced
+16. ✅ All strategy data validated against Zod schemas
+17. ✅ Existing `messages` table remains functional for Content Calendar use
+18. ✅ Migration preserves backward compatibility
 
 ---
 
 ### Epic 3.0 Key Code Locations
 
-**Database:**
-- `supabase/migrations/YYYYMMDD_message_strategies.sql` - Migration script
+**Database (Story 3.0.5):**
+- `supabase/migrations/YYYYMMDD_enhanced_segments_topics.sql` - Enhanced segments/topics + matrix migration
+- `lib/supabase/types.ts` - Generated TypeScript types (includes new fields)
+
+**Database (Story 3.0.1):**
+- `supabase/migrations/YYYYMMDD_message_strategies.sql` - Message strategies migration script
 - `lib/supabase/types.ts` - Generated TypeScript types
 
-**API Endpoints:**
+**API Endpoints (Story 3.0.5):**
+- `/api/segment-topic-matrix/route.ts` - Matrix CRUD operations
+- `/api/campaigns/structure/route.ts` - Save new fields and matrix
+- `/api/segments/route.ts` - CRUD with new structured fields
+- `/api/topics/route.ts` - CRUD with new fields
+- `/api/ai/campaign-brief/route.ts` - Handle new schema in response
+
+**API Endpoints (Story 3.0.1-3.0.4):**
 - `/api/strategies/route.ts` - Strategy CRUD
 - `/api/strategies/[id]/route.ts` - Single strategy operations
 - `/api/ai/strategy-matrix/route.ts` - Strategy AI generator
 
-**Frontend Components:**
-- `components/messages/MessageMatrix.tsx` - Refactored matrix
+**Frontend Components (Story 3.0.5):**
+- `components/campaigns/CampaignWizard.tsx` - Form fields for new schema and matrix editor
+- `components/segments/SegmentManager.tsx` - Display/edit structured fields
+- `components/topics/TopicManager.tsx` - Display/edit new fields
+
+**Frontend Components (Story 3.0.2-3.0.4):**
+- `components/messages/MessageMatrix.tsx` - Refactored matrix (uses segment-topic matrix)
 - `components/messages/StrategyCell.tsx` - Cell component
 - `components/messages/StrategyPreviewCard.tsx` - Preview card
 - `components/messages/StrategyDetailModal.tsx` - Detail modal
 - `components/messages/StrategyForm.tsx` - Create/edit form
 
-**AI Integration:**
+**AI Integration (Story 3.0.5):**
+- `lib/ai/schemas.ts` - Enhanced segment/topic Zod schemas + matrix schema
+- `lib/ai/prompts/strategy-designer.ts` - Updated prompt with new schema requirements
+
+**AI Integration (Story 3.0.3):**
 - `lib/ai/schemas.ts` - Strategy Zod schemas
 - `lib/ai/prompts/strategy-generator.ts` - Strategy generation prompt
 

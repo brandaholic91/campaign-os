@@ -528,6 +528,10 @@ Database Migration Layer
 ├── Story 3.0.1: Database Migration + Schema
 │   └── message_strategies table, Zod schemas, migration script
 │
+Schema Enhancement Layer
+├── Story 3.0.5: Enhanced Segment & Topic Schema
+│   └── Detailed profiles, priority system, segment-topic matrix
+│
 UI Refactor Layer
 ├── Story 3.0.2: Message Matrix Refactor (UI)
 │   └── Strategy cells, preview cards, detail modal
@@ -669,6 +673,80 @@ So that **I can plan how to communicate each topic to each segment before genera
 - Loading states and error handling
 
 **Estimated Effort:** 5 points (3-4 days)
+
+---
+
+### Story 3.0.5: Enhanced Segment & Topic Schema with Priority and Matrix
+
+As a **campaign manager**,
+I want **detailed segment and topic schemas with priority classification, structured profiles, and segment-topic matrix mapping**,
+So that **the AI can generate more targeted and effective campaign messages based on rich audience and content context**.
+
+**Acceptance Criteria:**
+
+**Given** I have Epic 1-3 database schema
+**When** I run the migration
+**Then** segments table is enhanced with:
+- Structured demographic_profile, psychographic_profile (replaces existing JSONB)
+- media_habits JSONB (primary_channels, secondary_channels, notes)
+- funnel_stage_focus (awareness/engagement/consideration/conversion/mobilization)
+- example_persona JSONB (name, one_sentence_story)
+- priority changed from INTEGER to TEXT enum ('primary' | 'secondary')
+- short_label field for UI display
+
+**And** topics table is enhanced with:
+- topic_type (benefit/problem/value/proof/story)
+- related_goal_types JSONB array
+- core_narrative (1-2 sentence description)
+- content_angles JSONB array
+- recommended_channels JSONB array
+- risk_notes JSONB array
+- priority TEXT enum ('primary' | 'secondary')
+- short_label field for UI display
+
+**And** segment_topic_matrix table is created:
+- Maps segments to topics with importance (high/medium/low) and role (core_message/support/experimental)
+- UNIQUE constraint on (segment_id, topic_id)
+
+**And** AI prompt updated to generate:
+- 3-5 primary segments (max 7 total) with priority classification
+- 4-7 primary topics (max 9 total) with priority classification
+- Segment-topic matrix with importance and role mapping (limit 5-6 high-importance connections)
+
+**And** Zod schemas updated for all new structures
+
+**And** API endpoints updated to handle new fields and matrix
+
+**And** UI components updated to display/edit new fields
+
+**Prerequisites:** Story 3.0.1 (database foundation), Epic 2 complete (LLM infrastructure)
+
+**Technical Notes:**
+- Create migration: `supabase/migrations/YYYYMMDD_enhanced_segments_topics.sql`
+  - Enhance segments table: add new fields, migrate existing JSONB to structured format, change priority to enum
+  - Enhance topics table: add new fields, add priority enum
+  - Create segment_topic_matrix table with importance and role fields
+  - Migrate existing priority values (INTEGER 1-2 → 'primary', 3-5 → 'secondary')
+  - Preserve backward compatibility (keep old fields as fallback)
+- Update Zod schemas in `lib/ai/schemas.ts`:
+  - Update `SegmentSchema` with all new structured fields
+  - Update `TopicSchema` with all new fields
+  - Create `SegmentTopicMatrixSchema`
+- Update AI prompt in `lib/ai/prompts/strategy-designer.ts`:
+  - Add instructions for priority classification
+  - Add instructions for segment-topic matrix generation
+  - Update output schema to match new structure
+- Update API endpoints:
+  - `/api/ai/campaign-brief` - handle new schema in response
+  - `/api/campaigns/structure` - save new fields and matrix
+  - `/api/segments`, `/api/topics` - CRUD with new fields
+  - Create `/api/segment-topic-matrix` - matrix CRUD operations
+- Update UI components:
+  - `CampaignWizard.tsx` - form fields for new schema
+  - `SegmentManager.tsx`, `TopicManager.tsx` - display/edit new fields
+  - `MessageMatrix.tsx` - use matrix for display
+
+**Estimated Effort:** 13 points (5-7 days)
 
 ---
 
@@ -846,24 +924,28 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
 
 ## Implementation Timeline - Epic 3.0
 
-**Total Story Points:** 23 points
+**Total Story Points:** 36 points (increased from 23 due to schema enhancement)
 
-**Estimated Timeline:** 15-20 days (approximately 3-4 weeks with buffer)
+**Estimated Timeline:** 20-25 days (approximately 4-5 weeks with buffer)
 
 **Story Sequence:**
 1. Story 3.0.1: Database Migration (must complete first - foundation)
-2. Story 3.0.2: UI Refactor (depends on 3.0.1)
-3. Story 3.0.3: Strategy AI Generator (depends on 3.0.1, uses Epic 2 LLM infrastructure)
-4. Story 3.0.4: Strategy Form + CRUD (depends on 3.0.1 and 3.0.2)
+2. Story 3.0.5: Enhanced Segment & Topic Schema (depends on 3.0.1, enhances foundation for 3.0.2-3.0.4)
+3. Story 3.0.2: UI Refactor (depends on 3.0.1 and 3.0.5 - benefits from enhanced segments/topics)
+4. Story 3.0.3: Strategy AI Generator (depends on 3.0.1 and 3.0.5, uses Epic 2 LLM infrastructure)
+5. Story 3.0.4: Strategy Form + CRUD (depends on 3.0.1, 3.0.2, and 3.0.5)
 
 **Notes:**
 - Story 3.0.1 is critical path - database foundation required for all other stories
-- Story 3.0.2 and 3.0.4 can work in parallel after 3.0.1 (UI components)
-- Story 3.0.3 requires careful prompt engineering for 16-field output
+- Story 3.0.5 enhances segments/topics schema - should complete early to benefit other stories
+- Story 3.0.2 and 3.0.4 can work in parallel after 3.0.1 and 3.0.5 (UI components)
+- Story 3.0.3 requires careful prompt engineering for 16-field output, benefits from enhanced schema
 - Preview summary: AI-generated but editable (stored in database)
 - UNIQUE constraint ensures one strategy per cell (segment × topic)
 - Existing `messages` table remains for Content Calendar use (Epic 3.1)
 - Story 2.3 refactor: message generator → strategy generator (same endpoint pattern, different output)
+- Story 3.0.5 adds segment-topic matrix for explicit relationship mapping (importance, role)
+- Priority system (primary/secondary) enables better filtering and AI generation focus
 
 ---
 
