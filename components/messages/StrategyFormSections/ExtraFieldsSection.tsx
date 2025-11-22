@@ -76,7 +76,7 @@ export function ExtraFieldsSection({ form }: ExtraFieldsSectionProps) {
           </Button>
         </div>
         <div className="space-y-2">
-          {keyPhrases.map((_, index: number) => (
+          {keyPhrases.map((_: string, index: number) => (
             <div key={index} className="flex gap-2">
               <Input
                 placeholder={`Kulcskifejezés ${index + 1}`}
