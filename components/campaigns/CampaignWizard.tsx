@@ -1,19 +1,25 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { Sparkles, ArrowLeft, Loader2, Check, Calendar } from 'lucide-react'
+import React, { useState } from 'react'
+import { ArrowLeft, Check, Calendar } from 'lucide-react'
 import Link from 'next/link'
-import { CampaignStructurePreview } from '@/components/ai/CampaignStructurePreview'
-import { toast } from 'sonner'
-import { useCopilotAction, useCopilotReadable, useCopilotChat } from '@copilotkit/react-core'
-import { TextMessage, Role as MessageRole, ResultMessage, Message as DeprecatedGqlMessage } from '@copilotkit/runtime-client-gql'
-import { highlightField, prefillField } from '@/lib/ai/copilotkit/tools'
-import { CampaignStructureSchema } from '@/lib/ai/schemas'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+interface CampaignWizardProps {
+  onBack?: () => void
+  onComplete?: (data: any) => void
+}
 
 // Custom Tag Input Component for list-based fields
 const TagInput: React.FC<{
@@ -82,14 +88,12 @@ const TagInput: React.FC<{
   )
 }
 
-export default function CampaignAIPage() {
+export function CampaignWizard({ onBack, onComplete }: CampaignWizardProps) {
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 7
-  const [generatedStructure, setGeneratedStructure] = useState<any>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [progressStage, setProgressStage] = useState<'idle' | 'brief-normalizer' | 'strategy-designer' | 'done'>('idle')
 
-  // Form State - same as CampaignWizard
+  // Form State
   const [formData, setFormData] = useState({
     // Step 1: Alapadatok
     name: '',
@@ -144,167 +148,14 @@ export default function CampaignAIPage() {
     { id: 7, title: 'Kontextus', desc: 'Tapasztalatok és korlátok' },
   ]
 
-  // CopilotKit chat for streaming
-  const { appendMessage, isLoading: isGenerating, stopGeneration, visibleMessages } = useCopilotChat({
-    id: 'campaign-ai-generation'
-  })
-
-  const handleSave = async (structure: any) => {
-    if (!formData.name) {
-      toast.error('Kérlek adj meg egy kampány nevet')
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      const response = await fetch('/api/campaigns/structure', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaign: {
-            name: formData.name,
-            description: formData.description,
-            startDate: formData.startDate,
-            endDate: formData.endDate,
-            campaignType: formData.type,
-            goalType: formData.goalType
-          },
-          structure
-        })
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save campaign')
-      }
-
-      const data = await response.json()
-      toast.success('Kampány sikeresen létrehozva!')
-      window.location.href = `/campaigns/${data.campaignId}`
-    } catch (error) {
-      console.error(error)
-      toast.error(error instanceof Error ? error.message : 'Hiba történt a mentés során')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  // Expose form state to CopilotKit agent
-  useCopilotReadable(
-    {
-      description: 'Campaign AI form state including all wizard steps data',
-      value: formData,
-    },
-    [formData]
-  )
-
-  // Register frontend tools for agent
-  useCopilotAction({
-    name: 'highlightField',
-    description: 'Highlight a form field to draw user attention',
-    parameters: [
-      {
-        name: 'fieldId',
-        type: 'string' as const,
-        description: 'The data-field-id attribute value of the field to highlight',
-        required: true,
-      },
-      {
-        name: 'duration',
-        type: 'number' as const,
-        description: 'Duration in milliseconds (default: 3000)',
-        required: false,
-      },
-      {
-        name: 'color',
-        type: 'string' as const,
-        description: 'CSS color for highlight (default: yellow)',
-        required: false,
-      },
-    ],
-    handler: ({ fieldId, duration, color }: { fieldId: string; duration?: number; color?: string }) => {
-      highlightField(fieldId, { duration, color })
-      return { success: true, message: `Highlighted field: ${fieldId}` }
-    },
-  })
-
-  useCopilotAction({
-    name: 'prefillField',
-    description: 'Prefill a form field with a suggested value',
-    parameters: [
-      {
-        name: 'fieldId',
-        type: 'string' as const,
-        description: 'The data-field-id attribute value of the field to prefill',
-        required: true,
-      },
-      {
-        name: 'value',
-        type: 'string' as const,
-        description: 'The value to prefill',
-        required: true,
-      },
-    ],
-    handler: ({ fieldId, value }: { fieldId: string; value: string }) => {
-      prefillField(fieldId, value)
-      return { success: true, message: `Prefilled field: ${fieldId} with value: ${value}` }
-    },
-  })
-
-  // Monitor CopilotKit messages for campaign structure generation
-  useEffect(() => {
-    if (visibleMessages.length === 0) return
-
-    const actionResults = visibleMessages.filter((msg: DeprecatedGqlMessage): msg is ResultMessage => 
-      typeof msg.isResultMessage === 'function' && msg.isResultMessage() && 
-      msg.actionName === 'generateCampaignStructure'
-    )
-    
-    if (actionResults.length > 0) {
-      const lastResult = actionResults[actionResults.length - 1]
-      const decodedResult = ResultMessage.decodeResult(lastResult.result)
-      const resultKey = JSON.stringify(decodedResult)
-      const currentKey = generatedStructure ? JSON.stringify(generatedStructure) : null
-      
-      if (resultKey !== currentKey) {
-        try {
-          const validated = CampaignStructureSchema.safeParse(decodedResult)
-          
-          if (validated.success) {
-            setGeneratedStructure(validated.data)
-            setProgressStage('done')
-            toast.success('Kampány struktúra generálva!')
-          } else {
-            console.error('Validation Error:', validated.error)
-            toast.error('Hiba: Érvénytelen AI kimenet. Kérlek próbáld újra.')
-            setProgressStage('idle')
-          }
-        } catch (error) {
-          console.error('Failed to parse campaign structure:', error)
-          toast.error('Hiba: Nem sikerült feldolgozni az AI kimenetet.')
-          setProgressStage('idle')
-        }
-      }
-    }
-
-    const executionMessages = visibleMessages.filter((msg: DeprecatedGqlMessage) => 
-      typeof msg.isActionExecutionMessage === 'function' && 
-      msg.isActionExecutionMessage() && 
-      (msg as any).name === 'generateCampaignStructure'
-    )
-    
-    if (executionMessages.length > 0 && progressStage === 'brief-normalizer') {
-      setProgressStage('strategy-designer')
-    }
-  }, [visibleMessages, generatedStructure, progressStage])
-
-  const handleNext = async () => {
+  const handleNext = () => {
     if (currentStep < totalSteps) {
       setCurrentStep((prev) => prev + 1)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } else {
-      // Step 7 completed - start AI generation
-      await handleGenerate()
+      if (onComplete) {
+        onComplete(formData)
+      }
     }
   }
 
@@ -312,38 +163,6 @@ export default function CampaignAIPage() {
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1)
       window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-  }
-
-  const handleGenerate = async () => {
-    if (!formData.description) {
-      toast.error('Kérlek adj meg egy kampány leírást')
-      return
-    }
-
-    setGeneratedStructure(null)
-    setProgressStage('brief-normalizer')
-
-    // Build brief from form data
-    const brief = `${formData.description}\n\nKampány típusa: ${formData.type}\nCél: ${formData.goalType}\nElsődleges cél: ${formData.primaryGoal}`
-
-    const userMessage = new TextMessage({
-      role: MessageRole.User,
-      content: JSON.stringify({
-        command: 'generate_campaign_structure',
-        brief,
-        campaignType: formData.type || undefined,
-        goalType: formData.goalType || undefined,
-        formData: formData,
-      }),
-    })
-
-    try {
-      await appendMessage(userMessage, { followUp: true })
-    } catch (error) {
-      console.error('Error sending message to CopilotKit:', error)
-      toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás indításakor')
-      setProgressStage('idle')
     }
   }
 
@@ -360,7 +179,7 @@ export default function CampaignAIPage() {
     }
   }
 
-  // --- Step Components (same as CampaignWizard) ---
+  // --- Step Components ---
 
   const renderStep1 = () => (
     <div className="space-y-6">
@@ -376,7 +195,6 @@ export default function CampaignAIPage() {
             onChange={(e) => updateField('name', e.target.value)}
             className="mt-1"
             placeholder="pl. Őszi fenntarthatósági kampány"
-            data-field-id="name"
           />
         </div>
 
@@ -385,7 +203,7 @@ export default function CampaignAIPage() {
             Kampány Típusa *
           </Label>
           <Select value={formData.type} onValueChange={(value) => updateField('type', value)}>
-            <SelectTrigger className="mt-1" data-field-id="campaign_type">
+            <SelectTrigger className="mt-1">
               <SelectValue placeholder="Válassz típust..." />
             </SelectTrigger>
             <SelectContent>
@@ -468,7 +286,6 @@ export default function CampaignAIPage() {
             rows={4}
             className="mt-1"
             placeholder="Miről szól a kampány, miért most fut, kiket céloz nagyjából?"
-            data-field-id="brief"
           />
         </div>
       </div>
@@ -506,7 +323,7 @@ export default function CampaignAIPage() {
             value={formData.goalType}
             onValueChange={(value) => updateField('goalType', value)}
           >
-            <SelectTrigger className="mt-1" data-field-id="goal_type">
+            <SelectTrigger className="mt-1">
               <SelectValue placeholder="Válassz céltípust..." />
             </SelectTrigger>
             <SelectContent>
@@ -846,22 +663,9 @@ export default function CampaignAIPage() {
         {/* Left Sidebar: Stepper */}
         <div className="w-full md:w-80 shrink-0">
           <div className="bg-white rounded-2xl shadow-soft border border-gray-200 p-6 sticky top-6">
-            <div className="mb-6">
-              <Link href="/campaigns">
-                <button className="self-start flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 font-medium text-sm hover:bg-gray-50 hover:text-primary-600 transition-all mb-4">
-                  <ArrowLeft className="w-4 h-4" />
-                  Vissza a kampányokhoz
-                </button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </div>
-                <h2 className="text-xl font-display font-bold text-gray-900">
-                  Kampány Tervező AI
-                </h2>
-              </div>
-            </div>
+            <h2 className="text-xl font-display font-bold text-gray-900 mb-6">
+              Kampány Tervező
+            </h2>
             <div className="space-y-0 relative">
               {/* Connector Line */}
               <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gray-100 z-0"></div>
@@ -929,54 +733,6 @@ export default function CampaignAIPage() {
               {currentStep === 5 && renderStep5()}
               {currentStep === 6 && renderStep6()}
               {currentStep === 7 && renderStep7()}
-
-              {/* Generated Structure Preview */}
-              {generatedStructure && (
-                <div className="mt-8 pt-8 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <CampaignStructurePreview
-                    structure={generatedStructure}
-                    onSave={handleSave}
-                    isSaving={isSaving}
-                  />
-                </div>
-              )}
-
-              {/* Loading Indicator */}
-              {isGenerating && (
-                <div className="mt-8 pt-8 border-t border-gray-100">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <div className="flex gap-1">
-                      <div
-                        className={`h-2 w-2 rounded-full ${
-                          progressStage === 'brief-normalizer' ||
-                          progressStage === 'strategy-designer' ||
-                          progressStage === 'done'
-                            ? 'bg-primary-600'
-                            : 'bg-gray-300'
-                        }`}
-                      />
-                      <div
-                        className={`h-2 w-2 rounded-full ${
-                          progressStage === 'strategy-designer' || progressStage === 'done'
-                            ? 'bg-primary-600'
-                            : 'bg-gray-300'
-                        }`}
-                      />
-                      <div
-                        className={`h-2 w-2 rounded-full ${
-                          progressStage === 'done' ? 'bg-primary-600' : 'bg-gray-300'
-                        }`}
-                      />
-                    </div>
-                    <span>
-                      {progressStage === 'brief-normalizer' && 'Brief Normalizer'}
-                      {progressStage === 'strategy-designer' && 'Strategy Designer'}
-                      {progressStage === 'done' && 'Kész'}
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Navigation Buttons */}
@@ -997,52 +753,23 @@ export default function CampaignAIPage() {
               </button>
               <Button
                 onClick={handleNext}
-                disabled={isGenerating}
                 className="px-8 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold shadow-lg shadow-primary-600/20 hover:shadow-primary-600/30 transition-all flex items-center gap-2"
               >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {progressStage === 'brief-normalizer' && 'Brief elemzése...'}
-                    {progressStage === 'strategy-designer' && 'Stratégia tervezése...'}
-                    {progressStage === 'done' && 'Kész!'}
-                    {progressStage === 'idle' && 'Generálás folyamatban...'}
-                  </>
-                ) : currentStep === totalSteps ? (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Kampány Struktúra Generálása
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M17 8l4 4m0 0l-4 4m4-4H3"
-                      />
-                    </svg>
-                  </>
-                ) : (
-                  <>
-                    Következő
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M17 8l4 4m0 0l-4 4m4-4H3"
-                      />
-                    </svg>
-                  </>
+                {currentStep === totalSteps ? 'Kampány Létrehozása' : 'Következő'}
+                {currentStep !== totalSteps && (
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M17 8l4 4m0 0l-4 4m4-4H3"
+                    />
+                  </svg>
                 )}
               </Button>
             </div>
@@ -1052,3 +779,4 @@ export default function CampaignAIPage() {
     </div>
   )
 }
+

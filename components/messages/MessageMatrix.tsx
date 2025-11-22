@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Database } from '@/lib/supabase/types'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { CheckboxList } from './CheckboxList'
 import { StrategyCell } from './StrategyCell'
@@ -445,9 +445,10 @@ export default function MessageMatrix({
                 disabled={isGenerating || cellCount === 0}
                 className={`
                   w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all
+                  bg-primary-600 hover:bg-primary-500 text-white shadow-glow
                   ${isGenerating || cellCount === 0 
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
-                    : 'bg-primary-600 hover:bg-primary-500 text-white shadow-glow hover:scale-[1.02] active:scale-[0.98]'
+                    ? 'opacity-60 cursor-not-allowed' 
+                    : 'hover:scale-[1.02] active:scale-[0.98]'
                   }
                 `}
               >
@@ -458,7 +459,7 @@ export default function MessageMatrix({
                   </>
                 ) : (
                   <>
-                    <Loader2 className="w-4 h-4" /> {/* Using Loader2 as placeholder icon for Sparkles if not imported, but Sparkles was imported in original file. I should import it. */}
+                    <Zap className="w-4 h-4" />
                     Stratégiák Generálása
                   </>
                 )}
