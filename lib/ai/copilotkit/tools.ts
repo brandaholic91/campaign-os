@@ -32,20 +32,40 @@ export function highlightField(
   const originalBorder = element.style.border
   const originalBoxShadow = element.style.boxShadow
   const originalTransition = element.style.transition
+  const originalOutline = element.style.outline
 
-  // Apply highlight styles
+  // Apply highlight styles with animation
   element.style.transition = 'all 0.3s ease-in-out'
   element.style.border = `2px solid ${color}`
-  element.style.boxShadow = `0 0 8px ${color}`
+  element.style.boxShadow = `0 0 12px ${color}40`
+  element.style.outline = `none`
+
+  // Add pulsing animation
+  let pulseCount = 0
+  const maxPulses = 2
+  const pulseInterval = duration / (maxPulses * 2)
+  
+  const pulseAnimation = setInterval(() => {
+    if (pulseCount >= maxPulses) {
+      clearInterval(pulseAnimation)
+      return
+    }
+    element.style.boxShadow = pulseCount % 2 === 0 
+      ? `0 0 16px ${color}80`
+      : `0 0 8px ${color}40`
+    pulseCount++
+  }, pulseInterval)
 
   // Scroll into view
   element.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
   // Remove highlight after duration
   setTimeout(() => {
+    clearInterval(pulseAnimation)
     element.style.transition = originalTransition
     element.style.border = originalBorder
     element.style.boxShadow = originalBoxShadow
+    element.style.outline = originalOutline
   }, duration)
 }
 
@@ -64,6 +84,9 @@ export function prefillField(fieldId: string, value: string): void {
 
   console.log(`[prefillField] Prefilling field: ${fieldId} with value:`, value)
 
+  // Store original value for animation
+  const originalValue = element.value
+
   // Dispatch change event for React state management
   const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
     window.HTMLInputElement.prototype,
@@ -80,8 +103,19 @@ export function prefillField(fieldId: string, value: string): void {
   const event = new Event('input', { bubbles: true })
   element.dispatchEvent(event)
 
-  // Visual feedback: brief highlight
-  highlightField(fieldId, { duration: 1000, color: 'green' })
+  // Visual feedback: animated prefill with green highlight and fade-in
+  const originalTransition = element.style.transition
+  element.style.transition = 'all 0.3s ease-in-out'
+  element.style.backgroundColor = 'rgba(34, 197, 94, 0.1)'
+  
+  // Highlight with green color
+  highlightField(fieldId, { duration: 1500, color: 'rgb(34, 197, 94)' })
+  
+  // Fade out background color
+  setTimeout(() => {
+    element.style.backgroundColor = ''
+    element.style.transition = originalTransition
+  }, 1500)
 }
 
 /**
@@ -99,8 +133,29 @@ export function navigateToStep(stepId: string): void {
     return
   }
 
-  // Click the step button
-  stepButton.click()
+  // Visual feedback: highlight the step button before navigation
+  const originalTransition = stepButton.style.transition
+  const originalBackground = stepButton.style.backgroundColor
+  const originalBoxShadow = stepButton.style.boxShadow
+  
+  stepButton.style.transition = 'all 0.3s ease-in-out'
+  stepButton.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'
+  stepButton.style.boxShadow = '0 0 8px rgba(59, 130, 246, 0.3)'
+  
+  // Scroll into view
+  stepButton.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  
+  // Click after brief delay for visual feedback
+  setTimeout(() => {
+    stepButton.click()
+    
+    // Restore original styles
+    setTimeout(() => {
+      stepButton.style.transition = originalTransition
+      stepButton.style.backgroundColor = originalBackground
+      stepButton.style.boxShadow = originalBoxShadow
+    }, 500)
+  }, 300)
 }
 
 export interface SuggestionModalPayload {
@@ -120,11 +175,23 @@ export function openSuggestionModal(
 ): void {
   console.log(`[openSuggestionModal] Opening modal:`, { type, payload })
   
-  // For now, use browser alert (can be replaced with custom modal component)
-  // In production, this would dispatch an event to show a custom modal
+  // Dispatch custom event for modal display (AC: #3, #4, #5 - tool execution feedback)
+  const modalEvent = new CustomEvent('copilotkit:suggestion-modal', {
+    detail: { type, payload },
+    bubbles: true,
+  })
+  document.dispatchEvent(modalEvent)
+  
+  // Fallback to browser alert if no listener is registered
+  // In production, this would be handled by a custom modal component
   if (type === 'suggestion') {
     const title = payload.title || 'Javaslat'
-    alert(`${title}\n\n${payload.content}`)
+    // Use setTimeout to allow custom listeners to handle first
+    setTimeout(() => {
+      if (!document.querySelector('[data-copilotkit-modal]')) {
+        alert(`${title}\n\n${payload.content}`)
+      }
+    }, 100)
   } else {
     console.warn(`[openSuggestionModal] Unknown modal type: ${type}`)
   }

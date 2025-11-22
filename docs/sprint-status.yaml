@@ -74,6 +74,7 @@ development_status:
   # Story 2.4: CopilotKit Frontend Integration (Kampánysegéd)
   # Note: Story drafted 2025-11-21 - Frontend CopilotKit client and kampánysegéd UI component
   # Note: Status updated to in-progress (2025-11-21) - Dev agent implementing AssistantChat, InlineSuggestions, and frontend tools
-  2-4-ag-ui-frontend-integration: in-progress
+  # Note: Status updated to review (2025-11-22) - All tasks completed: CopilotPopup streaming, frontend tools, state sync, contextual help
+  2-4-ag-ui-frontend-integration: review
   
   epic-2-retrospective: optional

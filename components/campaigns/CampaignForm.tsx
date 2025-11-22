@@ -16,6 +16,8 @@ import {
 import { Database } from '@/lib/supabase/types'
 import { useCampaignFormCopilotState } from '@/lib/ai/copilot-state'
 import { AssistantChat } from '@/components/ai/AssistantChat'
+import { useCopilotAction } from '@copilotkit/react-core'
+import { highlightField, prefillField, navigateToStep, openSuggestionModal, type SuggestionModalPayload } from '@/lib/ai/copilotkit/tools'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 type CampaignInsert = Database['campaign_os']['Tables']['campaigns']['Insert']
@@ -130,6 +132,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
     }
   }
 
+  // Build CopilotKit state inputs for bi-directional state sync (AC: #2, #8)
   const copilotStateInputs = useMemo(
     () => ({
       ...formData,
@@ -150,7 +153,136 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
     ]
   )
 
+  // Expose form state to CopilotKit agent for real-time state sync (AC: #2, #8)
   useCampaignFormCopilotState(copilotStateInputs)
+
+  // Register frontend tools for agent interaction (AC: #3, #4, #5)
+  useCopilotAction({
+    name: 'highlightField',
+    description: 'Highlight a form field to draw user attention',
+    parameters: [
+      {
+        name: 'fieldId',
+        type: 'string' as const,
+        description: 'The data-field-id attribute value of the field to highlight',
+        required: true,
+      },
+      {
+        name: 'duration',
+        type: 'number' as const,
+        description: 'Duration in milliseconds (default: 3000)',
+        required: false,
+      },
+      {
+        name: 'color',
+        type: 'string' as const,
+        description: 'CSS color for highlight (default: yellow)',
+        required: false,
+      },
+    ],
+    handler: ({ fieldId, duration, color }: { fieldId: string; duration?: number; color?: string }) => {
+      highlightField(fieldId, { duration, color })
+      return { success: true, message: `Highlighted field: ${fieldId}` }
+    },
+  })
+
+  useCopilotAction({
+    name: 'prefillField',
+    description: 'Prefill a form field with a suggested value',
+    parameters: [
+      {
+        name: 'fieldId',
+        type: 'string' as const,
+        description: 'The data-field-id attribute value of the field to prefill',
+        required: true,
+      },
+      {
+        name: 'value',
+        type: 'string' as const,
+        description: 'The value to prefill',
+        required: true,
+      },
+    ],
+    handler: ({ fieldId, value }: { fieldId: string; value: string }) => {
+      prefillField(fieldId, value)
+      // Update form state after prefill
+      const fieldMap: Record<string, keyof typeof formData> = {
+        name: 'name',
+        description: 'description',
+        campaign_type: 'campaign_type',
+        primary_goal_type: 'primary_goal_type',
+        start_date: 'start_date',
+        end_date: 'end_date',
+        budget_estimate: 'budget_estimate',
+      }
+      const formKey = fieldMap[fieldId]
+      if (formKey) {
+        if (formKey === 'budget_estimate') {
+          setFormData((prev) => ({ ...prev, [formKey]: parseFloat(value) || undefined }))
+        } else {
+          setFormData((prev) => ({ ...prev, [formKey]: value as any }))
+        }
+      }
+      return { success: true, message: `Prefilled field: ${fieldId} with value: ${value}` }
+    },
+  })
+
+  useCopilotAction({
+    name: 'navigateToStep',
+    description: 'Navigate to a specific step in a multi-step wizard',
+    parameters: [
+      {
+        name: 'stepId',
+        type: 'string' as const,
+        description: 'Step identifier (e.g., "step-1", "step-2")',
+        required: true,
+      },
+    ],
+    handler: ({ stepId }: { stepId: string }) => {
+      navigateToStep(stepId)
+      return { success: true, message: `Navigated to step: ${stepId}` }
+    },
+  })
+
+  useCopilotAction({
+    name: 'openSuggestionModal',
+    description: 'Open a modal with suggestions or information',
+    parameters: [
+      {
+        name: 'type',
+        type: 'string' as const,
+        description: 'Modal type (e.g., "suggestion")',
+        required: true,
+      },
+      {
+        name: 'title',
+        type: 'string' as const,
+        description: 'Modal title',
+        required: false,
+      },
+      {
+        name: 'content',
+        type: 'string' as const,
+        description: 'Modal content',
+        required: true,
+      },
+      {
+        name: 'payloadType',
+        type: 'string' as const,
+        description: 'Payload type (info, success, warning, error)',
+        required: false,
+      },
+    ],
+    handler: ({ type, title, content, payloadType }: { type: string; title?: string; content: string; payloadType?: string }) => {
+      const payload: SuggestionModalPayload = { 
+        title, 
+        content, 
+        type: payloadType as 'info' | 'success' | 'warning' | 'error' | undefined 
+      }
+      openSuggestionModal(type, payload)
+      return { success: true, message: `Opened ${type} modal` }
+    },
+  })
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -280,8 +412,16 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
         </Button>
       </div>
 
-      {/* Kampánysegéd Assistant Chat */}
-      <AssistantChat />
+      {/* Kampánysegéd Assistant Chat - AC: #1, #2, #6, #8 */}
+      <AssistantChat 
+        campaignType={formData.campaign_type}
+        goalType={formData.primary_goal_type}
+        formFields={{
+          name: formData.name,
+          description: formData.description || undefined,
+          budget_estimate: formData.budget_estimate ?? undefined,
+        }}
+      />
     </form>
   )
 }

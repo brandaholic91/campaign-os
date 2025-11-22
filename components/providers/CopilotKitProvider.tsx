@@ -5,6 +5,7 @@ import { ReactNode, Component, ErrorInfo } from 'react'
 
 interface CopilotKitProviderProps {
   children: ReactNode
+  properties?: Record<string, unknown>
 }
 
 interface ErrorBoundaryState {
@@ -32,7 +33,7 @@ class CopilotKitErrorBoundary extends Component<
 
   render() {
     if (this.state.hasError) {
-      // Graceful degradation: render children without CopilotKit wrapper
+      // Graceful degradation: render children without CopilotKit wrapper (AC: #9)
       console.log('[CopilotKit Error Boundary] Rendering without CopilotKit due to error')
       return this.props.children
     }
@@ -41,13 +42,20 @@ class CopilotKitErrorBoundary extends Component<
   }
 }
 
-export function CopilotKitProvider({ children }: CopilotKitProviderProps) {
+/**
+ * CopilotKitProvider - Root provider for CopilotKit with error boundary
+ * AC: #8, #9 - Progressive enhancement with graceful degradation
+ */
+export function CopilotKitProvider({ children, properties }: CopilotKitProviderProps) {
   // Get runtime URL from environment or use default
   const runtimeUrl = process.env.NEXT_PUBLIC_COPILOTKIT_RUNTIME_URL || '/api/copilotkit'
 
   return (
     <CopilotKitErrorBoundary>
-      <CopilotKit runtimeUrl={runtimeUrl}>
+      <CopilotKit 
+        runtimeUrl={runtimeUrl}
+        properties={properties}
+      >
         {children}
       </CopilotKit>
     </CopilotKitErrorBoundary>
