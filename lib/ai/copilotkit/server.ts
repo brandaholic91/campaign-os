@@ -60,18 +60,31 @@ function createCopilotActions(
           throw new Error('Brief is required')
         }
 
+        console.log('[generateCampaignStructure] Starting with brief:', brief.substring(0, 100) + '...')
+        console.log('[generateCampaignStructure] Campaign type:', campaignType, 'Goal type:', goalType)
+
         const client = getAnthropicClient()
         const model = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
+        
+        console.log('[generateCampaignStructure] Using model:', model)
 
         // Step 1: Brief Normalizer
-        const normalizerResponse = await client.messages.create({
-          model,
-          max_tokens: 1024,
-          system: BRIEF_NORMALIZER_SYSTEM_PROMPT,
-          messages: [
-            { role: 'user', content: BRIEF_NORMALIZER_USER_PROMPT(brief, campaignType, goalType) }
-          ]
-        })
+        console.log('[generateCampaignStructure] Step 1: Calling Brief Normalizer')
+        let normalizerResponse
+        try {
+          normalizerResponse = await client.messages.create({
+            model,
+            max_tokens: 1024,
+            system: BRIEF_NORMALIZER_SYSTEM_PROMPT,
+            messages: [
+              { role: 'user', content: BRIEF_NORMALIZER_USER_PROMPT(brief, campaignType, goalType) }
+            ]
+          })
+          console.log('[generateCampaignStructure] Brief Normalizer response received')
+        } catch (error) {
+          console.error('[generateCampaignStructure] Brief Normalizer error:', error)
+          throw new Error(`Brief Normalizer failed: ${error instanceof Error ? error.message : String(error)}`)
+        }
 
         const normalizerContent = normalizerResponse.content[0].type === 'text' 
           ? normalizerResponse.content[0].text 
@@ -110,14 +123,22 @@ function createCopilotActions(
         }
 
         // Step 2: Strategy Designer
-        const strategyResponse = await client.messages.create({
-          model,
-          max_tokens: 4096,
-          system: STRATEGY_DESIGNER_SYSTEM_PROMPT,
-          messages: [
-            { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(normalizedBrief) }
-          ]
-        })
+        console.log('[generateCampaignStructure] Step 2: Calling Strategy Designer with normalized brief:', JSON.stringify(normalizedBrief, null, 2))
+        let strategyResponse
+        try {
+          strategyResponse = await client.messages.create({
+            model,
+            max_tokens: 4096,
+            system: STRATEGY_DESIGNER_SYSTEM_PROMPT,
+            messages: [
+              { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(normalizedBrief) }
+            ]
+          })
+          console.log('[generateCampaignStructure] Strategy Designer response received')
+        } catch (error) {
+          console.error('[generateCampaignStructure] Strategy Designer error:', error)
+          throw new Error(`Strategy Designer failed: ${error instanceof Error ? error.message : String(error)}`)
+        }
 
         const strategyContent = strategyResponse.content[0].type === 'text'
           ? strategyResponse.content[0].text
@@ -150,11 +171,18 @@ function createCopilotActions(
 
         try {
           campaignStructure = CampaignStructureSchema.parse(campaignStructure)
+          console.log('[generateCampaignStructure] Successfully validated campaign structure')
         } catch (validationError) {
           console.error('Strategy Designer Schema Validation Error:', validationError)
-          throw new Error('Failed to validate strategy designer output')
+          console.error('Raw campaign structure:', JSON.stringify(campaignStructure, null, 2))
+          throw new Error(`Failed to validate strategy designer output: ${validationError instanceof Error ? validationError.message : String(validationError)}`)
         }
 
+        console.log('[generateCampaignStructure] Returning campaign structure with', 
+          campaignStructure.goals?.length || 0, 'goals,',
+          campaignStructure.segments?.length || 0, 'segments,',
+          campaignStructure.topics?.length || 0, 'topics,',
+          campaignStructure.narratives?.length || 0, 'narratives')
         return campaignStructure
       },
     },

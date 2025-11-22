@@ -49,12 +49,25 @@ class CopilotKitErrorBoundary extends Component<
 export function CopilotKitProvider({ children, properties }: CopilotKitProviderProps) {
   // Get runtime URL from environment or use default
   const runtimeUrl = process.env.NEXT_PUBLIC_COPILOTKIT_RUNTIME_URL || '/api/copilotkit'
+  
+  // Enable dev console in development for error debugging
+  const showDevConsole = process.env.NODE_ENV === 'development'
 
   return (
     <CopilotKitErrorBoundary>
       <CopilotKit 
         runtimeUrl={runtimeUrl}
         properties={properties}
+        showDevConsole={showDevConsole}
+        onError={(errorEvent) => {
+          // Log errors for debugging
+          console.error('[CopilotKit Error]', {
+            type: errorEvent.type,
+            source: errorEvent.context.source,
+            error: errorEvent.error,
+            context: errorEvent.context,
+          })
+        }}
       >
         {children}
       </CopilotKit>
