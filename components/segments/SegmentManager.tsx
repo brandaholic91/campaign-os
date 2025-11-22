@@ -180,23 +180,26 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Célcsoportok</h2>
-        <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="mr-2 h-4 w-4" />
+    <div className="bg-white rounded-2xl shadow-soft border border-gray-200 p-6 md:p-8">
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-xl font-display font-bold text-gray-900">Célcsoportok</h2>
+        <button 
+          onClick={() => setShowForm(!showForm)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium text-sm transition-all shadow-lg shadow-primary-600/20"
+        >
+          <Plus className="w-4 h-4" />
           {showForm ? 'Mégse' : 'Új célcsoport'}
-        </Button>
+        </button>
       </div>
 
       {error && (
-        <div className="p-4 bg-destructive/10 text-destructive rounded-md">
+        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg mb-6">
           {error}
         </div>
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg">
+        <form onSubmit={handleSubmit} className="space-y-4 p-6 border border-gray-200 rounded-xl mb-8 bg-gray-50/50">
           <div className="space-y-2">
             <Label htmlFor="name">Név *</Label>
             <Input
@@ -261,7 +264,7 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
 
           <div className="flex gap-2">
             <Button type="submit">{editingId ? 'Frissítés' : 'Létrehozás'}</Button>
-            <Button type="button" onClick={handleCancel} className="border border-input bg-background hover:bg-accent">
+            <Button type="button" variant="secondary" onClick={handleCancel}>
               Mégse
             </Button>
           </div>
@@ -269,48 +272,64 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
       )}
 
       {segments.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>Még nincsenek célcsoportok</p>
-          <p className="text-sm mt-2">Kattints az "Új célcsoport" gombra a hozzáadáshoz</p>
+        <div className="text-center py-12 text-gray-500">
+          <p className="text-lg font-medium mb-2">Még nincsenek célcsoportok</p>
+          <p className="text-sm">Kattints az "Új célcsoport" gombra a hozzáadáshoz</p>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Név</TableHead>
-              <TableHead>Leírás</TableHead>
-              <TableHead>Prioritás</TableHead>
-              <TableHead className="text-right">Műveletek</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {segments.map((segment) => (
-              <TableRow key={segment.id}>
-                <TableCell className="font-medium">{segment.name}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {segment.description || '-'}
-                </TableCell>
-                <TableCell>{segment.priority || '-'}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      className="hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => handleEdit(segment)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      className="hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => handleDelete(segment.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <th className="py-4 px-4 w-1/4">Név</th>
+                <th className="py-4 px-4 w-1/2">Leírás</th>
+                <th className="py-4 px-4 w-24 text-center">Prioritás</th>
+                <th className="py-4 px-4 w-32 text-right">Műveletek</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {segments.map((segment) => (
+                <tr key={segment.id} className="group hover:bg-gray-50/50 transition-colors">
+                  <td className="py-6 px-4 align-top">
+                    <span className="font-display font-bold text-gray-900 text-sm leading-snug block">
+                      {segment.name}
+                    </span>
+                  </td>
+                  <td className="py-6 px-4 align-top">
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {segment.description || '-'}
+                    </p>
+                  </td>
+                  <td className="py-6 px-4 align-top text-center">
+                    {segment.priority ? (
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold text-xs">
+                        {segment.priority}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="py-6 px-4 align-top text-right">
+                    <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        className="p-2 bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:text-primary-600 transition-colors shadow-sm"
+                        onClick={() => handleEdit(segment)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button 
+                        className="p-2 bg-white border border-gray-200 rounded-lg hover:border-rose-300 hover:text-rose-600 transition-colors shadow-sm"
+                        onClick={() => handleDelete(segment.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

@@ -17,7 +17,7 @@ export default function Home() {
             </Button>
           </Link>
           <Link href="/campaigns/new">
-            <Button className="h-11 px-8 border border-input bg-background hover:bg-accent">
+            <Button variant="secondary" className="h-11 px-8">
               <Plus className="mr-2 h-5 w-5" />
               Új kampány
             </Button>

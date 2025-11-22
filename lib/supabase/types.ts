@@ -51,6 +51,7 @@ export type Database = {
           end_date: string
           id: string
           name: string
+          narratives: Json | null
           primary_goal_type: Database["public"]["Enums"]["goal_type"]
           secondary_goals: Json | null
           start_date: string
@@ -65,6 +66,7 @@ export type Database = {
           end_date: string
           id?: string
           name: string
+          narratives?: Json | null
           primary_goal_type: Database["public"]["Enums"]["goal_type"]
           secondary_goals?: Json | null
           start_date: string
@@ -79,6 +81,7 @@ export type Database = {
           end_date?: string
           id?: string
           name?: string
+          narratives?: Json | null
           primary_goal_type?: Database["public"]["Enums"]["goal_type"]
           secondary_goals?: Json | null
           start_date?: string

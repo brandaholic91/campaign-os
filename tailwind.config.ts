@@ -17,6 +17,10 @@ export default {
   		}
   	},
   	extend: {
+  		fontFamily: {
+  			sans: ['Inter', 'sans-serif'],
+  			display: ['Plus Jakarta Sans', 'sans-serif'],
+  		},
   		colors: {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
@@ -24,6 +28,17 @@ export default {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			primary: {
+  				50: '#f5f3ff',
+  				100: '#ede9fe',
+  				200: '#ddd6fe',
+  				300: '#c4b5fd',
+  				400: '#a78bfa',
+  				500: '#8b5cf6',
+  				600: '#7c3aed',
+  				700: '#6d28d9',
+  				800: '#5b21b6',
+  				900: '#4c1d95',
+  				950: '#2e1065',
   				DEFAULT: 'hsl(var(--primary))',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
@@ -57,7 +72,16 @@ export default {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
+  			},
+  			dark: {
+  				900: '#0f172a',
+  				800: '#1e293b',
+  				700: '#334155',
   			}
+  		},
+  		boxShadow: {
+  			'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+  			'glow': '0 0 15px rgba(124, 58, 237, 0.3)',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
