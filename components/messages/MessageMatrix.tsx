@@ -57,6 +57,7 @@ export default function MessageMatrix({
   const [selectedSegments, setSelectedSegments] = useState<Set<string>>(new Set())
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set())
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generatingCell, setGeneratingCell] = useState<{ segmentId: string; topicId: string } | null>(null)
   const [generatedStrategies, setGeneratedStrategies] = useState<any[]>([])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
@@ -97,8 +98,68 @@ export default function MessageMatrix({
     router.refresh()
   }
 
-  const handleGenerateStrategy = (segmentId: string, topicId: string) => {
-    toast.info("Az AI generálás a következő sztoriban (3.0.3) lesz implementálva.")
+  const handleGenerateStrategy = async (segmentId: string, topicId: string) => {
+    setGeneratingCell({ segmentId, topicId })
+    try {
+      const response = await fetch('/api/ai/strategy-matrix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          segment_ids: [segmentId],
+          topic_ids: [topicId]
+        })
+      })
+
+      if (!response.ok) {
+        let errorMessage = 'Hiba történt a generálás során'
+        try {
+          const error = await response.json()
+          errorMessage = error.error || error.message || errorMessage
+          if (error.details) {
+            errorMessage += `: ${error.details}`
+          }
+        } catch (parseError) {
+          try {
+            const text = await response.text()
+            if (text) {
+              errorMessage = text
+            }
+          } catch (textError) {
+            errorMessage = `HTTP ${response.status}: ${response.statusText || 'Ismeretlen hiba'}`
+          }
+        }
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+      
+      if (!data.strategies || !Array.isArray(data.strategies) || data.strategies.length === 0) {
+        throw new Error('Nem sikerült stratégiát generálni. Kérlek, próbáld újra.')
+      }
+      
+      // Map response to format expected by preview
+      const strategiesWithNames = data.strategies.map((s: any) => {
+        const segment = segments.find(seg => seg.id === s.segment_id)
+        const topic = topics.find(t => t.id === s.topic_id)
+        return {
+          ...s,
+          segment_name: segment?.name || 'Ismeretlen',
+          topic_name: topic?.name || 'Ismeretlen'
+        }
+      })
+
+      setGeneratedStrategies(strategiesWithNames)
+      setIsPreviewOpen(true)
+    } catch (error) {
+      console.error('Generation error:', error)
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Hiba történt a generálás során'
+      toast.error(errorMessage)
+    } finally {
+      setGeneratingCell(null)
+    }
   }
 
   const handleBatchGenerate = async () => {
@@ -467,10 +528,12 @@ export default function MessageMatrix({
                               contentKeys: strategy.content ? Object.keys(strategy.content) : null
                             })
                           }
+                          const isCellGenerating = generatingCell?.segmentId === segment.id && generatingCell?.topicId === topic.id
                           return (
                             <StrategyCell
                               key={`${segment.id}-${topic.id}`}
                               strategy={strategy?.content}
+                              isLoading={isCellGenerating}
                               onClick={() => handleCellClick(segment.id, topic.id)}
                               onCreate={() => handleCreateStrategy(segment.id, topic.id)}
                               onGenerate={() => handleGenerateStrategy(segment.id, topic.id)}
