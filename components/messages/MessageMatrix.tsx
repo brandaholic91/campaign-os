@@ -179,13 +179,11 @@ export default function MessageMatrix({
   const selectedSegmentsArray = segments.filter(s => selectedSegments.has(s.id))
   const selectedTopicsArray = topics.filter(t => selectedTopics.has(t.id))
   const cellCount = selectedSegmentsArray.length * selectedTopicsArray.length
+  const hasAnyData = segments.length > 0 && topics.length > 0
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex flex-col font-sans text-gray-900">
-      {/* Main Workflow Area */}
-      <main className="flex-1 max-w-[1800px] mx-auto w-full px-6 py-8 flex flex-col gap-8">
-        
-        {/* Configuration Panel (Bento Grid Style) */}
+    <div className="flex-1 flex flex-col gap-8">
+      {/* Configuration Panel (Bento Grid Style) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Audience Selector */}
@@ -260,13 +258,13 @@ export default function MessageMatrix({
 
         {/* Matrix View */}
         <div className="flex-1 flex flex-col">
-            {selectedSegmentsArray.length > 0 && selectedTopicsArray.length > 0 ? (
+            {hasAnyData ? (
               <div className="bg-white rounded-2xl shadow-soft border border-gray-200 overflow-hidden flex flex-col relative">
                 <div className="overflow-auto custom-scrollbar flex-1 max-h-[800px]">
                   <div 
                     className="grid"
                     style={{
-                      gridTemplateColumns: `minmax(280px, 320px) repeat(${selectedTopicsArray.length}, minmax(340px, 1fr))`
+                      gridTemplateColumns: `minmax(280px, 320px) repeat(${topics.length}, minmax(340px, 1fr))`
                     }}
                   >
                     {/* Corner Cell */}
@@ -281,7 +279,7 @@ export default function MessageMatrix({
                     </div>
 
                     {/* Header Row (Topics) */}
-                    {selectedTopicsArray.map(topic => (
+                    {topics.map(topic => (
                       <div key={topic.id} className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm border-r border-b border-gray-200 p-6 flex flex-col justify-center min-h-[120px]">
                         <div className="flex items-center gap-2 mb-2">
                             <span className="w-6 h-6 rounded bg-primary-100 text-primary-600 flex items-center justify-center text-xs font-bold">T</span>
@@ -292,7 +290,7 @@ export default function MessageMatrix({
                     ))}
 
                     {/* Rows (Audiences + Cells) */}
-                    {selectedSegmentsArray.map(segment => (
+                    {segments.map(segment => (
                       <React.Fragment key={segment.id}>
                         {/* Sticky Row Header (Audience) */}
                         <div className="sticky left-0 z-10 bg-white border-r border-b border-gray-200 p-6 group transition-colors hover:bg-gray-50">
@@ -310,7 +308,7 @@ export default function MessageMatrix({
                         </div>
 
                         {/* Data Cells */}
-                        {selectedTopicsArray.map(topic => {
+                        {topics.map(topic => {
                           const message = getMessageForCell(segment.id, topic.id)
                           return (
                             <MatrixCell
@@ -334,12 +332,11 @@ export default function MessageMatrix({
                 </div>
                 <h3 className="text-gray-900 font-display font-bold text-xl mb-2">Kezdjük el a tervezést</h3>
                 <p className="text-gray-500 max-w-md leading-relaxed">
-                  Válassz legalább egy <span className="text-blue-600 font-medium">célcsoportot</span> és egy <span className="text-primary-600 font-medium">témát</span> a fenti panelen a mátrix megjelenítéséhez.
+                  Hozz létre <span className="text-blue-600 font-medium">célcsoportokat</span> és <span className="text-primary-600 font-medium">témákat</span> a mátrix megjelenítéséhez.
                 </p>
               </div>
             )}
         </div>
-      </main>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">

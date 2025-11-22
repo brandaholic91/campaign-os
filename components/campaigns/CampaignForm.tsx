@@ -285,7 +285,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
   })
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="p-4 bg-destructive/10 text-destructive rounded-md">
           {error}
@@ -404,7 +404,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
         </Button>
         <Button
           type="button"
-          className="border border-input bg-background hover:bg-accent"
+          variant="secondary"
           onClick={() => router.back()}
           disabled={loading}
         >

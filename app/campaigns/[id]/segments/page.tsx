@@ -30,17 +30,24 @@ export default async function SegmentsPage({ params }: SegmentsPageProps) {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6">
+    <div className="max-w-[1800px] mx-auto w-full px-6 py-8 flex flex-col gap-8 animate-in slide-in-from-right duration-500">
+      {/* Header */}
+      <div className="flex flex-col gap-6">
         <Link href={`/campaigns/${id}`}>
-          <Button className="mb-4 hover:bg-accent hover:text-accent-foreground">
-            <ArrowLeft className="mr-2 h-4 w-4" />
+          <button className="self-start flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 font-medium text-sm hover:bg-gray-50 hover:text-primary-600 transition-all">
+            <ArrowLeft className="w-4 h-4" />
             Vissza a kampányhoz
-          </Button>
+          </button>
         </Link>
-        <h1 className="text-3xl font-bold">{campaign.name}</h1>
-        <p className="text-muted-foreground mt-2">Célcsoportok kezelése</p>
+
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-gray-900">{campaign.name}</h1>
+            <p className="text-gray-500 mt-1">Célcsoportok kezelése</p>
+          </div>
+        </div>
       </div>
+
       <SegmentManager campaignId={id} />
     </div>
   )

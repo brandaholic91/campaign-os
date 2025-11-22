@@ -46,7 +46,9 @@ export function CampaignList() {
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-4">
         <div className="text-destructive">{error}</div>
-        <Button onClick={() => window.location.reload()}>Újrapróbálás</Button>
+        <Button onClick={() => window.location.reload()}>
+          Újrapróbálás
+        </Button>
       </div>
     )
   }
@@ -60,7 +62,7 @@ export function CampaignList() {
         </div>
         <div className="flex gap-2">
           <Link href="/campaigns/new/ai">
-            <Button variant="secondary">
+            <Button variant="outline">
               <Sparkles className="mr-2 h-4 w-4" />
               AI Tervező
             </Button>
@@ -82,7 +84,7 @@ export function CampaignList() {
         <h2 className="text-2xl font-bold">Kampányok</h2>
           <div className="flex gap-2">
             <Link href="/campaigns/new/ai">
-              <Button variant="secondary">
+              <Button variant="outline">
                 <Sparkles className="mr-2 h-4 w-4" />
                 AI Tervező
               </Button>

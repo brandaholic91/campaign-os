@@ -225,24 +225,27 @@ export default function CampaignAIPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="mb-6">
-        <Link href="/campaigns" className="text-sm text-muted-foreground hover:text-primary flex items-center mb-4">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Vissza a kampányokhoz
-        </Link>
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Sparkles className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold">Kampány Tervező AI</h1>
-            <p className="text-muted-foreground mt-1">
-              Írd le a kampányod célját, és az AI segít felépíteni a struktúrát
-            </p>
+    <div className="min-h-screen bg-[#F9FAFB] font-sans text-gray-900">
+      <div className="container mx-auto py-8 px-4 max-w-4xl">
+        <div className="mb-6">
+          <Link href="/campaigns">
+            <button className="self-start flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 font-medium text-sm hover:bg-gray-50 hover:text-primary-600 transition-all mb-4">
+              <ArrowLeft className="w-4 h-4" />
+              Vissza a kampányokhoz
+            </button>
+          </Link>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-display font-bold text-gray-900">Kampány Tervező AI</h1>
+              <p className="text-gray-500 mt-1">
+                Írd le a kampányod célját, és az AI segít felépíteni a struktúrát
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
       <div className="grid gap-8">
         <Card>
@@ -379,6 +382,7 @@ export default function CampaignAIPage() {
             />
           </div>
         )}
+      </div>
       </div>
     </div>
   )

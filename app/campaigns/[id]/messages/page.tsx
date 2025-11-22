@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import MessageMatrix from '@/components/messages/MessageMatrix'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 
 export default async function MessageMatrixPage({
   params,
@@ -39,11 +41,25 @@ export default async function MessageMatrixPage({
     .eq('campaign_id', id)
 
   return (
-    <MessageMatrix
-      campaignId={id}
-      segments={segments || []}
-      topics={topics || []}
-      messages={messages || []}
-    />
+    <div className="min-h-screen bg-[#F9FAFB] flex flex-col font-sans text-gray-900">
+      <div className="max-w-[1800px] mx-auto w-full px-6 py-8 flex flex-col gap-8">
+        {/* Header */}
+        <div className="flex flex-col gap-6">
+          <Link href={`/campaigns/${id}`}>
+            <button className="self-start flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-600 font-medium text-sm hover:bg-gray-50 hover:text-primary-600 transition-all">
+              <ArrowLeft className="w-4 h-4" />
+              Vissza a kampányhoz
+            </button>
+          </Link>
+        </div>
+
+        <MessageMatrix
+          campaignId={id}
+          segments={segments || []}
+          topics={topics || []}
+          messages={messages || []}
+        />
+      </div>
+    </div>
   )
 }
