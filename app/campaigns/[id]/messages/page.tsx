@@ -39,20 +39,11 @@ export default async function MessageMatrixPage({
     .eq('campaign_id', id)
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Message Matrix</h1>
-        <p className="text-muted-foreground">
-          Manage messages for {campaign.name} across segments and topics.
-        </p>
-      </div>
-
-      <MessageMatrix
-        campaignId={id}
-        segments={segments || []}
-        topics={topics || []}
-        messages={messages || []}
-      />
-    </div>
+    <MessageMatrix
+      campaignId={id}
+      segments={segments || []}
+      topics={topics || []}
+      messages={messages || []}
+    />
   )
 }
