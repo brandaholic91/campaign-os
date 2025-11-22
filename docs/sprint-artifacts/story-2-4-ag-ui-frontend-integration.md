@@ -1,6 +1,6 @@
 # Story 2.4: CopilotKit Frontend Integration (Kampánysegéd)
 
-**Status:** review
+**Status:** done
 
 ---
 

@@ -1,6 +1,6 @@
 # Story 2.1: LLM + CopilotKit Infrastructure
 
-**Status:** review
+**Status:** done
 
 **Status note (2025-11-21):** CopilotKit endpoint és alapvető infrastructure implementálva, de CopilotKit provider működésének validálása szükséges Story 2.2 CopilotKit event streaming és state sync integrációjához. Status `review`-ról `in-progress`-re frissítve, mert Story 2.2 deferred tasks Story 2.1 infrastructure hiányára hivatkoznak.
 

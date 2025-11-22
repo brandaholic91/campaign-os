@@ -1,6 +1,6 @@
 # Story 2.2: Campaign Brief → Structure AI
 
-**Status:** review
+**Status:** done
 
 **Status note (2025-11-22):** CopilotKit event streaming (AC #5) és CopilotKit state sync (AC #7) implementálva. A frontend most CopilotKit-tel kommunikál a `/api/copilotkit` endpoint-on keresztül, valós idejű streaming-gel és state sync-cel. A `generateCampaignStructure` backend action a CopilotKit runtime-ban van implementálva.
 
