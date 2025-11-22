@@ -61,9 +61,17 @@ export default function MessageMatrix({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   const getStrategyForCell = (segmentId: string, topicId: string) => {
-    return strategies.find(
+    const found = strategies.find(
       (s) => s.segment_id === segmentId && s.topic_id === topicId
     )
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[getStrategyForCell] Looking for segment ${segmentId}, topic ${topicId}`, {
+        found: !!found,
+        totalStrategies: strategies.length,
+        strategies: strategies.map(s => ({ segment: s.segment_id, topic: s.topic_id }))
+      })
+    }
+    return found
   }
 
   const handleCellClick = (segmentId: string, topicId: string) => {
@@ -112,11 +120,43 @@ export default function MessageMatrix({
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Hiba történt a generálás során')
+        let errorMessage = 'Hiba történt a generálás során'
+        let errorDetails: any = null
+        try {
+          const error = await response.json()
+          errorMessage = error.error || error.message || errorMessage
+          errorDetails = error
+          if (error.details) {
+            errorMessage += `: ${error.details}`
+          }
+          if (error.debug) {
+            console.error('[handleBatchGenerate] Error debug info:', error.debug)
+          }
+        } catch (parseError) {
+          // Ha nem JSON a válasz, próbáljuk meg szövegként olvasni
+          try {
+            const text = await response.text()
+            if (text) {
+              errorMessage = text
+            }
+          } catch (textError) {
+            // Ha ez sem sikerül, használjuk az alapértelmezett üzenetet
+            errorMessage = `HTTP ${response.status}: ${response.statusText || 'Ismeretlen hiba'}`
+          }
+        }
+        console.error('[handleBatchGenerate] Generation failed:', {
+          status: response.status,
+          errorMessage,
+          errorDetails
+        })
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
+      
+      if (!data.strategies || !Array.isArray(data.strategies) || data.strategies.length === 0) {
+        throw new Error('Nem sikerült stratégiát generálni. Kérlek, próbáld újra.')
+      }
       
       // Map response to format expected by preview
       const strategiesWithNames = data.strategies.map((s: any) => {
@@ -133,13 +173,18 @@ export default function MessageMatrix({
       setIsPreviewOpen(true)
     } catch (error) {
       console.error('Generation error:', error)
-      toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás során')
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Hiba történt a generálás során'
+      toast.error(errorMessage)
     } finally {
       setIsGenerating(false)
     }
   }
 
   const handleSaveStrategies = async (approvedStrategies: any[]) => {
+    console.log('[handleSaveStrategies] Starting to save strategies:', approvedStrategies.length)
+    console.log('[handleSaveStrategies] Approved strategies data:', JSON.stringify(approvedStrategies, null, 2))
     try {
       let successCount = 0
       let errorCount = 0
@@ -148,30 +193,72 @@ export default function MessageMatrix({
       // Save each approved strategy
       for (const item of approvedStrategies) {
         try {
+          // Validate that we have the required data
+          if (!item.strategy) {
+            console.error('[handleSaveStrategies] Missing strategy in item:', item)
+            errors.push(`${item.segment_name || 'Unknown'} × ${item.topic_name || 'Unknown'}: hiányzó stratégia adatok`)
+            errorCount++
+            continue
+          }
+
+          if (!item.strategy.strategy_core || !item.strategy.style_tone || !item.strategy.cta_funnel) {
+            console.error('[handleSaveStrategies] Missing required strategy fields:', {
+              has_strategy_core: !!item.strategy.strategy_core,
+              has_style_tone: !!item.strategy.style_tone,
+              has_cta_funnel: !!item.strategy.cta_funnel,
+              item: item
+            })
+            errors.push(`${item.segment_name || 'Unknown'} × ${item.topic_name || 'Unknown'}: hiányzó kötelező mezők`)
+            errorCount++
+            continue
+          }
+
+          const payload = {
+            campaign_id: campaignId,
+            segment_id: item.segment_id,
+            topic_id: item.topic_id,
+            strategy_core: item.strategy.strategy_core,
+            style_tone: item.strategy.style_tone,
+            cta_funnel: item.strategy.cta_funnel,
+            extra_fields: item.strategy.extra_fields,
+            preview_summary: item.strategy.preview_summary,
+          }
+          console.log('[handleSaveStrategies] Saving strategy:', {
+            segment_id: item.segment_id,
+            topic_id: item.topic_id,
+            segment_name: item.segment_name,
+            topic_name: item.topic_name,
+            payload_keys: Object.keys(payload)
+          })
+          
           const response = await fetch('/api/strategies', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              campaign_id: campaignId,
-              segment_id: item.segment_id,
-              topic_id: item.topic_id,
-              strategy_core: item.strategy.strategy_core,
-              style_tone: item.strategy.style_tone,
-              cta_funnel: item.strategy.cta_funnel,
-              extra_fields: item.strategy.extra_fields,
-              preview_summary: item.strategy.preview_summary,
-            }),
+            body: JSON.stringify(payload),
           })
 
           if (response.ok) {
+            const savedData = await response.json()
+            console.log('[handleSaveStrategies] Strategy saved successfully:', savedData.id)
             successCount++
           } else {
-            const error = await response.json()
+            let errorData
+            try {
+              errorData = await response.json()
+            } catch (e) {
+              errorData = { error: `HTTP ${response.status}: ${response.statusText}` }
+            }
+            console.error('[handleSaveStrategies] Failed to save strategy:', {
+              status: response.status,
+              error: errorData,
+              payload: payload
+            })
             if (response.status === 409) {
               // UNIQUE constraint violation - strategy already exists
               errors.push(`${item.segment_name} × ${item.topic_name}: már létezik`)
             } else {
-              errors.push(`${item.segment_name} × ${item.topic_name}: ${error.error}`)
+              const errorMsg = errorData.error || errorData.details || 'Ismeretlen hiba'
+              errors.push(`${item.segment_name} × ${item.topic_name}: ${errorMsg}`)
             }
             errorCount++
           }
@@ -192,7 +279,12 @@ export default function MessageMatrix({
       }
 
       // Refresh the matrix to show new strategies
-      router.refresh()
+      console.log('[handleSaveStrategies] Refreshing page after saving strategies')
+      // Force a hard refresh to ensure new data is loaded
+      // Using setTimeout to ensure the toast notifications are visible before reload
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
     } catch (error) {
       console.error('Unexpected error saving strategies:', error)
       toast.error('Hiba történt a mentés során')
@@ -368,6 +460,13 @@ export default function MessageMatrix({
                         {/* Data Cells */}
                         {topics.map(topic => {
                           const strategy = getStrategyForCell(segment.id, topic.id)
+                          if (process.env.NODE_ENV === 'development' && strategy) {
+                            console.log(`[MessageMatrix] Rendering cell for segment ${segment.id}, topic ${topic.id}`, {
+                              hasStrategy: !!strategy,
+                              hasContent: !!strategy.content,
+                              contentKeys: strategy.content ? Object.keys(strategy.content) : null
+                            })
+                          }
                           return (
                             <StrategyCell
                               key={`${segment.id}-${topic.id}`}

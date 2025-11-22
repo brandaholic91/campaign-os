@@ -36,3 +36,21 @@ COMMENT ON COLUMN campaign_os.message_strategies.strategy_core IS 'JSONB contain
 COMMENT ON COLUMN campaign_os.message_strategies.style_tone IS 'JSONB containing tone_profile, language_style, communication_guidelines, emotional_temperature';
 COMMENT ON COLUMN campaign_os.message_strategies.cta_funnel IS 'JSONB containing funnel_stage, cta_objectives[], cta_patterns[], friction_reducers[]';
 COMMENT ON COLUMN campaign_os.message_strategies.extra_fields IS 'JSONB containing optional framing_type, key_phrases[], risk_notes';
+
+-- Enable Row Level Security
+ALTER TABLE campaign_os.message_strategies ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for message_strategies
+-- Allow all operations for authenticated users (since we're using server-side API routes)
+CREATE POLICY "Allow all operations on message_strategies for authenticated users"
+  ON campaign_os.message_strategies
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Also allow operations for anon key (for API routes)
+CREATE POLICY "Allow all operations on message_strategies for anon"
+  ON campaign_os.message_strategies
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);

@@ -102,37 +102,58 @@ export async function POST(req: NextRequest) {
         }
 
         try {
+          console.log(`[Strategy Generation] Starting for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id})`)
           const response = await client.messages.create({
             model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-            max_tokens: 2048,
+            max_tokens: 4096,
             system: STRATEGY_GENERATOR_SYSTEM_PROMPT,
             messages: [
               { role: 'user', content: STRATEGY_GENERATOR_USER_PROMPT(context) }
             ]
           })
 
+          console.log(`[Strategy Generation] Received response for segment ${segment.name}, topic ${topic.name}`)
           const content = response.content[0].type === 'text' 
             ? response.content[0].text 
             : ''
 
           if (!content) {
-            console.warn(`Empty response for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id})`)
+            console.error(`[Strategy Generation] Empty response for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id})`)
+            console.error(`[Strategy Generation] Response structure:`, {
+              contentLength: response.content.length,
+              firstContentType: response.content[0]?.type
+            })
             continue
           }
 
-          // Extract JSON from response (handle markdown code blocks)
+          console.log(`[Strategy Generation] Content length: ${content.length} characters`)
+          console.log(`[Strategy Generation] First 200 chars: ${content.substring(0, 200)}`)
+
+          // Extract JSON from response (handle markdown code blocks and explanations)
           let jsonContent = content.trim()
           
-          // Remove markdown code blocks if present
-          if (jsonContent.startsWith('```')) {
-            const lines = jsonContent.split('\n')
-            const firstLine = lines[0]
-            const lastLine = lines[lines.length - 1]
-            
-            // Remove first and last line if they are code block markers
-            if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
-              jsonContent = lines.slice(1, -1).join('\n')
+          // Remove markdown code blocks if present (handle various formats)
+          if (jsonContent.includes('```')) {
+            // Find JSON code block
+            const jsonBlockMatch = jsonContent.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/)
+            if (jsonBlockMatch && jsonBlockMatch[1]) {
+              jsonContent = jsonBlockMatch[1].trim()
+            } else {
+              // Fallback: remove first and last lines if they are code block markers
+              const lines = jsonContent.split('\n')
+              const firstLine = lines[0]?.trim()
+              const lastLine = lines[lines.length - 1]?.trim()
+              
+              if (firstLine?.match(/^```(json)?$/) && lastLine?.match(/^```$/)) {
+                jsonContent = lines.slice(1, -1).join('\n').trim()
+              }
             }
+          }
+          
+          // Try to extract JSON object if there's text before/after
+          const jsonObjectMatch = jsonContent.match(/\{[\s\S]*\}/)
+          if (jsonObjectMatch) {
+            jsonContent = jsonObjectMatch[0]
           }
 
           let strategyData
@@ -140,18 +161,46 @@ export async function POST(req: NextRequest) {
             strategyData = JSON.parse(jsonContent)
           } catch (parseError) {
             console.error(`JSON parse error for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id}):`, parseError)
-            console.error('Raw output:', content)
-            console.error('Extracted JSON:', jsonContent)
+            console.error('Raw output:', content.substring(0, 500)) // Limit log size
+            console.error('Extracted JSON:', jsonContent.substring(0, 500))
+            console.error('Parse error details:', parseError instanceof Error ? parseError.message : String(parseError))
             continue
           }
 
           // Validate strategy
           try {
-            // Generate preview summary if not present (though prompt should ideally handle it, we can generate it here or let the UI handle it)
-            // For now, we'll just validate the core structure. The schema has preview_summary as optional.
+            // Normalize data to match schema constraints before validation
+            // Fix cta_patterns array length (max 3)
+            if (strategyData.cta_funnel?.cta_patterns && Array.isArray(strategyData.cta_funnel.cta_patterns)) {
+              if (strategyData.cta_funnel.cta_patterns.length > 3) {
+                console.warn(`[Strategy Generation] cta_patterns has ${strategyData.cta_funnel.cta_patterns.length} items, truncating to 3`)
+                strategyData.cta_funnel.cta_patterns = strategyData.cta_funnel.cta_patterns.slice(0, 3)
+              }
+            }
             
-            // We need to remove preview_summary if it's not in the AI output to avoid validation error if we were to strictly require it, 
-            // but the schema says optional.
+            // Fix supporting_messages array length (3-5 items)
+            if (strategyData.strategy_core?.supporting_messages && Array.isArray(strategyData.strategy_core.supporting_messages)) {
+              if (strategyData.strategy_core.supporting_messages.length > 5) {
+                console.warn(`[Strategy Generation] supporting_messages has ${strategyData.strategy_core.supporting_messages.length} items, truncating to 5`)
+                strategyData.strategy_core.supporting_messages = strategyData.strategy_core.supporting_messages.slice(0, 5)
+              }
+            }
+            
+            // Fix proof_points array length (2-3 items)
+            if (strategyData.strategy_core?.proof_points && Array.isArray(strategyData.strategy_core.proof_points)) {
+              if (strategyData.strategy_core.proof_points.length > 3) {
+                console.warn(`[Strategy Generation] proof_points has ${strategyData.strategy_core.proof_points.length} items, truncating to 3`)
+                strategyData.strategy_core.proof_points = strategyData.strategy_core.proof_points.slice(0, 3)
+              }
+            }
+            
+            // Fix tone_profile keywords array length (3-5 items)
+            if (strategyData.style_tone?.tone_profile?.keywords && Array.isArray(strategyData.style_tone.tone_profile.keywords)) {
+              if (strategyData.style_tone.tone_profile.keywords.length > 5) {
+                console.warn(`[Strategy Generation] tone_profile.keywords has ${strategyData.style_tone.tone_profile.keywords.length} items, truncating to 5`)
+                strategyData.style_tone.tone_profile.keywords = strategyData.style_tone.tone_profile.keywords.slice(0, 5)
+              }
+            }
             
             // Construct the preview summary manually if missing, as per AC #5
             if (!strategyData.preview_summary) {
@@ -175,12 +224,20 @@ export async function POST(req: NextRequest) {
             })
           } catch (validationError) {
             console.error(`Validation error for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id}):`, validationError)
-            console.error('Parsed strategyData:', strategyData)
-            console.error('Raw output:', content)
+            console.error('Validation error details:', validationError instanceof Error ? validationError.message : String(validationError))
+            if (validationError instanceof Error && 'issues' in validationError) {
+              console.error('Zod validation issues:', (validationError as any).issues)
+            }
+            console.error('Parsed strategyData keys:', Object.keys(strategyData || {}))
+            console.error('Raw output (first 500 chars):', content.substring(0, 500))
             continue
           }
         } catch (error) {
           console.error(`Error generating strategy for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id}):`, error)
+          if (error instanceof Error) {
+            console.error('Error message:', error.message)
+            console.error('Error stack:', error.stack)
+          }
           // Continue with next combination
           continue
         }
@@ -188,10 +245,24 @@ export async function POST(req: NextRequest) {
     }
 
     if (generatedStrategies.length === 0) {
-      console.error('No strategies generated. Total combinations attempted:', segments.length * topics.length)
+      const totalCombinations = segments.length * topics.length
+      console.error('No strategies generated. Total combinations attempted:', totalCombinations)
+      console.error('Segments:', segments.map(s => ({ id: s.id, name: s.name })))
+      console.error('Topics:', topics.map(t => ({ id: t.id, name: t.name })))
+      console.error('Campaign ID:', campaign_id)
+      console.error('Campaign data:', campaignData)
+      
+      // Check if there were any errors during generation
+      // We should have logged errors above, but let's provide a more helpful error message
       return NextResponse.json({ 
-        error: 'Failed to generate any strategies',
-        details: `Attempted ${segments.length * topics.length} combinations but none succeeded. Check server logs for details.`
+        error: 'Nem sikerült stratégiát generálni',
+        details: `${totalCombinations} kombinációt próbáltunk meg generálni, de egyik sem sikerült. Lehetséges okok: AI válasz nem tartalmazott érvényes JSON-t, validációs hiba, vagy hálózati probléma. Kérlek, ellenőrizd a szerver logokat további részletekért.`,
+        debug: {
+          totalCombinations,
+          segmentsCount: segments.length,
+          topicsCount: topics.length,
+          campaignId: campaign_id
+        }
       }, { status: 500 })
     }
 

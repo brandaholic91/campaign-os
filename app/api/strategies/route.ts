@@ -99,10 +99,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('[POST /api/strategies] Received request:', {
+      campaign_id: body.campaign_id,
+      segment_id: body.segment_id,
+      topic_id: body.topic_id,
+      has_strategy_core: !!body.strategy_core,
+      has_style_tone: !!body.style_tone,
+      has_cta_funnel: !!body.cta_funnel,
+    })
 
     // Validate request body
     const validationResult = CreateStrategyRequestSchema.safeParse(body)
     if (!validationResult.success) {
+      console.error('[POST /api/strategies] Validation error:', validationResult.error.issues)
       return NextResponse.json(
         { 
           error: 'Validation error', 
@@ -126,6 +135,8 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const db = supabase.schema('campaign_os')
 
+    console.log('[POST /api/strategies] Inserting strategy into database...')
+    
     // Insert new strategy
     const { data, error } = await db
       .from('message_strategies')
@@ -145,19 +156,24 @@ export async function POST(request: NextRequest) {
     if (error) {
       // Handle UNIQUE constraint violation
       if (error.code === '23505') {
+        console.warn('[POST /api/strategies] Strategy already exists:', { campaign_id, segment_id, topic_id })
         return NextResponse.json(
           { error: 'Strategy already exists for this segment × topic combination' },
           { status: 409 }
         )
       }
 
-      console.error('Error creating strategy:', error)
+      console.error('[POST /api/strategies] Database error:', error)
+      console.error('[POST /api/strategies] Error code:', error.code)
+      console.error('[POST /api/strategies] Error message:', error.message)
+      console.error('[POST /api/strategies] Error details:', error.details)
       return NextResponse.json(
-        { error: 'Failed to create strategy', details: error.message },
+        { error: 'Failed to create strategy', details: error.message, code: error.code },
         { status: 500 }
       )
     }
 
+    console.log('[POST /api/strategies] Strategy created successfully:', data.id)
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
     console.error('Unexpected error:', error)

@@ -42,14 +42,13 @@ export function ExtraFieldsSection({ form }: ExtraFieldsSectionProps) {
           Keretezés típusa (Framing Type)
         </Label>
         <Select
-          value={watch('extra_fields.framing_type') || ''}
+          value={watch('extra_fields.framing_type') || undefined}
           onValueChange={(value) => setValue('extra_fields.framing_type', value || undefined)}
         >
           <SelectTrigger>
             <SelectValue placeholder="Válassz keretezési típust (opcionális)" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Nincs megadva</SelectItem>
             <SelectItem value="gain">Gain (Nyereség)</SelectItem>
             <SelectItem value="loss">Loss (Veszteség)</SelectItem>
             <SelectItem value="social_proof">Social Proof (Társadalmi bizonyíték)</SelectItem>

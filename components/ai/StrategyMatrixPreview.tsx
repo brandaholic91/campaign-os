@@ -54,18 +54,34 @@ export function StrategyMatrixPreview({
       return decisions[id] === 'approve'
     })
 
+    console.log('[StrategyMatrixPreview] handleSave called:', {
+      totalStrategies: strategies.length,
+      approvedCount: approved.length,
+      decisions: decisions
+    })
+
     if (approved.length === 0) {
+      console.warn('[StrategyMatrixPreview] No approved strategies')
       toast.error('Nincs jóváhagyott stratégia')
       return
     }
 
+    console.log('[StrategyMatrixPreview] Approved strategies:', approved)
     setIsSaving(true)
     try {
+      console.log('[StrategyMatrixPreview] Calling onSave with', approved.length, 'strategies')
       await onSave(approved)
+      console.log('[StrategyMatrixPreview] onSave completed successfully')
       onClose()
     } catch (error) {
-      console.error('Failed to save strategies:', error)
+      console.error('[StrategyMatrixPreview] Failed to save strategies:', error)
+      console.error('[StrategyMatrixPreview] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       toast.error('Hiba történt a mentés során')
+      // Re-throw the error so it can be handled by the caller if needed
+      throw error
     } finally {
       setIsSaving(false)
     }

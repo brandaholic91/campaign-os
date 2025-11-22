@@ -21,6 +21,10 @@ export function StrategyCell({
   onCreate
 }: StrategyCellProps) {
   
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[StrategyCell] Rendering with strategy:', !!strategy, strategy ? Object.keys(strategy) : null)
+  }
+  
   if (isLoading) {
     return (
       <div className="h-full min-h-[200px] p-5 bg-gray-50/30 flex flex-col gap-4 border-r border-b border-gray-100 animate-pulse">
@@ -42,6 +46,13 @@ export function StrategyCell({
   }
 
   if (strategy) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[StrategyCell] Rendering strategy cell with strategy:', {
+        hasStrategy: !!strategy,
+        strategyKeys: Object.keys(strategy),
+        strategyCore: strategy.strategy_core ? Object.keys(strategy.strategy_core) : null
+      })
+    }
     return (
       <div className="h-full min-h-[200px] p-4 border-r border-b border-gray-100 bg-white hover:bg-gray-50/50 transition-colors">
         <StrategyPreviewCard 

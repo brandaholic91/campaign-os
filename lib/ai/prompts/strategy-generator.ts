@@ -31,19 +31,33 @@ Your strategies must:
 5. Be authentic, persuasive, and action-oriented
 6. Avoid generic or templated language
 
-CRITICAL: You must respond with ONLY valid JSON. No markdown, no explanations, no code blocks. Just the raw JSON object matching this exact schema:
+CRITICAL OUTPUT FORMAT: You MUST respond with ONLY a valid JSON object. 
+- NO markdown code blocks (no triple backticks with json or without)
+- NO explanations before or after the JSON
+- NO text outside the JSON object
+- Start your response directly with { and end with }
+- The JSON must be valid and parseable
+
+CRITICAL ARRAY LENGTH REQUIREMENTS - You MUST follow these EXACT limits:
+- supporting_messages: EXACTLY 3-5 items (prefer 3-4)
+- proof_points: EXACTLY 2-3 items (prefer 2-3)
+- tone_profile.keywords: EXACTLY 3-5 items (prefer 3-4)
+- cta_patterns: EXACTLY 2-3 items (prefer 2-3)
+- DO NOT exceed these limits - validation will fail if you do!
+
+Match this exact schema:
 {
   "strategy_core": {
     "positioning_statement": "string (min 10 chars)",
     "core_message": "string (min 5 chars)",
-    "supporting_messages": ["string", "string", "string"] (3-5 items),
-    "proof_points": ["string", "string"] (2-3 items),
+    "supporting_messages": ["string", "string", "string"] (EXACTLY 3-5 items, no more),
+    "proof_points": ["string", "string"] (EXACTLY 2-3 items, no more),
     "objections_reframes": ["string"] (optional)
   },
   "style_tone": {
     "tone_profile": {
       "description": "string",
-      "keywords": ["string", "string", "string"] (3-5 items)
+      "keywords": ["string", "string", "string"] (EXACTLY 3-5 items, no more)
     },
     "language_style": "string",
     "communication_guidelines": {
@@ -55,7 +69,7 @@ CRITICAL: You must respond with ONLY valid JSON. No markdown, no explanations, n
   "cta_funnel": {
     "funnel_stage": "awareness" | "consideration" | "conversion" | "mobilization",
     "cta_objectives": ["string"],
-    "cta_patterns": ["string", "string"] (2-3 items),
+    "cta_patterns": ["string", "string"] (EXACTLY 2-3 items, no more),
     "friction_reducers": ["string"] (optional)
   },
   "extra_fields": {
@@ -81,6 +95,13 @@ Topic: ${context.topic.name}
 ${context.topic.description ? `Description: ${context.topic.description}` : ''}
 ${context.topic.category ? `Category: ${context.topic.category}` : ''}
 
-Return ONLY valid JSON (no markdown, no code blocks, no explanations) with the exact structure defined in the system prompt.
-Ensure the strategy is highly specific to this segment × topic combination and campaign context.
+CRITICAL: Return ONLY a valid JSON object. Start with { and end with }. No markdown, no code blocks, no explanations, no text before or after the JSON.
+
+REMEMBER: Array length limits are STRICT:
+- supporting_messages: 3-5 items (no more than 5)
+- proof_points: 2-3 items (no more than 3)
+- tone_profile.keywords: 3-5 items (no more than 5)
+- cta_patterns: 2-3 items (no more than 3)
+
+The JSON must match the exact structure defined in the system prompt. Ensure the strategy is highly specific to this segment × topic combination and campaign context.
 `
