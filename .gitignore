@@ -1,9 +1,8 @@
 # BMAD Method and tool directories
-# Note: .bmad is needed for remote Claude Code agent to access workflows
-# .bmad/
-# .agent/
-# .claude/
-# .cursor/
+#bmad/
+#agent/
+#claude/
+#cursor/
 
 # Node modules and build artifacts
 node_modules/
@@ -11,18 +10,63 @@ node_modules/
 out/
 dist/
 build/
+*.tsbuildinfo
+.swc/
+.turbo/
+.vercel/
 
 # Environment files
 .env
 .env.local
 .env*.local
+.env.production
+.env.development
+
+# Supabase local development
+supabase/.branches/
+supabase/.temp/
+supabase/.branches
+supabase/.temp
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+jest-coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Cache
+.cache/
+.parcel-cache/
+.pnpm-store/
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*~

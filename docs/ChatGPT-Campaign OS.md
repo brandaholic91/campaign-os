@@ -1,6 +1,6 @@
 # Campaign OS
 
-**User:** Holik Balàzs (holikbalazs@gmail.com)  
+**User:** Holik Balázs (holikbalazs@gmail.com)  
 **Created:** 11/20/2025 20:34:13  
 **Updated:** 11/20/2025 21:16:19  
 **Exported:** 11/20/2025 21:47:54  

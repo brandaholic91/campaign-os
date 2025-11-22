@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { CampaignCard } from './CampaignCard'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, Sparkles } from 'lucide-react'
 import { Database } from '@/lib/supabase/types'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
@@ -46,7 +46,9 @@ export function CampaignList() {
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-4">
         <div className="text-destructive">{error}</div>
-        <Button onClick={() => window.location.reload()}>Újrapróbálás</Button>
+        <Button onClick={() => window.location.reload()}>
+          Újrapróbálás
+        </Button>
       </div>
     )
   }
@@ -58,12 +60,20 @@ export function CampaignList() {
           <p className="text-lg font-medium mb-2">Még nincsenek kampányok</p>
           <p className="text-sm">Hozz létre egy új kampányt a kezdéshez</p>
         </div>
-        <Link href="/campaigns/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Új kampány
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/campaigns/new/ai">
+            <Button variant="outline">
+              <Sparkles className="mr-2 h-4 w-4" />
+              AI Tervező
+            </Button>
+          </Link>
+          <Link href="/campaigns/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Új kampány
+            </Button>
+          </Link>
+        </div>
       </div>
     )
   }
@@ -72,12 +82,20 @@ export function CampaignList() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Kampányok</h2>
-        <Link href="/campaigns/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Új kampány
-          </Button>
-        </Link>
+          <div className="flex gap-2">
+            <Link href="/campaigns/new/ai">
+              <Button variant="outline">
+                <Sparkles className="mr-2 h-4 w-4" />
+                AI Tervező
+              </Button>
+            </Link>
+            <Link href="/campaigns/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Új kampány
+              </Button>
+            </Link>
+          </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {campaigns.map((campaign) => (

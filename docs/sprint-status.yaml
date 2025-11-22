@@ -1,18 +1,34 @@
-# Sprint Status - Campaign OS Sprint 1 MVP
-# Generated: 2025-11-20
+# Sprint Status - Campaign OS
+# Generated: 2025-11-21
 # Project: campaign-os
 # Project Level: quick-flow
 
 # STATUS DEFINITIONS:
 # ==================
+# Epic Status:
+#   - backlog: Epic exists in epic file but not contexted
+#   - contexted: Epic tech context created (required before drafting stories)
+#
 # Story Status:
-#   - drafted: Story file created
+#   - backlog: Story only exists in epic file
+#   - drafted: Story file created in stories folder
 #   - ready-for-dev: Story ready for development
 #   - in-progress: Developer actively working on implementation
 #   - review: Implementation complete, ready for review
 #   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - completed: Retrospective has been done
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epics should be 'contexted' before stories can be 'drafted'
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically drafts next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', SM reviews, then Dev moves to 'done'
 
-generated: 2025-11-20
+generated: 2025-11-21
 project: campaign-os
 project_key: campaign-os
 tracking_system: file-system
@@ -33,5 +49,32 @@ development_status:
   # Story 1.3: Message Matrix and Sprint/Task Board
   campaign-os-sprint1-mvp-3: done
   
-  epic-1-retrospective: optional
+  epic-1-retrospective: completed
 
+  # Epic 2: AI-Powered Campaign Orchestration
+  # Note: Tech context available in tech-spec.md and epic-2-draft.md (2025-11-21)
+  epic-2: contexted
+  
+  # Story 2.1: LLM + CopilotKit Infrastructure
+  # Note: Story drafted 2025-11-21 - Foundation for all Epic 2 AI features
+  # Note: Status updated to in-progress (2025-11-21) - CopilotKit provider infrastructure needs validation for Story 2.2 CopilotKit integration
+  2-1-llm-ag-ui-infrastructure: done
+  
+  # Story 2.2: Campaign Brief → Structure AI
+  # Note: Story drafted 2025-11-21 - Two-step LLM flow (Brief Normalizer → Strategy Designer)
+  # Note: Status updated to in-progress (2025-11-21) - CopilotKit event streaming and state sync tasks deferred, REST API MVP implemented
+  2-2-campaign-brief-structure-ai: done
+  
+  # Story 2.3: AI Message Matrix Generator
+  # Note: Story drafted 2025-11-21 - Batch message generation for segment × topic combinations
+  # Note: Status updated to in-progress (2025-11-21) - Dev agent starting implementation
+  # Note: Status updated to review (2025-11-22) - Regeneration functionality and CopilotKit action implemented
+  2-3-ai-message-matrix-generator: done
+  
+  # Story 2.4: CopilotKit Frontend Integration (Kampánysegéd)
+  # Note: Story drafted 2025-11-21 - Frontend CopilotKit client and kampánysegéd UI component
+  # Note: Status updated to in-progress (2025-11-21) - Dev agent implementing AssistantChat, InlineSuggestions, and frontend tools
+  # Note: Status updated to review (2025-11-22) - All tasks completed: CopilotPopup streaming, frontend tools, state sync, contextual help
+  2-4-ag-ui-frontend-integration: done
+  
+  epic-2-retrospective: completed
