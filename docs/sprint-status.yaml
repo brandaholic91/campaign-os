@@ -78,3 +78,23 @@ development_status:
   2-4-ag-ui-frontend-integration: done
   
   epic-2-retrospective: completed
+
+  # Epic 3.0: Message Matrix Refactor - Communication Strategies
+  # Note: Epic 3.0 context available in epics.md and tech-spec.md (2025-11-22)
+  epic-3-0: contexted
+  
+  # Story 3.0.1: Database Migration + Schema
+  # Note: Story drafted 2025-11-22 - Foundation for Epic 3.0 message matrix refactor
+  3-0-1-database-migration-schema: approved
+  
+  # Story 3.0.2: Message Matrix Refactor (UI)
+  # Note: Story drafted 2025-11-22 - UI refactor to display communication strategies instead of concrete messages
+  3-0-2-message-matrix-refactor-ui: approved
+  
+  # Story 3.0.3: Strategy AI Generator
+  # Note: Story drafted 2025-11-22 - AI-powered strategy generation for segment × topic combinations
+  3-0-3-strategy-ai-generator: approved
+  
+  # Story 3.0.4: Strategy Form + CRUD
+  # Note: Story drafted 2025-11-22 - Manual strategy creation and editing with full CRUD operations
+  3-0-4-strategy-form-crud: approved

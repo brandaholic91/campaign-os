@@ -573,15 +573,42 @@ So that **communication strategies can be stored and validated properly**.
 
 **Technical Notes:**
 - Create migration: `supabase/migrations/YYYYMMDD_message_strategies.sql`
-- Define JSONB structure for 4 main categories (16 sub-fields total)
+  - Use actual date format: `20251121_message_strategies.sql` (or current date)
+  - Create `message_strategies` table with:
+    - id (UUID, primary key, default uuid_generate_v4())
+    - campaign_id (UUID, NOT NULL, FK to campaigns, ON DELETE CASCADE)
+    - segment_id (UUID, NOT NULL, FK to segments, ON DELETE CASCADE)
+    - topic_id (UUID, NOT NULL, FK to topics, ON DELETE CASCADE)
+    - strategy_core (JSONB, NOT NULL)
+    - style_tone (JSONB, NOT NULL)
+    - cta_funnel (JSONB, NOT NULL)
+    - extra_fields (JSONB, nullable)
+    - preview_summary (TEXT, nullable)
+    - created_at (TIMESTAMPTZ, default NOW())
+    - updated_at (TIMESTAMPTZ, default NOW())
+    - UNIQUE constraint on (campaign_id, segment_id, topic_id)
+  - Create index: `CREATE INDEX idx_message_strategies_campaign ON message_strategies(campaign_id);`
+  - Create trigger for updated_at: automatic timestamp update on row change
+- Define JSONB structure for 4 main categories (16 sub-fields total):
+  - Strategy Core (5 fields): positioning_statement, core_message, supporting_messages[], proof_points[], objections_reframes[]?
+  - Style & Tone (4 fields): tone_profile{description, keywords[]}, language_style, communication_guidelines{do[], dont[]}, emotional_temperature
+  - CTA & Funnel (4 fields): funnel_stage, cta_objectives[], cta_patterns[], friction_reducers[]?
+  - Extra Fields (3 fields, optional): framing_type?, key_phrases[]?, risk_notes?
 - Create Zod schemas in `lib/ai/schemas.ts`:
-  - `StrategyCoreSchema` (positioning_statement, core_message, supporting_messages, proof_points, objections_reframes)
-  - `StyleToneSchema` (tone_profile, language_style, communication_guidelines, emotional_temperature)
-  - `CTAFunnelSchema` (funnel_stage, cta_objectives, cta_patterns, friction_reducers)
-  - `ExtraFieldsSchema` (framing_type, key_phrases, risk_notes)
-  - `MessageStrategySchema` (complete strategy with all 4 categories)
-- Generate TypeScript types: `supabase gen types`
-- UNIQUE constraint: (campaign_id, segment_id, topic_id)
+  - `StrategyCoreSchema`: z.object with positioning_statement (min 10 chars), core_message (min 5 chars), supporting_messages (array, min 3, max 5), proof_points (array, min 2, max 3), objections_reframes (optional array)
+  - `StyleToneSchema`: z.object with tone_profile{description, keywords (array, min 3, max 5)}, language_style (string), communication_guidelines{do (array), dont (array)}, emotional_temperature (string)
+  - `CTAFunnelSchema`: z.object with funnel_stage (enum: awareness/consideration/conversion/mobilization), cta_objectives (array), cta_patterns (array, min 2, max 3), friction_reducers (optional array)
+  - `ExtraFieldsSchema`: z.object with framing_type (optional string), key_phrases (optional array), risk_notes (optional string)
+  - `MessageStrategySchema`: z.object combining all 4 categories (strategy_core, style_tone, cta_funnel, extra_fields?, preview_summary?)
+- Generate TypeScript types: `supabase gen types typescript --project-id <project-id> > lib/supabase/types.ts`
+  - Verify `message_strategies` table types are generated
+  - Export types if needed for use in components
+- Test migration:
+  - Run migration on local Supabase instance
+  - Verify table structure matches spec
+  - Test UNIQUE constraint (try inserting duplicate strategy)
+  - Test CASCADE delete (delete campaign, verify strategies deleted)
+  - Test JSONB structure validation
 
 **Estimated Effort:** 5 points (2-3 days)
 
@@ -617,18 +644,29 @@ So that **I can plan how to communicate each topic to each segment before genera
 **Technical Notes:**
 - Refactor `components/messages/MessageMatrix.tsx`:
   - Replace message display with strategy display
-  - Update cell rendering logic
+  - Update cell rendering logic to use StrategyCell component
+  - Fetch strategies from `/api/strategies?campaign_id=...` instead of messages
 - Create new components:
-  - `components/messages/StrategyCell.tsx` - cell component with preview
-  - `components/messages/StrategyPreviewCard.tsx` - short summary card
-  - `components/messages/StrategyDetailModal.tsx` - full strategy view (4 sections)
+  - `components/messages/StrategyCell.tsx` - cell component with preview card or empty state
+  - `components/messages/StrategyPreviewCard.tsx` - short summary card component
+  - `components/messages/StrategyDetailModal.tsx` - full strategy view modal (4 sections)
 - Update `/app/campaigns/[id]/messages/page.tsx` to fetch strategies instead of messages
 - Strategy preview card content:
-  - Positioning statement (first 1-2 sentences, truncated)
-  - Core message (1 sentence, bold)
-  - Tone keywords (badges: "közvetlen", "őszinte")
-  - Funnel stage badge ("awareness", "consideration", etc.)
-- Detail modal: tabs or accordion for 4 main categories
+  - Positioning statement (first 1-2 sentences, truncated with ellipsis)
+  - Core message (1 sentence, bold text)
+  - Tone keywords (badges: "közvetlen", "őszinte", etc. from tone_profile.keywords)
+  - Funnel stage badge ("awareness", "consideration", "conversion", "mobilization")
+- Detail modal structure:
+  - Tabs or accordion for 4 main categories: "Stratégiai mag", "Stílus/tónus", "CTA/funnel", "Extra"
+  - All 16 sub-fields visible and readable
+  - "Edit Strategy" button that opens StrategyForm in edit mode
+  - "Delete Strategy" button with confirmation
+- Empty state handling:
+  - Show "Nincs stratégia" text
+  - "Generate Strategy" button (triggers AI generation - Story 3.0.3)
+  - "Create Strategy" button (opens manual form - Story 3.0.4)
+- Responsive design: mobile, tablet, desktop layouts
+- Loading states and error handling
 
 **Estimated Effort:** 5 points (3-4 days)
 
@@ -666,19 +704,45 @@ So that **I can quickly define how to communicate each topic to each segment wit
 
 **Technical Notes:**
 - Refactor Story 2.3: `/api/ai/message-matrix` → `/api/ai/strategy-matrix`
+  - Keep existing endpoint pattern but change output structure
+  - Update request body to include campaign_id, selected segment_ids, topic_ids
 - Create prompt template: `lib/ai/prompts/strategy-generator.ts`
-- Single LLM call with structured JSON output (16 fields)
-- Prompt includes:
-  - Campaign context (campaign_type, goal_type, narratives)
-  - Segment details (demographics, psychographics)
-  - Topic details (name, description, category)
-  - Instructions for all 16 sub-fields
-- Zod schema validation: `MessageStrategySchema`
+  - Single LLM call with structured JSON output (16 fields across 4 categories)
+  - Prompt includes:
+    - Campaign context (campaign_type, goal_type, narratives from campaigns table)
+    - Segment details (name, description, demographics, psychographics)
+    - Topic details (name, description, category)
+    - Instructions for all 16 sub-fields with examples
+    - Format requirements for each field
+- Zod schema validation: `MessageStrategySchema` from Story 3.0.1
+  - Validate each generated strategy before saving
+  - Return validation errors if LLM output doesn't match schema
 - CopilotKit event stream for real-time generation progress
+  - Stream generation status for each segment × topic combination
+  - Show progress: "Generating strategy for Segment X × Topic Y..."
+  - Stream completed strategies as they're generated
 - Batch generation with progress indication
+  - Generate strategies for all selected combinations in parallel (if API allows) or sequentially
+  - Show progress bar: "Generated 3 of 12 strategies"
+  - Allow cancellation mid-generation
 - Preview modal with approve/reject per strategy
+  - Display all generated strategies in a scrollable list
+  - Each strategy shows: preview card + "Approve" / "Reject" buttons
+  - Bulk actions: "Approve All", "Reject All", "Approve Selected"
+  - Selected strategies are saved to database via `/api/strategies` endpoint
 - Preview summary generation: AI creates short summary from strategy_core
+  - Extract: positioning_statement (first 1-2 sentences) + core_message + tone keywords + funnel stage
+  - Format: "Positioning: [statement]. Core: [message]. Tone: [keywords]. Stage: [funnel_stage]"
+  - Summary is editable after generation
 - Integration with existing strategy CRUD (Story 3.0.4)
+  - Use POST `/api/strategies` to save approved strategies
+  - Handle UNIQUE constraint errors (strategy already exists for segment × topic)
+  - Show success/error notifications
+- Error handling:
+  - LLM API failures: show user-friendly error, allow retry
+  - Rate limiting: queue requests or show wait message
+  - Schema validation errors: log error, show message, allow regeneration
+- Regeneration: "Regenerate Strategy" button for individual strategies
 
 **Estimated Effort:** 8 points (4-5 days, complex prompt engineering)
 
@@ -716,24 +780,65 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
 
 **Technical Notes:**
 - Create `/api/strategies` endpoints:
-  - GET `/api/strategies?campaign_id=...` - list strategies
-  - POST `/api/strategies` - create strategy
-  - GET `/api/strategies/[id]` - get single strategy
-  - PUT `/api/strategies/[id]` - update strategy
+  - GET `/api/strategies?campaign_id=...` - list all strategies for a campaign
+    - Returns array of strategies with segment and topic details (JOIN)
+  - POST `/api/strategies` - create new strategy
+    - Request body: { campaign_id, segment_id, topic_id, strategy_core, style_tone, cta_funnel, extra_fields?, preview_summary? }
+    - Validate against MessageStrategySchema before saving
+    - Handle UNIQUE constraint violation (strategy already exists)
+  - GET `/api/strategies/[id]` - get single strategy by ID
+    - Include segment and topic details in response
+  - PUT `/api/strategies/[id]` - update existing strategy
+    - Validate against MessageStrategySchema
+    - Update updated_at timestamp
   - DELETE `/api/strategies/[id]` - delete strategy
+    - Cascade handled by database (no additional logic needed)
 - Create `components/messages/StrategyForm.tsx`:
-  - 4 main sections (accordion or tabs)
-  - Multi-input fields (supporting_messages, proof_points) → add/remove rows
-  - Do/Don't lists (communication_guidelines) → two-column layout
-  - Form validation (Zod schemas)
-  - Preview summary editor (auto-generated, editable)
+  - Props: `campaignId`, `segmentId`, `topicId`, `initialData?` (for edit mode), `onSave`, `onCancel`
+  - 4 main sections (accordion or tabs): "Stratégiai mag", "Stílus/tónus", "CTA/funnel", "Extra"
+  - Multi-input fields:
+    - `supporting_messages`: array of text inputs with "Add" / "Remove" buttons (min 3, max 5)
+    - `proof_points`: array of text inputs with "Add" / "Remove" buttons (min 2, max 3)
+    - `objections_reframes`: optional array of text inputs
+    - `tone_profile.keywords`: array of text inputs (min 3, max 5)
+    - `cta_objectives`: array of text inputs
+    - `cta_patterns`: array of text inputs (min 2, max 3)
+    - `communication_guidelines`: two-column layout (Do / Don't lists) with add/remove rows
+    - `key_phrases`: optional array of text inputs
+  - Form validation using Zod schemas:
+    - Validate each section independently
+    - Show field-level error messages
+    - Disable submit until all required fields valid
+  - Preview summary editor:
+    - Auto-generate from strategy_core on change (or button "Generate Summary")
+    - Editable textarea
+    - Character count display
+  - Form actions: "Save Strategy" (primary), "Cancel" (secondary), "Delete" (danger, edit mode only)
 - Create form section components:
   - `components/messages/StrategyFormSections/StrategyCoreSection.tsx`
+    - Fields: positioning_statement (textarea), core_message (textarea), supporting_messages (dynamic array), proof_points (dynamic array), objections_reframes (optional dynamic array)
   - `components/messages/StrategyFormSections/StyleToneSection.tsx`
+    - Fields: tone_profile.description (textarea), tone_profile.keywords (dynamic array), language_style (textarea), communication_guidelines (two-column Do/Don't lists), emotional_temperature (select)
   - `components/messages/StrategyFormSections/CTAFunnelSection.tsx`
+    - Fields: funnel_stage (select: awareness/consideration/conversion/mobilization), cta_objectives (dynamic array), cta_patterns (dynamic array, min 2, max 3), friction_reducers (optional dynamic array)
   - `components/messages/StrategyFormSections/ExtraFieldsSection.tsx`
-- Integration with StrategyDetailModal (edit mode)
-- Error handling and loading states
+    - Fields: framing_type (select, optional), key_phrases (optional dynamic array), risk_notes (optional textarea)
+- Integration with StrategyDetailModal (edit mode):
+  - Modal has "Edit Strategy" button that opens StrategyForm in a dialog
+  - Form pre-populated with existing strategy data
+  - On save: update strategy via PUT `/api/strategies/[id]`, refresh modal view
+- Integration with MessageMatrix (create mode):
+  - Empty cell click → opens StrategyForm dialog
+  - Form requires campaign_id, segment_id, topic_id (pre-filled from cell context)
+  - On save: create strategy via POST `/api/strategies`, refresh matrix
+- Error handling:
+  - Network errors: show toast notification
+  - Validation errors: show inline field errors
+  - UNIQUE constraint violation: show error "Strategy already exists for this segment × topic combination"
+- Loading states:
+  - Submit button shows spinner during save
+  - Form fields disabled during save
+  - Success toast notification after save
 
 **Estimated Effort:** 5 points (3-4 days)
 
