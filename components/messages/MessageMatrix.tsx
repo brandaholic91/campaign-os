@@ -337,10 +337,22 @@ export default function MessageMatrix({
           messages={generatedMessages}
           segments={segments}
           topics={topics}
+          campaignId={campaignId}
           onSave={handleSaveMessages}
           onCancel={() => {
             setIsPreviewOpen(false)
             setGeneratedMessages(null)
+          }}
+          onRegenerate={(regeneratedMessages) => {
+            // Update the generated messages with regenerated ones
+            setGeneratedMessages(prev => {
+              if (!prev) return regeneratedMessages
+              const updatedMap = new Map(regeneratedMessages.map(msg => [`${msg.segment_id}:${msg.topic_id}`, msg]))
+              return prev.map(msg => {
+                const key = `${msg.segment_id}:${msg.topic_id}`
+                return updatedMap.get(key) || msg
+              })
+            })
           }}
           isSaving={isSaving}
         />

@@ -1,8 +1,11 @@
 import { CopilotRuntime, AnthropicAdapter } from '@copilotkit/runtime'
+import { Action, Parameter } from '@copilotkit/shared'
 import { getAnthropicClient } from '@/lib/ai/client'
-import { CampaignStructureSchema, BriefNormalizerOutputSchema } from '@/lib/ai/schemas'
+import { CampaignStructureSchema, BriefNormalizerOutputSchema, MessageGenerationRequestSchema, GeneratedMessageSchema, validateGeneratedMessage } from '@/lib/ai/schemas'
 import { BRIEF_NORMALIZER_SYSTEM_PROMPT, BRIEF_NORMALIZER_USER_PROMPT } from '@/lib/ai/prompts/brief-normalizer'
 import { STRATEGY_DESIGNER_SYSTEM_PROMPT, STRATEGY_DESIGNER_USER_PROMPT } from '@/lib/ai/prompts/strategy-designer'
+import { MESSAGE_GENERATOR_SYSTEM_PROMPT, MESSAGE_GENERATOR_USER_PROMPT, MessageGenerationContext } from '@/lib/ai/prompts/message-generator'
+import { createClient } from '@/lib/supabase/server'
 
 // Initialize Anthropic client
 const anthropic = getAnthropicClient()
@@ -23,7 +26,10 @@ console.log('=== AnthropicAdapter initialized ===', { model: process.env.ANTHROP
  * @param url - Request URL
  * @returns Array of action definitions
  */
-function createCopilotActions(properties: Record<string, unknown>, url?: string) {
+function createCopilotActions(
+  properties: Record<string, unknown>, 
+  url?: string
+): Action<Parameter[]>[] {
   return [
     {
       name: 'generateCampaignStructure',
@@ -48,7 +54,8 @@ function createCopilotActions(properties: Record<string, unknown>, url?: string)
           required: false,
         },
       ],
-      handler: async ({ brief, campaignType, goalType }: { brief: string; campaignType?: string; goalType?: string }) => {
+      handler: async (args: any) => {
+        const { brief, campaignType, goalType } = args as { brief: string; campaignType?: string; goalType?: string }
         if (!brief) {
           throw new Error('Brief is required')
         }
@@ -152,6 +159,251 @@ function createCopilotActions(properties: Record<string, unknown>, url?: string)
       },
     },
     {
+      name: 'generateMessageMatrix',
+      description: 'Generate AI-powered messages for segment × topic combinations. Streams progress updates in real-time showing which combinations are being processed.',
+      parameters: [
+        {
+          name: 'campaign_id',
+          type: 'string' as const,
+          description: 'The campaign ID to generate messages for',
+          required: true,
+        },
+        {
+          name: 'segment_ids',
+          type: 'string' as const,
+          description: 'Comma-separated list of segment IDs to generate messages for',
+          required: true,
+        },
+        {
+          name: 'topic_ids',
+          type: 'string' as const,
+          description: 'Comma-separated list of topic IDs to generate messages for',
+          required: true,
+        },
+        {
+          name: 'regenerate_combinations',
+          type: 'string' as const,
+          description: 'Optional: comma-separated list of segment_id:topic_id combinations to regenerate (e.g., "seg1:top1,seg2:top2")',
+          required: false,
+        },
+      ],
+      handler: async (args: any) => {
+        const { 
+          campaign_id, 
+          segment_ids, 
+          topic_ids, 
+          regenerate_combinations 
+        } = args as { 
+          campaign_id: string
+          segment_ids: string
+          topic_ids: string
+          regenerate_combinations?: string
+        }
+        const segmentIdsArray = segment_ids.split(',').map(s => s.trim()).filter(Boolean)
+        const topicIdsArray = topic_ids.split(',').map(t => t.trim()).filter(Boolean)
+        
+        if (!segmentIdsArray.length || !topicIdsArray.length) {
+          throw new Error('At least one segment and topic required')
+        }
+
+        // Parse regenerate combinations if provided
+        const regenerateSet = new Set<string>()
+        if (regenerate_combinations) {
+          regenerate_combinations.split(',').forEach(combo => {
+            const trimmed = combo.trim()
+            if (trimmed) regenerateSet.add(trimmed)
+          })
+        }
+
+        // Fetch campaign context
+        const supabase = await createClient()
+        const db = supabase.schema('campaign_os')
+
+        const { data: campaign, error: campaignError } = await db
+          .from('campaigns')
+          .select('campaign_type, primary_goal_type, narratives')
+          .eq('id', campaign_id)
+          .single()
+
+        if (campaignError || !campaign) {
+          throw new Error('Campaign not found')
+        }
+
+        const campaignData = campaign as any
+
+        // Fetch segments and topics
+        const { data: segments } = await db
+          .from('segments')
+          .select('*')
+          .in('id', segmentIdsArray)
+          .eq('campaign_id', campaign_id)
+
+        const { data: topics } = await db
+          .from('topics')
+          .select('*')
+          .in('id', topicIdsArray)
+          .eq('campaign_id', campaign_id)
+
+        if (!segments || !topics || segments.length === 0 || topics.length === 0) {
+          throw new Error('Segments or topics not found')
+        }
+
+        const client = getAnthropicClient()
+        const generatedMessages: Array<{
+          segment_id: string
+          topic_id: string
+          headline: string
+          body: string
+          proof_point?: string
+          cta?: string
+          message_type: 'core' | 'supporting' | 'contrast'
+          campaign_id: string
+        }> = []
+
+        // Parse narratives
+        let narratives: Array<{ title: string; description: string }> = []
+        try {
+          const narrativesData = campaignData.narratives
+          if (narrativesData && typeof narrativesData === 'object') {
+            const parsed = Array.isArray(narrativesData) ? narrativesData : []
+            narratives = parsed.filter((n: any) => n && typeof n === 'object' && n.title && n.description)
+          }
+        } catch (e) {
+          console.warn('Failed to parse narratives:', e)
+        }
+
+        const totalCombinations = segments.length * topics.length
+        let processedCount = 0
+        const failedCombinations: Array<{ segment: string; topic: string; error: string }> = []
+        const progressUpdates: string[] = []
+
+        // Generate messages for each segment × topic combination
+        for (const segment of segments) {
+          for (const topic of topics) {
+            const comboKey = `${segment.id}:${topic.id}`
+            const shouldRegenerate = regenerateSet.size > 0 ? regenerateSet.has(comboKey) : true
+
+            if (!shouldRegenerate && regenerateSet.size > 0) {
+              continue // Skip if specific combinations requested and this isn't one
+            }
+
+            try {
+              // Track progress
+              processedCount++
+              progressUpdates.push(`Processing ${processedCount}/${totalCombinations}: ${segment.name} × ${topic.name}...`)
+
+              const context: MessageGenerationContext = {
+                campaign_type: campaignData.campaign_type,
+                goal_type: campaignData.primary_goal_type,
+                narratives: narratives.length > 0 ? narratives : undefined,
+                segment: {
+                  id: segment.id,
+                  name: segment.name,
+                  description: segment.description || undefined,
+                  demographics: segment.demographics as Record<string, unknown> | undefined,
+                  psychographics: segment.psychographics as Record<string, unknown> | undefined,
+                },
+                topic: {
+                  id: topic.id,
+                  name: topic.name,
+                  description: topic.description || undefined,
+                  category: topic.category || undefined,
+                },
+              }
+
+              const response = await client.messages.create({
+                model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
+                max_tokens: 1024,
+                system: MESSAGE_GENERATOR_SYSTEM_PROMPT,
+                messages: [
+                  { role: 'user', content: MESSAGE_GENERATOR_USER_PROMPT(context) }
+                ]
+              })
+
+              const content = response.content[0].type === 'text' 
+                ? response.content[0].text 
+                : ''
+
+              if (!content) {
+                console.warn(`Empty response for segment ${segment.name}, topic ${topic.name}`)
+                failedCombinations.push({
+                  segment: segment.name,
+                  topic: topic.name,
+                  error: 'Empty AI response'
+                })
+                continue
+              }
+
+              // Extract JSON from response
+              let jsonContent = content.trim()
+              if (jsonContent.startsWith('```')) {
+                const lines = jsonContent.split('\n')
+                const firstLine = lines[0]
+                const lastLine = lines[lines.length - 1]
+                if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
+                  jsonContent = lines.slice(1, -1).join('\n')
+                }
+              }
+
+              let messageData
+              try {
+                messageData = JSON.parse(jsonContent)
+              } catch (parseError) {
+                console.error(`JSON parse error for ${segment.name} × ${topic.name}:`, parseError)
+                failedCombinations.push({
+                  segment: segment.name,
+                  topic: topic.name,
+                  error: 'Invalid JSON response'
+                })
+                continue
+              }
+
+              // Validate and add campaign_id
+              try {
+                const validated = validateGeneratedMessage({
+                  ...messageData,
+                  campaign_id,
+                })
+                generatedMessages.push(validated)
+              } catch (validationError) {
+                console.error(`Validation error for ${segment.name} × ${topic.name}:`, validationError)
+                failedCombinations.push({
+                  segment: segment.name,
+                  topic: topic.name,
+                  error: 'Schema validation failed'
+                })
+                continue
+              }
+            } catch (error) {
+              console.error(`Error generating message for ${segment.name} × ${topic.name}:`, error)
+              failedCombinations.push({
+                segment: segment.name,
+                topic: topic.name,
+                error: error instanceof Error ? error.message : 'Unknown error'
+              })
+              continue
+            }
+          }
+        }
+
+        if (generatedMessages.length === 0) {
+          throw new Error(`Failed to generate any messages. Attempted ${totalCombinations} combinations.${failedCombinations.length > 0 ? ` Errors: ${JSON.stringify(failedCombinations)}` : ''}`)
+        }
+
+        const successCount = generatedMessages.length
+        const failureCount = failedCombinations.length
+
+        return {
+          messages: generatedMessages,
+          total_combinations: totalCombinations,
+          generated_count: successCount,
+          failed_count: failureCount,
+          failed_combinations: failedCombinations,
+          progress_summary: `✅ Generation complete: ${successCount} messages generated${failureCount > 0 ? `, ${failureCount} failed` : ''}`,
+        }
+      },
+    },
+    {
       name: 'describeCampaignState',
       description: 'Sanitize campaign structure context for the agent',
       parameters: [
@@ -162,7 +414,8 @@ function createCopilotActions(properties: Record<string, unknown>, url?: string)
           required: false,
         },
       ],
-      handler: async ({ includeDetails }: { includeDetails?: boolean }) => {
+      handler: async (args: any) => {
+        const { includeDetails } = args as { includeDetails?: boolean }
         const narratives = [
           `Endpoint: ${url ?? 'copilotkit server'}`,
           properties.campaign_type
@@ -197,7 +450,8 @@ function createCopilotActions(properties: Record<string, unknown>, url?: string)
           required: false,
         },
       ],
-      handler: async ({ note }: { note?: string }) => {
+      handler: async (args: any) => {
+        const { note } = args as { note?: string }
         return {
           status: 'logged',
           note: note ?? 'No note supplied',

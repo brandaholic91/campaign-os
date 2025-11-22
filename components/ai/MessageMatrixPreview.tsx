@@ -14,15 +14,18 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Edit2, Save, X } from 'lucide-react'
+import { Edit2, Save, X, RefreshCw } from 'lucide-react'
 import { GeneratedMessage } from '@/lib/ai/schemas'
+import { toast } from 'sonner'
 
 interface MessageMatrixPreviewProps {
   messages: GeneratedMessage[]
   segments: Array<{ id: string; name: string }>
   topics: Array<{ id: string; name: string }>
+  campaignId: string
   onSave: (messages: GeneratedMessage[]) => void
   onCancel: () => void
+  onRegenerate?: (regeneratedMessages: GeneratedMessage[]) => void
   isSaving: boolean
 }
 
@@ -35,8 +38,10 @@ export function MessageMatrixPreview({
   messages: initialMessages,
   segments,
   topics,
+  campaignId,
   onSave,
   onCancel,
+  onRegenerate,
   isSaving,
 }: MessageMatrixPreviewProps) {
   const [messages, setMessages] = useState<EditableMessage[]>(
@@ -44,6 +49,8 @@ export function MessageMatrixPreview({
   )
   const [editingMessage, setEditingMessage] = useState<EditableMessage | null>(null)
   const [editValues, setEditValues] = useState<Partial<GeneratedMessage> | null>(null)
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null)
+  const [isRegeneratingAll, setIsRegeneratingAll] = useState(false)
 
   const getSegmentName = (segmentId: string) => 
     segments.find(s => s.id === segmentId)?.name || segmentId
@@ -101,6 +108,109 @@ export function MessageMatrixPreview({
     onSave(selectedMessages)
   }
 
+  const handleRegenerate = async (index?: number) => {
+    if (index !== undefined) {
+      // Regenerate single message
+      const message = messages[index]
+      setRegeneratingIndex(index)
+      
+      try {
+        const response = await fetch('/api/ai/message-matrix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaign_id: campaignId,
+            segment_ids: [message.segment_id],
+            topic_ids: [message.topic_id],
+            regenerate_combinations: [`${message.segment_id}:${message.topic_id}`],
+          }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to regenerate message')
+        }
+
+        const data = await response.json()
+        if (data.messages && data.messages.length > 0) {
+          const newMessage = data.messages[0]
+          const newMessages = [...messages]
+          newMessages[index] = { ...newMessage, selected: messages[index].selected, isEditing: false } as EditableMessage
+          setMessages(newMessages)
+          toast.success('Üzenet újragenerálva')
+          
+          if (onRegenerate) {
+            onRegenerate([newMessage])
+          }
+        }
+      } catch (error) {
+        console.error(error)
+        toast.error(error instanceof Error ? error.message : 'Hiba történt az újragenerálás során')
+      } finally {
+        setRegeneratingIndex(null)
+      }
+    } else {
+      // Regenerate all selected messages
+      const selectedMessages = messages.filter(msg => msg.selected)
+      if (selectedMessages.length === 0) {
+        toast.error('Válassz ki legalább egy üzenetet az újrageneráláshoz')
+        return
+      }
+
+      setIsRegeneratingAll(true)
+      const combinations = selectedMessages.map(msg => `${msg.segment_id}:${msg.topic_id}`)
+      const segmentIds = Array.from(new Set(selectedMessages.map(msg => msg.segment_id)))
+      const topicIds = Array.from(new Set(selectedMessages.map(msg => msg.topic_id)))
+
+      try {
+        const response = await fetch('/api/ai/message-matrix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaign_id: campaignId,
+            segment_ids: segmentIds,
+            topic_ids: topicIds,
+            regenerate_combinations: combinations,
+          }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to regenerate messages')
+        }
+
+        const data = await response.json()
+        if (data.messages && data.messages.length > 0) {
+          // Replace messages by segment_id:topic_id key
+          const newMessagesMap = new Map(
+            data.messages.map((msg: GeneratedMessage) => [`${msg.segment_id}:${msg.topic_id}`, msg])
+          )
+          
+          const updatedMessages: EditableMessage[] = messages.map(msg => {
+            const key = `${msg.segment_id}:${msg.topic_id}`
+            const newMsg = newMessagesMap.get(key)
+            if (newMsg) {
+              return { ...newMsg, selected: msg.selected, isEditing: false } as EditableMessage
+            }
+            return msg
+          })
+          
+          setMessages(updatedMessages)
+          toast.success(`${data.messages.length} üzenet újragenerálva`)
+          
+          if (onRegenerate) {
+            onRegenerate(data.messages)
+          }
+        }
+      } catch (error) {
+        console.error(error)
+        toast.error(error instanceof Error ? error.message : 'Hiba történt az újragenerálás során')
+      } finally {
+        setIsRegeneratingAll(false)
+      }
+    }
+  }
+
   const selectedCount = messages.filter(m => m.selected).length
   const totalCount = messages.length
 
@@ -133,7 +243,7 @@ export function MessageMatrixPreview({
                 <TableHead>Proof Point</TableHead>
                 <TableHead>CTA</TableHead>
                 <TableHead>Típus</TableHead>
-                <TableHead className="w-20">Műveletek</TableHead>
+                <TableHead className="w-32">Műveletek</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -219,35 +329,54 @@ export function MessageMatrixPreview({
                     )}
                   </TableCell>
                   <TableCell>
-                    {message.isEditing && editingMessage === message ? (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => saveEdit(index)}
-                          className="h-7 w-7 p-0"
-                        >
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => cancelEdit(index)}
-                          className="h-7 w-7 p-0"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => startEditing(index)}
-                        className="h-7 w-7 p-0"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
-                    )}
+                    <div className="flex gap-1">
+                      {message.isEditing && editingMessage === message ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => saveEdit(index)}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Save className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => cancelEdit(index)}
+                            className="h-7 w-7 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => startEditing(index)}
+                            className="h-7 w-7 p-0"
+                            title="Szerkesztés"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRegenerate(index)}
+                            disabled={regeneratingIndex === index || isRegeneratingAll}
+                            className="h-7 w-7 p-0"
+                            title="Újragenerálás"
+                          >
+                            {regeneratingIndex === index ? (
+                              <RefreshCw className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -256,19 +385,40 @@ export function MessageMatrixPreview({
         </div>
 
         <DialogFooter className="flex justify-between">
-          <Button variant="outline" onClick={onCancel} disabled={isSaving}>
-            Mégse
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving || selectedCount === 0}>
-            {isSaving ? (
-              'Mentés...'
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Kiválasztottak Mentése ({selectedCount})
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => handleRegenerate()} 
+              disabled={isSaving || isRegeneratingAll || selectedCount === 0}
+            >
+              {isRegeneratingAll ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Újragenerálás...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Kiválasztottak Újragenerálása ({selectedCount})
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onCancel} disabled={isSaving || isRegeneratingAll}>
+              Mégse
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving || isRegeneratingAll || selectedCount === 0}>
+              {isSaving ? (
+                'Mentés...'
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Kiválasztottak Mentése ({selectedCount})
+                </>
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -61,6 +61,7 @@ export const MessageGenerationRequestSchema = z.object({
   campaign_id: z.string().uuid(),
   segment_ids: z.array(z.string().uuid()),
   topic_ids: z.array(z.string().uuid()),
+  regenerate_combinations: z.array(z.string()).optional(), // Format: ["segment_id:topic_id", ...]
 })
 
 // Schema for single message generation output

@@ -7,7 +7,16 @@ import { createClient } from '@/lib/supabase/server'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { campaign_id, segment_ids, topic_ids } = MessageGenerationRequestSchema.parse(body)
+    const { campaign_id, segment_ids, topic_ids, regenerate_combinations } = MessageGenerationRequestSchema.parse(body)
+    
+    // Parse regenerate combinations if provided
+    const regenerateSet = new Set<string>()
+    if (regenerate_combinations && Array.isArray(regenerate_combinations)) {
+      regenerate_combinations.forEach((combo: string) => {
+        const trimmed = combo.trim()
+        if (trimmed) regenerateSet.add(trimmed)
+      })
+    }
 
     if (!segment_ids.length || !topic_ids.length) {
       return NextResponse.json({ error: 'At least one segment and topic required' }, { status: 400 })
@@ -65,6 +74,14 @@ export async function POST(req: NextRequest) {
     // Generate messages for each segment × topic combination
     for (const segment of segments) {
       for (const topic of topics) {
+        const comboKey = `${segment.id}:${topic.id}`
+        const shouldRegenerate = regenerateSet.size > 0 ? regenerateSet.has(comboKey) : true
+
+        // Skip if specific combinations requested and this isn't one
+        if (!shouldRegenerate && regenerateSet.size > 0) {
+          continue
+        }
+
         const context: MessageGenerationContext = {
           campaign_type: campaignData.campaign_type,
           goal_type: campaignData.primary_goal_type,
