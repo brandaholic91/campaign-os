@@ -1,6 +1,6 @@
 # Story 3.0.1: Database Migration + Schema
 
-**Status:** approved
+**Status:** delivered
 
 **Status note:** Story drafted 2025-11-22 - Foundation for Epic 3.0 message matrix refactor
 
@@ -112,7 +112,7 @@ So that **communication strategies can be stored and validated properly**.
 
 ### Tasks / Subtasks
 
-- [ ] Create migration file `supabase/migrations/YYYYMMDD_message_strategies.sql` (AC: #1)
+- [x] Create migration file `supabase/migrations/YYYYMMDD_message_strategies.sql` (AC: #1)
   - Use actual date format: `20251122_message_strategies.sql` (or current date)
   - Create `message_strategies` table with all required fields
   - Add UNIQUE constraint on (campaign_id, segment_id, topic_id)
@@ -120,14 +120,14 @@ So that **communication strategies can be stored and validated properly**.
   - Create trigger for updated_at: `CREATE TRIGGER update_message_strategies_updated_at BEFORE UPDATE ON message_strategies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();`
   - Note: Ensure `update_updated_at_column()` function exists (from previous migrations)
 
-- [ ] Document JSONB structure for 4 main categories (AC: #2)
+- [x] Document JSONB structure for 4 main categories (AC: #2)
   - Strategy Core: positioning_statement, core_message, supporting_messages[], proof_points[], objections_reframes[]?
   - Style & Tone: tone_profile{description, keywords[]}, language_style, communication_guidelines{do[], dont[]}, emotional_temperature
   - CTA & Funnel: funnel_stage, cta_objectives[], cta_patterns[], friction_reducers[]?
   - Extra Fields: framing_type?, key_phrases[]?, risk_notes?
   - Add structure documentation as SQL comments in migration file
 
-- [ ] Create Zod schemas in `lib/ai/schemas.ts` (AC: #3)
+- [x] Create Zod schemas in `lib/ai/schemas.ts` (AC: #3)
   - Create `StrategyCoreSchema` with validation rules
   - Create `StyleToneSchema` with validation rules
   - Create `CTAFunnelSchema` with funnel_stage enum
@@ -136,18 +136,18 @@ So that **communication strategies can be stored and validated properly**.
   - Export schemas for use in API endpoints and form validation
   - Add TypeScript type inference: `export type MessageStrategy = z.infer<typeof MessageStrategySchema>`
 
-- [ ] Generate TypeScript types from database (AC: #4)
+- [x] Generate TypeScript types from database (AC: #4)
   - Run `supabase gen types typescript --project-id <project-id> > lib/supabase/types.ts`
   - Verify `message_strategies` table types are generated
   - Check types match JSONB structure (JSONB fields should be typed as `Json`)
   - Export types if needed for component use
 
-- [ ] Verify existing `messages` table unchanged (AC: #5)
+- [x] Verify existing `messages` table unchanged (AC: #5)
   - Check `messages` table structure in Supabase
   - Verify no changes to `messages` table schema
   - Document that `messages` table remains for Content Calendar use (Epic 3.1)
 
-- [ ] Test migration on local Supabase instance (AC: #6)
+- [x] Test migration on local Supabase instance (AC: #6)
   - Run migration script via Supabase CLI or Dashboard
   - Verify table structure matches spec
   - Test UNIQUE constraint: try inserting duplicate (campaign_id, segment_id, topic_id) combination
