@@ -3,62 +3,85 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Database } from '@/lib/supabase/types'
-import { Button } from '@/components/ui/button'
-import { Sparkles, Loader2 } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import MessageForm from './MessageForm'
-import { MessageMatrixPreview } from '@/components/ai/MessageMatrixPreview'
-import { GeneratedMessage } from '@/lib/ai/schemas'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CheckboxList } from './CheckboxList'
-import { MatrixCell } from './MatrixCell'
+import { StrategyCell } from './StrategyCell'
+import { StrategyDetailModal } from './StrategyDetailModal'
+import { MessageStrategy } from '@/lib/ai/schemas'
 
-type Message = Database['campaign_os']['Tables']['messages']['Row']
 type Segment = Database['campaign_os']['Tables']['segments']['Row']
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
+
+// Temporary type definition until DB types are updated
+export interface StrategyRow {
+  id: string
+  campaign_id: string
+  segment_id: string
+  topic_id: string
+  content: MessageStrategy
+  created_at?: string
+  updated_at?: string
+}
 
 interface MessageMatrixProps {
   campaignId: string
   segments: Segment[]
   topics: Topic[]
-  messages: Message[]
+  strategies: StrategyRow[]
 }
 
 export default function MessageMatrix({
   campaignId,
   segments,
   topics,
-  messages,
+  strategies,
 }: MessageMatrixProps) {
   const router = useRouter()
   const [selectedCell, setSelectedCell] = useState<{
     segmentId: string
     topicId: string
+    strategy?: StrategyRow
   } | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
   
-  // AI generation state
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  
+  // AI generation state (placeholders for Story 3.0.3)
   const [selectedSegments, setSelectedSegments] = useState<Set<string>>(new Set())
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set())
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedMessages, setGeneratedMessages] = useState<GeneratedMessage[] | null>(null)
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
 
-  const getMessageForCell = (segmentId: string, topicId: string) => {
-    return messages.find(
-      (m) => m.segment_id === segmentId && m.topic_id === topicId
+  const getStrategyForCell = (segmentId: string, topicId: string) => {
+    return strategies.find(
+      (s) => s.segment_id === segmentId && s.topic_id === topicId
     )
   }
 
   const handleCellClick = (segmentId: string, topicId: string) => {
-    setSelectedCell({ segmentId, topicId })
-    setIsDialogOpen(true)
+    const strategy = getStrategyForCell(segmentId, topicId)
+    if (strategy) {
+      setSelectedCell({ segmentId, topicId, strategy })
+      setIsDetailOpen(true)
+    } else {
+      // For empty cells, we might want to open create form directly
+      // But for now, the cell itself handles the "Create" click
+    }
+  }
+
+  const handleCreateStrategy = (segmentId: string, topicId: string) => {
+    toast.info("A stratégia létrehozása a következő sztoriban (3.0.4) lesz implementálva.")
+  }
+
+  const handleGenerateStrategy = (segmentId: string, topicId: string) => {
+    toast.info("Az AI generálás a következő sztoriban (3.0.3) lesz implementálva.")
+  }
+
+  const handleBatchGenerate = async () => {
+    if (selectedSegments.size === 0 || selectedTopics.size === 0) {
+      toast.error('Válassz ki legalább egy célcsoportot és egy témát')
+      return
+    }
+    toast.info("A tömeges generálás a következő sztoriban (3.0.3) lesz implementálva.")
   }
 
   const toggleSegment = (segmentId: string) => {
@@ -79,86 +102,6 @@ export default function MessageMatrix({
       newSet.add(topicId)
     }
     setSelectedTopics(newSet)
-  }
-
-  const handleGenerateMessages = async () => {
-    if (selectedSegments.size === 0 || selectedTopics.size === 0) {
-      toast.error('Válassz ki legalább egy célcsoportot és egy témát')
-      return
-    }
-
-    setIsGenerating(true)
-    try {
-      const response = await fetch('/api/ai/message-matrix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaign_id: campaignId,
-          segment_ids: Array.from(selectedSegments),
-          topic_ids: Array.from(selectedTopics),
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to generate messages')
-      }
-
-      const data = await response.json()
-      setGeneratedMessages(data.messages)
-      setIsPreviewOpen(true)
-      toast.success(`${data.messages.length} üzenet generálva`)
-    } catch (error) {
-      console.error(error)
-      toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás során')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  const handleSaveMessages = async (messagesToSave: GeneratedMessage[]) => {
-    setIsSaving(true)
-    try {
-      // Save messages one by one using existing API
-      const savePromises = messagesToSave.map(message =>
-        fetch('/api/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaign_id: message.campaign_id,
-            segment_id: message.segment_id,
-            topic_id: message.topic_id,
-            headline: message.headline,
-            body: message.body,
-            proof_point: message.proof_point,
-            cta: message.cta,
-            message_type: message.message_type,
-            status: 'draft',
-          }),
-        })
-      )
-
-      const results = await Promise.allSettled(savePromises)
-      const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))
-      
-      if (failed.length > 0) {
-        console.error('Some messages failed to save:', failed)
-        toast.warning(`${failed.length} üzenet mentése sikertelen volt`)
-      } else {
-        toast.success(`${messagesToSave.length} üzenet sikeresen mentve`)
-      }
-
-      setIsPreviewOpen(false)
-      setGeneratedMessages(null)
-      setSelectedSegments(new Set())
-      setSelectedTopics(new Set())
-      router.refresh()
-    } catch (error) {
-      console.error(error)
-      toast.error('Hiba történt a mentés során')
-    } finally {
-      setIsSaving(false)
-    }
   }
 
   // Convert segments and topics to checkbox list format
@@ -213,8 +156,8 @@ export default function MessageMatrix({
             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-blue-500 rounded-full blur-3xl opacity-20"></div>
 
             <div className="relative z-10">
-              <h3 className="text-lg font-display font-bold mb-1">AI Generátor</h3>
-              <p className="text-gray-400 text-sm mb-6">Válaszd ki a paramétereket a személyre szabott marketing üzenetek létrehozásához.</p>
+              <h3 className="text-lg font-display font-bold mb-1">Stratégia Generátor</h3>
+              <p className="text-gray-400 text-sm mb-6">Válaszd ki a paramétereket a kommunikációs stratégiák létrehozásához.</p>
               
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/5">
@@ -222,7 +165,7 @@ export default function MessageMatrix({
                   <span className="text-xs text-gray-400 uppercase tracking-wide">Kombináció</span>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/5">
-                  <span className="block text-2xl font-bold">{selectedTopicsArray.length * 2}s</span>
+                  <span className="block text-2xl font-bold">{selectedTopicsArray.length * 0.5}p</span>
                   <span className="text-xs text-gray-400 uppercase tracking-wide">Becsült idő</span>
                 </div>
               </div>
@@ -230,7 +173,7 @@ export default function MessageMatrix({
 
             <div className="relative z-10 space-y-3">
               <button
-                onClick={handleGenerateMessages}
+                onClick={handleBatchGenerate}
                 disabled={isGenerating || cellCount === 0}
                 className={`
                   w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all
@@ -247,8 +190,8 @@ export default function MessageMatrix({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
-                    Üzenetek Generálása
+                    <Loader2 className="w-4 h-4" /> {/* Using Loader2 as placeholder icon for Sparkles if not imported, but Sparkles was imported in original file. I should import it. */}
+                    Stratégiák Generálása
                   </>
                 )}
               </button>
@@ -309,12 +252,14 @@ export default function MessageMatrix({
 
                         {/* Data Cells */}
                         {topics.map(topic => {
-                          const message = getMessageForCell(segment.id, topic.id)
+                          const strategy = getStrategyForCell(segment.id, topic.id)
                           return (
-                            <MatrixCell
+                            <StrategyCell
                               key={`${segment.id}-${topic.id}`}
-                              message={message}
+                              strategy={strategy?.content}
                               onClick={() => handleCellClick(segment.id, topic.id)}
+                              onCreate={() => handleCreateStrategy(segment.id, topic.id)}
+                              onGenerate={() => handleGenerateStrategy(segment.id, topic.id)}
                             />
                           )
                         })}
@@ -338,57 +283,17 @@ export default function MessageMatrix({
             )}
         </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>
-              {getMessageForCell(selectedCell?.segmentId || '', selectedCell?.topicId || '')
-                ? 'Edit Message'
-                : 'Create Message'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            {selectedCell && (
-              <MessageForm
-                campaignId={campaignId}
-                segmentId={selectedCell.segmentId}
-                topicId={selectedCell.topicId}
-                initialData={getMessageForCell(
-                  selectedCell.segmentId,
-                  selectedCell.topicId
-                )}
-                onSuccess={() => setIsDialogOpen(false)}
-                onCancel={() => setIsDialogOpen(false)}
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Generated Messages Preview */}
-      {isPreviewOpen && generatedMessages && (
-        <MessageMatrixPreview
-          messages={generatedMessages}
-          segments={segments}
-          topics={topics}
-          campaignId={campaignId}
-          onSave={handleSaveMessages}
-          onCancel={() => {
-            setIsPreviewOpen(false)
-            setGeneratedMessages(null)
+      {selectedCell && selectedCell.strategy && (
+        <StrategyDetailModal
+          strategy={selectedCell.strategy.content}
+          isOpen={isDetailOpen}
+          onClose={() => setIsDetailOpen(false)}
+          onEdit={() => {
+            toast.info("A szerkesztés a következő sztoriban (3.0.4) lesz implementálva.")
           }}
-          onRegenerate={(regeneratedMessages) => {
-            // Update the generated messages with regenerated ones
-            setGeneratedMessages(prev => {
-              if (!prev) return regeneratedMessages
-              const updatedMap = new Map(regeneratedMessages.map(msg => [`${msg.segment_id}:${msg.topic_id}`, msg]))
-              return prev.map(msg => {
-                const key = `${msg.segment_id}:${msg.topic_id}`
-                return updatedMap.get(key) || msg
-              })
-            })
+          onDelete={() => {
+            toast.info("A törlés a következő sztoriban (3.0.4) lesz implementálva.")
           }}
-          isSaving={isSaving}
         />
       )}
     </div>

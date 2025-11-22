@@ -1,6 +1,6 @@
 # Story 3.0.1: Database Migration + Schema
 
-**Status:** delivered
+**Status:** done
 
 **Status note:** Story drafted 2025-11-22 - Foundation for Epic 3.0 message matrix refactor
 

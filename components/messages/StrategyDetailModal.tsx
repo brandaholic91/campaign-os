@@ -1,0 +1,234 @@
+import React from 'react'
+import { MessageStrategy } from '@/lib/ai/schemas'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Edit, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+interface StrategyDetailModalProps {
+  strategy: MessageStrategy
+  isOpen: boolean
+  onClose: () => void
+  onEdit: () => void
+  onDelete: () => void
+}
+
+export function StrategyDetailModal({
+  strategy,
+  isOpen,
+  onClose,
+  onEdit,
+  onDelete,
+}: StrategyDetailModalProps) {
+  const { strategy_core, style_tone, cta_funnel, extra_fields } = strategy
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[800px] h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-display">Stratégia Részletei</DialogTitle>
+          <DialogDescription>
+            A kiválasztott szegmens és téma kommunikációs stratégiája.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto pr-2">
+          <Tabs defaultValue="core" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsTrigger value="core">Stratégiai mag</TabsTrigger>
+              <TabsTrigger value="tone">Stílus/tónus</TabsTrigger>
+              <TabsTrigger value="funnel">CTA/funnel</TabsTrigger>
+              <TabsTrigger value="extra">Extra</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="core" className="space-y-6">
+              <Section title="Pozicionálás">
+                <p className="text-sm text-gray-700 leading-relaxed">{strategy_core.positioning_statement}</p>
+              </Section>
+              
+              <Section title="Fő üzenet (Core Message)">
+                <p className="text-lg font-bold text-gray-900">{strategy_core.core_message}</p>
+              </Section>
+
+              <Section title="Alátámasztó üzenetek">
+                <ul className="list-disc pl-5 space-y-2">
+                  {strategy_core.supporting_messages.map((msg, i) => (
+                    <li key={i} className="text-sm text-gray-700">{msg}</li>
+                  ))}
+                </ul>
+              </Section>
+
+              <Section title="Bizonyítékok (Proof Points)">
+                <ul className="list-disc pl-5 space-y-2">
+                  {strategy_core.proof_points.map((point, i) => (
+                    <li key={i} className="text-sm text-gray-700">{point}</li>
+                  ))}
+                </ul>
+              </Section>
+
+              {strategy_core.objections_reframes && (
+                <Section title="Kifogáskezelés">
+                  <ul className="list-disc pl-5 space-y-2">
+                    {strategy_core.objections_reframes.map((item, i) => (
+                      <li key={i} className="text-sm text-gray-700">{item}</li>
+                    ))}
+                  </ul>
+                </Section>
+              )}
+            </TabsContent>
+
+            <TabsContent value="tone" className="space-y-6">
+              <Section title="Tónus profil">
+                <p className="text-sm text-gray-700 mb-3">{style_tone.tone_profile.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  {style_tone.tone_profile.keywords.map((keyword, i) => (
+                    <Badge key={i} variant="secondary">{keyword}</Badge>
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Nyelvezet">
+                <p className="text-sm text-gray-700">{style_tone.language_style}</p>
+              </Section>
+
+              <div className="grid grid-cols-2 gap-6">
+                <Section title="DOs (Amit tegyünk)">
+                  <ul className="list-disc pl-5 space-y-1">
+                    {style_tone.communication_guidelines.do.map((item, i) => (
+                      <li key={i} className="text-sm text-green-700">{item}</li>
+                    ))}
+                  </ul>
+                </Section>
+                <Section title="DONTs (Amit kerüljünk)">
+                  <ul className="list-disc pl-5 space-y-1">
+                    {style_tone.communication_guidelines.dont.map((item, i) => (
+                      <li key={i} className="text-sm text-red-700">{item}</li>
+                    ))}
+                  </ul>
+                </Section>
+              </div>
+
+              <Section title="Érzelmi hőmérséklet">
+                <p className="text-sm text-gray-700">{style_tone.emotional_temperature}</p>
+              </Section>
+            </TabsContent>
+
+            <TabsContent value="funnel" className="space-y-6">
+              <Section title="Funnel szakasz">
+                <Badge className="text-sm px-3 py-1 capitalize">
+                  {cta_funnel.funnel_stage}
+                </Badge>
+              </Section>
+
+              <Section title="CTA Célok">
+                <ul className="list-disc pl-5 space-y-2">
+                  {cta_funnel.cta_objectives.map((obj, i) => (
+                    <li key={i} className="text-sm text-gray-700">{obj}</li>
+                  ))}
+                </ul>
+              </Section>
+
+              <Section title="CTA Minták">
+                <div className="flex flex-col gap-2">
+                  {cta_funnel.cta_patterns.map((pattern, i) => (
+                    <div key={i} className="p-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-800 border border-gray-100">
+                      {pattern}
+                    </div>
+                  ))}
+                </div>
+              </Section>
+
+              {cta_funnel.friction_reducers && (
+                <Section title="Súrlódáscsökkentők">
+                  <ul className="list-disc pl-5 space-y-2">
+                    {cta_funnel.friction_reducers.map((item, i) => (
+                      <li key={i} className="text-sm text-gray-700">{item}</li>
+                    ))}
+                  </ul>
+                </Section>
+              )}
+            </TabsContent>
+
+            <TabsContent value="extra" className="space-y-6">
+              {extra_fields ? (
+                <>
+                  {extra_fields.framing_type && (
+                    <Section title="Keretezés (Framing)">
+                      <p className="text-sm text-gray-700">{extra_fields.framing_type}</p>
+                    </Section>
+                  )}
+
+                  {extra_fields.key_phrases && extra_fields.key_phrases.length > 0 && (
+                    <Section title="Kulcskifejezések">
+                      <div className="flex flex-wrap gap-2">
+                        {extra_fields.key_phrases.map((phrase, i) => (
+                          <Badge key={i} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {phrase}
+                          </Badge>
+                        ))}
+                      </div>
+                    </Section>
+                  )}
+
+                  {extra_fields.risk_notes && (
+                    <Section title="Kockázatok / Megjegyzések">
+                      <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg text-sm text-amber-800">
+                        {extra_fields.risk_notes}
+                      </div>
+                    </Section>
+                  )}
+                  
+                  {!extra_fields.framing_type && (!extra_fields.key_phrases || extra_fields.key_phrases.length === 0) && !extra_fields.risk_notes && (
+                    <div className="text-center py-10 text-gray-500 italic">
+                      Nincsenek extra mezők kitöltve ehhez a stratégiához.
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-10 text-gray-500 italic">
+                  Nincsenek extra mezők ehhez a stratégiához.
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <div className="flex justify-between pt-4 border-t mt-4">
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={onDelete}
+            className="gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            Törlés
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Bezárás</Button>
+            <Button onClick={onEdit} className="gap-2">
+              <Edit className="w-4 h-4" />
+              Szerkesztés
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function Section({ title, children }: { title: string, children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">{title}</h4>
+      {children}
+    </div>
+  )
+}

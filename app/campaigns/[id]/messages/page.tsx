@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import MessageMatrix from '@/components/messages/MessageMatrix'
+import MessageMatrix, { StrategyRow } from '@/components/messages/MessageMatrix'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -35,8 +35,11 @@ export default async function MessageMatrixPage({
     .eq('campaign_id', id)
     .order('name', { ascending: true })
 
-  const { data: messages } = await db
-    .from('messages')
+  // Fetch strategies instead of messages
+  // Note: We use 'any' here because the types might not be generated yet for the new table
+  // @ts-ignore
+  const { data: strategies } = await (db as any)
+    .from('message_strategies')
     .select('*')
     .eq('campaign_id', id)
 
@@ -57,7 +60,7 @@ export default async function MessageMatrixPage({
           campaignId={id}
           segments={segments || []}
           topics={topics || []}
-          messages={messages || []}
+          strategies={(strategies as unknown as StrategyRow[]) || []}
         />
       </div>
     </div>

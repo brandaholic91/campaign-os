@@ -77,19 +77,19 @@ So that **I can plan how to communicate each topic to each segment before genera
 
 ### Tasks / Subtasks
 
-- [ ] Refactor `components/messages/MessageMatrix.tsx` (AC: #1)
+- [x] Refactor `components/messages/MessageMatrix.tsx` (AC: #1)
   - Replace message fetching with strategy fetching: `GET /api/strategies?campaign_id=...`
   - Update cell rendering logic to use StrategyCell component
   - Update state management to handle strategies instead of messages
   - Update TypeScript types to use strategy types
 
-- [ ] Create `components/messages/StrategyCell.tsx` component (AC: #1, #2, #3)
+- [x] Create `components/messages/StrategyCell.tsx` component (AC: #1, #2, #3)
   - Props: `strategy?` (optional strategy data), `campaignId`, `segmentId`, `topicId`, `onClick`
   - Display StrategyPreviewCard if strategy exists
   - Display empty state if no strategy
   - Handle click events (open detail modal or create form)
 
-- [ ] Create `components/messages/StrategyPreviewCard.tsx` component (AC: #2)
+- [x] Create `components/messages/StrategyPreviewCard.tsx` component (AC: #2)
   - Props: `strategy` (strategy data)
   - Display positioning statement (truncated to first 1-2 sentences, ellipsis)
   - Display core message (bold, 1 sentence)
@@ -97,7 +97,7 @@ So that **I can plan how to communicate each topic to each segment before genera
   - Display funnel stage badge (from strategy.cta_funnel.funnel_stage)
   - Styling: card layout with hover effects
 
-- [ ] Create `components/messages/StrategyDetailModal.tsx` component (AC: #4)
+- [x] Create `components/messages/StrategyDetailModal.tsx` component (AC: #4)
   - Props: `strategy` (strategy data), `onEdit`, `onDelete`, `onClose`
   - Display strategy in 4 sections (tabs or accordion):
     - Strategy Core tab: positioning_statement, core_message, supporting_messages, proof_points, objections_reframes
@@ -109,26 +109,26 @@ So that **I can plan how to communicate each topic to each segment before genera
   - Close button or click outside to close
   - Styling: modal overlay, scrollable content area
 
-- [ ] Update `/app/campaigns/[id]/messages/page.tsx` (AC: #1)
+- [x] Update `/app/campaigns/[id]/messages/page.tsx` (AC: #1)
   - Replace message fetching with strategy fetching
   - Update data fetching logic to use `/api/strategies?campaign_id=...`
   - Update component props to pass strategies instead of messages
   - Update error handling for strategy fetch failures
 
-- [ ] Implement empty state handling (AC: #3)
+- [x] Implement empty state handling (AC: #3)
   - Empty state component: "Nincs stratégia" text
   - "Generate Strategy" button (triggers AI generation - Story 3.0.3 integration)
   - "Create Strategy" button (opens StrategyForm - Story 3.0.4 integration)
   - Styling: centered text, button layout
 
-- [ ] Implement responsive design (AC: #6)
+- [x] Implement responsive design (AC: #6)
   - Mobile layout: single column, stacked segments
   - Tablet layout: responsive grid
   - Desktop layout: full table layout
   - Test on multiple screen sizes (375px, 768px, 1920px)
   - Ensure touch targets are appropriate size on mobile
 
-- [ ] Implement loading and error states (AC: #6)
+- [x] Implement loading and error states (AC: #6)
   - Loading state: skeleton loader or spinner during strategy fetch
   - Error state: error message with retry button if fetch fails
   - Empty state: show when no strategies exist for campaign

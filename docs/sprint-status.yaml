@@ -85,7 +85,7 @@ development_status:
   
   # Story 3.0.1: Database Migration + Schema
   # Note: Story drafted 2025-11-22 - Foundation for Epic 3.0 message matrix refactor
-  3-0-1-database-migration-schema: approved
+  3-0-1-database-migration-schema: done
   
   # Story 3.0.2: Message Matrix Refactor (UI)
   # Note: Story drafted 2025-11-22 - UI refactor to display communication strategies instead of concrete messages
