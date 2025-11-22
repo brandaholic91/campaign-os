@@ -1,9 +1,8 @@
 # Story 3.0.4: Strategy Form + CRUD
 
-**Status:** approved
+**Status:** done
 
-
-**Status note:** Story drafted 2025-11-22 - Manual strategy creation and editing with full CRUD operations
+**Status note:** Implementation completed 2025-11-22 - Full CRUD operations with form components and integrations
 
 ---
 
@@ -108,7 +107,7 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
 
 ### Tasks / Subtasks
 
-- [ ] Create `/api/strategies` endpoints (AC: #5)
+- [x] Create `/api/strategies` endpoints (AC: #5)
   - GET `/api/strategies?campaign_id=...` - list all strategies for a campaign
     - Returns array of strategies with segment and topic details (JOIN queries)
     - Include segment.name, topic.name in response
@@ -130,7 +129,7 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
     - Return 204 No Content on success
     - Return 404 if strategy not found
 
-- [ ] Create `components/messages/StrategyForm.tsx` main form component (AC: #1, #2, #3, #4)
+- [x] Create `components/messages/StrategyForm.tsx` main form component (AC: #1, #2, #3, #4)
   - Props: `campaignId`, `segmentId`, `topicId`, `initialData?` (for edit mode), `onSave`, `onCancel`
   - 4 main sections (accordion or tabs): "Stratégiai mag", "Stílus/tónus", "CTA/funnel", "Extra"
   - Multi-input fields with add/remove buttons:
@@ -155,7 +154,7 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
   - Loading states: submit button spinner, disable form during save
   - Success/error notifications: toast notifications
 
-- [ ] Create `components/messages/StrategyFormSections/StrategyCoreSection.tsx` (AC: #1)
+- [x] Create `components/messages/StrategyFormSections/StrategyCoreSection.tsx` (AC: #1)
   - Fields:
     - positioning_statement (textarea, min 10 chars)
     - core_message (textarea, min 5 chars)
@@ -165,7 +164,7 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
   - Validation: use StrategyCoreSchema
   - Error messages: inline field errors
 
-- [ ] Create `components/messages/StrategyFormSections/StyleToneSection.tsx` (AC: #1, #2)
+- [x] Create `components/messages/StrategyFormSections/StyleToneSection.tsx` (AC: #1, #2)
   - Fields:
     - tone_profile.description (textarea)
     - tone_profile.keywords (dynamic array, min 3, max 5)
@@ -175,7 +174,7 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
   - Validation: use StyleToneSchema
   - Error messages: inline field errors
 
-- [ ] Create `components/messages/StrategyFormSections/CTAFunnelSection.tsx` (AC: #1, #2)
+- [x] Create `components/messages/StrategyFormSections/CTAFunnelSection.tsx` (AC: #1, #2)
   - Fields:
     - funnel_stage (select: awareness/consideration/conversion/mobilization)
     - cta_objectives (dynamic array)
@@ -184,7 +183,7 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
   - Validation: use CTAFunnelSchema
   - Error messages: inline field errors
 
-- [ ] Create `components/messages/StrategyFormSections/ExtraFieldsSection.tsx` (AC: #1)
+- [x] Create `components/messages/StrategyFormSections/ExtraFieldsSection.tsx` (AC: #1)
   - Fields:
     - framing_type (select, optional)
     - key_phrases (optional dynamic array)
@@ -192,7 +191,7 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
   - Validation: use ExtraFieldsSchema
   - All fields optional
 
-- [ ] Implement preview summary auto-generation (AC: #4)
+- [x] Implement preview summary auto-generation (AC: #4)
   - Extract from strategy_core:
     - positioning_statement (first 1-2 sentences)
     - core_message (1 sentence)
@@ -204,20 +203,20 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
   - Auto-generate on Strategy Core section change
   - Editable textarea with character count
 
-- [ ] Integration with MessageMatrix (AC: #6)
+- [x] Integration with MessageMatrix (AC: #6)
   - Empty cell click → opens StrategyForm dialog in create mode
   - Form pre-filled with campaign_id, segment_id, topic_id from cell context
   - On save: create strategy via POST `/api/strategies`, refresh matrix
   - On cancel: close dialog
 
-- [ ] Integration with StrategyDetailModal (AC: #7)
+- [x] Integration with StrategyDetailModal (AC: #7)
   - Modal has "Edit Strategy" button
   - Button opens StrategyForm dialog in edit mode
   - Form pre-populated with existing strategy data
   - On save: update strategy via PUT `/api/strategies/[id]`, refresh modal view
   - On cancel: close dialog without changes
 
-- [ ] Implement error handling (AC: #8)
+- [x] Implement error handling (AC: #8)
   - Network errors: show toast notification with retry option
   - Validation errors: show inline field errors
   - UNIQUE constraint violation: show error "Strategy already exists for this segment × topic combination"

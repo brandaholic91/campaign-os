@@ -155,6 +155,70 @@ export type Database = {
           },
         ]
       }
+      message_strategies: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          cta_funnel: Json
+          extra_fields: Json | null
+          id: string
+          preview_summary: string | null
+          segment_id: string
+          strategy_core: Json
+          style_tone: Json
+          topic_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          cta_funnel: Json
+          extra_fields?: Json | null
+          id?: string
+          preview_summary?: string | null
+          segment_id: string
+          strategy_core: Json
+          style_tone: Json
+          topic_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          cta_funnel?: Json
+          extra_fields?: Json | null
+          id?: string
+          preview_summary?: string | null
+          segment_id?: string
+          strategy_core?: Json
+          style_tone?: Json
+          topic_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_strategies_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_strategies_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "segments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_strategies_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           body: string | null

@@ -10,6 +10,7 @@ import { StrategyCell } from './StrategyCell'
 import { StrategyDetailModal } from './StrategyDetailModal'
 import { MessageStrategy } from '@/lib/ai/schemas'
 import { StrategyMatrixPreview } from '@/components/ai/StrategyMatrixPreview'
+import { StrategyForm } from './StrategyForm'
 
 type Segment = Database['campaign_os']['Tables']['segments']['Row']
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
@@ -46,6 +47,11 @@ export default function MessageMatrix({
   } | null>(null)
   
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
+  const [createFormContext, setCreateFormContext] = useState<{
+    segmentId: string
+    topicId: string
+  } | null>(null)
   
   // AI generation state (placeholders for Story 3.0.3)
   const [selectedSegments, setSelectedSegments] = useState<Set<string>>(new Set())
@@ -72,7 +78,15 @@ export default function MessageMatrix({
   }
 
   const handleCreateStrategy = (segmentId: string, topicId: string) => {
-    toast.info("A stratégia létrehozása a következő sztoriban (3.0.4) lesz implementálva.")
+    setCreateFormContext({ segmentId, topicId })
+    setIsCreateFormOpen(true)
+  }
+
+  const handleCreateFormSave = () => {
+    setIsCreateFormOpen(false)
+    setCreateFormContext(null)
+    // Refresh the page to reload strategies
+    router.refresh()
   }
 
   const handleGenerateStrategy = (segmentId: string, topicId: string) => {
@@ -126,12 +140,63 @@ export default function MessageMatrix({
   }
 
   const handleSaveStrategies = async (approvedStrategies: any[]) => {
-    // Mock save for now as per plan
-    console.log('Saving strategies:', approvedStrategies)
-    toast.success(`${approvedStrategies.length} stratégia sikeresen mentve (Mock)`)
-    
-    // In real implementation (Story 3.0.4), we would POST to /api/strategies here
-    // and then refresh the matrix data
+    try {
+      let successCount = 0
+      let errorCount = 0
+      const errors: string[] = []
+
+      // Save each approved strategy
+      for (const item of approvedStrategies) {
+        try {
+          const response = await fetch('/api/strategies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaign_id: campaignId,
+              segment_id: item.segment_id,
+              topic_id: item.topic_id,
+              strategy_core: item.strategy.strategy_core,
+              style_tone: item.strategy.style_tone,
+              cta_funnel: item.strategy.cta_funnel,
+              extra_fields: item.strategy.extra_fields,
+              preview_summary: item.strategy.preview_summary,
+            }),
+          })
+
+          if (response.ok) {
+            successCount++
+          } else {
+            const error = await response.json()
+            if (response.status === 409) {
+              // UNIQUE constraint violation - strategy already exists
+              errors.push(`${item.segment_name} × ${item.topic_name}: már létezik`)
+            } else {
+              errors.push(`${item.segment_name} × ${item.topic_name}: ${error.error}`)
+            }
+            errorCount++
+          }
+        } catch (err) {
+          console.error('Error saving strategy:', err)
+          errors.push(`${item.segment_name} × ${item.topic_name}: hálózati hiba`)
+          errorCount++
+        }
+      }
+
+      // Show appropriate notifications
+      if (successCount > 0) {
+        toast.success(`${successCount} stratégia sikeresen mentve`)
+      }
+      
+      if (errorCount > 0) {
+        toast.error(`${errorCount} stratégia mentése sikertelen${errors.length > 0 ? ': ' + errors.join(', ') : ''}`)
+      }
+
+      // Refresh the matrix to show new strategies
+      router.refresh()
+    } catch (error) {
+      console.error('Unexpected error saving strategies:', error)
+      toast.error('Hiba történt a mentés során')
+    }
   }
 
   const toggleSegment = (segmentId: string) => {
@@ -336,14 +401,24 @@ export default function MessageMatrix({
       {selectedCell && selectedCell.strategy && (
         <StrategyDetailModal
           strategy={selectedCell.strategy.content}
+          strategyId={selectedCell.strategy.id}
           isOpen={isDetailOpen}
           onClose={() => setIsDetailOpen(false)}
-          onEdit={() => {
-            toast.info("A szerkesztés a következő sztoriban (3.0.4) lesz implementálva.")
+          onRefresh={() => router.refresh()}
+        />
+      )}
+
+      {isCreateFormOpen && createFormContext && (
+        <StrategyForm
+          isOpen={isCreateFormOpen}
+          onClose={() => {
+            setIsCreateFormOpen(false)
+            setCreateFormContext(null)
           }}
-          onDelete={() => {
-            toast.info("A törlés a következő sztoriban (3.0.4) lesz implementálva.")
-          }}
+          campaignId={campaignId}
+          segmentId={createFormContext.segmentId}
+          topicId={createFormContext.topicId}
+          onSave={handleCreateFormSave}
         />
       )}
 

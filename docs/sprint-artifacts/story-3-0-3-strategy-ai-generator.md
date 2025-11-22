@@ -122,7 +122,7 @@ So that **I can quickly define how to communicate each topic to each segment wit
   - Log validation errors for debugging
   - Provide user-friendly error messages for validation failures
 
-- [-] Implement CopilotKit event streaming for progress (AC: #6) **(Deferred)**
+- [ ] Implement CopilotKit event streaming for progress (AC: #6) **(Deferred)**
   - Stream generation status for each segment × topic combination
   - Show progress: "Generating strategy for Segment X × Topic Y..."
   - Stream completed strategies as they're generated
@@ -154,13 +154,13 @@ So that **I can quickly define how to communicate each topic to each segment wit
   - Format: "Positioning: [statement]. Core: [message]. Tone: [keywords]. Stage: [funnel_stage]"
   - Make summary editable after generation (via StrategyForm - Story 3.0.4)
 
-- [-] Integration with strategy CRUD (Story 3.0.4) (AC: #4) **(Moved to Story 3.0.4)**
+- [x] Integration with strategy CRUD (Story 3.0.4) (AC: #4) **(Completed in Story 3.0.4)**
   - Use POST `/api/strategies` to save approved strategies
   - Handle UNIQUE constraint errors (strategy already exists for segment × topic)
   - Show success/error notifications
   - Refresh message matrix after save
 
-- [-] Implement regeneration functionality (AC: #7) **(Deferred to Story 3.0.4)**
+- [ ] Implement regeneration functionality (AC: #7) **(Deferred to Story 3.0.4)**
   - "Regenerate Strategy" button on strategy preview/detail
   - Regenerate for single segment × topic combination
   - Preview new strategy before saving

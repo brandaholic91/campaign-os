@@ -12,23 +12,64 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Edit, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { StrategyForm } from './StrategyForm'
+import { useState } from 'react'
 
 interface StrategyDetailModalProps {
   strategy: MessageStrategy
+  strategyId: string
   isOpen: boolean
   onClose: () => void
-  onEdit: () => void
-  onDelete: () => void
+  onRefresh: () => void
 }
 
 export function StrategyDetailModal({
   strategy,
+  strategyId,
   isOpen,
   onClose,
-  onEdit,
-  onDelete,
+  onRefresh,
 }: StrategyDetailModalProps) {
   const { strategy_core, style_tone, cta_funnel, extra_fields } = strategy
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleEdit = () => {
+    setIsEditFormOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Biztosan törölni szeretnéd ezt a stratégiát?')) {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/strategies/${strategyId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Hiba történt a törlés során')
+      }
+
+      const { toast } = await import('sonner')
+      toast.success('Stratégia sikeresen törölve')
+      onRefresh()
+      onClose()
+    } catch (error) {
+      console.error('Error deleting strategy:', error)
+      const { toast } = await import('sonner')
+      toast.error('Hiba történt a törlés során')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleEditFormSave = () => {
+    setIsEditFormOpen(false)
+    onRefresh()
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -205,21 +246,37 @@ export function StrategyDetailModal({
           <Button 
             variant="destructive" 
             size="sm" 
-            onClick={onDelete}
+            onClick={handleDelete}
+            disabled={isDeleting}
             className="gap-2"
           >
             <Trash2 className="w-4 h-4" />
-            Törlés
+            {isDeleting ? 'Törlés...' : 'Törlés'}
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Bezárás</Button>
-            <Button onClick={onEdit} className="gap-2">
+            <Button onClick={handleEdit} className="gap-2">
               <Edit className="w-4 h-4" />
               Szerkesztés
             </Button>
           </div>
         </div>
       </DialogContent>
+
+      {isEditFormOpen && (
+        <StrategyForm
+          isOpen={isEditFormOpen}
+          onClose={() => setIsEditFormOpen(false)}
+          campaignId="" // Not needed for edit
+          segmentId="" // Not needed for edit
+          topicId="" // Not needed for edit
+          initialData={{
+            id: strategyId,
+            content: strategy,
+          }}
+          onSave={handleEditFormSave}
+        />
+      )}
     </Dialog>
   )
 }
