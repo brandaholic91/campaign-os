@@ -1,6 +1,6 @@
 # Story 3.0.2: Message Matrix Refactor (UI)
 
-**Status:** approved
+**Status:** done
 
 **Status note:** Story drafted 2025-11-22 - UI refactor to display communication strategies instead of concrete messages
 

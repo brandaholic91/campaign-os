@@ -1,6 +1,6 @@
 # Story 3.0.3: Strategy AI Generator
 
-**Status:** approved
+**Status:** in-progress
 
 
 
@@ -94,14 +94,14 @@ So that **I can quickly define how to communicate each topic to each segment wit
 
 ### Tasks / Subtasks
 
-- [ ] Refactor `/api/ai/message-matrix` → `/api/ai/strategy-matrix` endpoint (AC: #1)
+- [x] Refactor `/api/ai/message-matrix` → `/api/ai/strategy-matrix` endpoint (AC: #1)
   - Rename endpoint to `/api/ai/strategy-matrix/route.ts`
   - Update request body to include campaign_id, selected segment_ids, topic_ids
   - Change output structure from messages to strategies (16 fields)
   - Update response format to return strategies instead of messages
   - Keep existing endpoint pattern but change output structure
 
-- [ ] Create prompt template `lib/ai/prompts/strategy-generator.ts` (AC: #1, #2)
+- [x] Create prompt template `lib/ai/prompts/strategy-generator.ts` (AC: #1, #2)
   - Single LLM call with structured JSON output (16 fields across 4 categories)
   - Prompt includes campaign context:
     - Campaign type, goal type, narratives from campaigns table
@@ -115,28 +115,28 @@ So that **I can quickly define how to communicate each topic to each segment wit
   - Format requirements for each field
   - Examples of well-formed strategy structures
 
-- [ ] Implement Zod schema validation (AC: #1)
+- [x] Implement Zod schema validation (AC: #1)
   - Use `MessageStrategySchema` from Story 3.0.1
   - Validate each generated strategy before saving
   - Return validation errors if LLM output doesn't match schema
   - Log validation errors for debugging
   - Provide user-friendly error messages for validation failures
 
-- [ ] Implement CopilotKit event streaming for progress (AC: #6)
+- [-] Implement CopilotKit event streaming for progress (AC: #6) **(Deferred)**
   - Stream generation status for each segment × topic combination
   - Show progress: "Generating strategy for Segment X × Topic Y..."
   - Stream completed strategies as they're generated
   - Update progress bar: "Generated 3 of 12 strategies"
   - Allow cancellation mid-generation
 
-- [ ] Implement batch generation logic (AC: #1, #6)
+- [x] Implement batch generation logic (AC: #1, #6)
   - Generate strategies for all selected combinations
   - Parallel generation if API allows, otherwise sequential
   - Track progress for each combination
   - Handle partial failures gracefully
   - Continue generation even if one combination fails
 
-- [ ] Create preview modal component `components/ai/StrategyMatrixPreview.tsx` (AC: #3, #4)
+- [x] Create preview modal component `components/ai/StrategyMatrixPreview.tsx` (AC: #3, #4)
   - Display all generated strategies in scrollable list
   - Each strategy shows preview card with key information
   - Individual approve/reject buttons per strategy
@@ -145,7 +145,7 @@ So that **I can quickly define how to communicate each topic to each segment wit
   - Handle UNIQUE constraint errors (strategy already exists)
   - Show success/error notifications
 
-- [ ] Implement preview summary generation (AC: #5)
+- [x] Implement preview summary generation (AC: #5)
   - Generate summary from strategy_core:
     - Extract positioning_statement (first 1-2 sentences)
     - Extract core_message (1 sentence)
@@ -154,20 +154,20 @@ So that **I can quickly define how to communicate each topic to each segment wit
   - Format: "Positioning: [statement]. Core: [message]. Tone: [keywords]. Stage: [funnel_stage]"
   - Make summary editable after generation (via StrategyForm - Story 3.0.4)
 
-- [ ] Integration with strategy CRUD (Story 3.0.4) (AC: #4)
+- [-] Integration with strategy CRUD (Story 3.0.4) (AC: #4) **(Moved to Story 3.0.4)**
   - Use POST `/api/strategies` to save approved strategies
   - Handle UNIQUE constraint errors (strategy already exists for segment × topic)
   - Show success/error notifications
   - Refresh message matrix after save
 
-- [ ] Implement regeneration functionality (AC: #7)
+- [-] Implement regeneration functionality (AC: #7) **(Deferred to Story 3.0.4)**
   - "Regenerate Strategy" button on strategy preview/detail
   - Regenerate for single segment × topic combination
   - Preview new strategy before saving
   - Option to replace or keep existing strategy
   - Handle UNIQUE constraint (replace existing strategy)
 
-- [ ] Implement error handling (AC: #8)
+- [x] Implement error handling (AC: #8)
   - LLM API failures: show user-friendly error, allow retry
   - Rate limiting: queue requests or show wait message
   - Schema validation errors: log error, show message, allow regeneration
@@ -244,3 +244,36 @@ This story refactors Story 2.3's message generator to create a strategy generato
 - Dependencies and prerequisites
 - Success criteria
 
+
+---
+
+## Implementation Notes
+
+**Implemented: 2025-11-22**
+
+### Completed Tasks
+- [x] Refactor `/api/ai/message-matrix` → `/api/ai/strategy-matrix` endpoint
+  - Implemented new endpoint `/api/ai/strategy-matrix/route.ts`
+  - Validates input with `MessageGenerationRequestSchema`
+  - Generates strategies with 16 fields using `MessageStrategySchema`
+- [x] Create prompt template `lib/ai/prompts/strategy-generator.ts`
+  - Implemented `STRATEGY_GENERATOR_SYSTEM_PROMPT` with strict JSON schema
+  - Implemented `STRATEGY_GENERATOR_USER_PROMPT` with campaign context
+- [x] Implement Zod schema validation
+  - Used `MessageStrategySchema` to validate AI output
+- [x] Create preview modal component `components/ai/StrategyMatrixPreview.tsx`
+  - Displays generated strategies in a scrollable list
+  - Shows Strategy Core, Style & Tone, and CTA & Funnel details
+  - Implemented Approve/Reject workflow (mock save)
+- [x] Integration with UI
+  - Updated `MessageMatrix.tsx` to use the new endpoint
+  - Added "Stratégiák Generálása" button functionality
+
+### Deviations
+- **CopilotKit Streaming:** Deferred to a future story or optimization phase. Currently using standard request/response model with a loading state, which is sufficient for the current MVP.
+- **Preview Summary:** Generated manually in the API if missing from AI output, ensuring AC #5 is met even if the LLM doesn't strictly follow the optional field instruction.
+
+### Verification
+- Verified strategy generation with various segment/topic combinations.
+- Verified preview modal rendering and interaction.
+- Verified schema validation and error handling.

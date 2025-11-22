@@ -9,6 +9,7 @@ import { CheckboxList } from './CheckboxList'
 import { StrategyCell } from './StrategyCell'
 import { StrategyDetailModal } from './StrategyDetailModal'
 import { MessageStrategy } from '@/lib/ai/schemas'
+import { StrategyMatrixPreview } from '@/components/ai/StrategyMatrixPreview'
 
 type Segment = Database['campaign_os']['Tables']['segments']['Row']
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
@@ -50,6 +51,8 @@ export default function MessageMatrix({
   const [selectedSegments, setSelectedSegments] = useState<Set<string>>(new Set())
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set())
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generatedStrategies, setGeneratedStrategies] = useState<any[]>([])
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   const getStrategyForCell = (segmentId: string, topicId: string) => {
     return strategies.find(
@@ -81,7 +84,54 @@ export default function MessageMatrix({
       toast.error('Válassz ki legalább egy célcsoportot és egy témát')
       return
     }
-    toast.info("A tömeges generálás a következő sztoriban (3.0.3) lesz implementálva.")
+
+    setIsGenerating(true)
+    try {
+      const response = await fetch('/api/ai/strategy-matrix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          segment_ids: Array.from(selectedSegments),
+          topic_ids: Array.from(selectedTopics)
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Hiba történt a generálás során')
+      }
+
+      const data = await response.json()
+      
+      // Map response to format expected by preview
+      const strategiesWithNames = data.strategies.map((s: any) => {
+        const segment = segments.find(seg => seg.id === s.segment_id)
+        const topic = topics.find(t => t.id === s.topic_id)
+        return {
+          ...s,
+          segment_name: segment?.name || 'Ismeretlen',
+          topic_name: topic?.name || 'Ismeretlen'
+        }
+      })
+
+      setGeneratedStrategies(strategiesWithNames)
+      setIsPreviewOpen(true)
+    } catch (error) {
+      console.error('Generation error:', error)
+      toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás során')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleSaveStrategies = async (approvedStrategies: any[]) => {
+    // Mock save for now as per plan
+    console.log('Saving strategies:', approvedStrategies)
+    toast.success(`${approvedStrategies.length} stratégia sikeresen mentve (Mock)`)
+    
+    // In real implementation (Story 3.0.4), we would POST to /api/strategies here
+    // and then refresh the matrix data
   }
 
   const toggleSegment = (segmentId: string) => {
@@ -296,6 +346,13 @@ export default function MessageMatrix({
           }}
         />
       )}
+
+      <StrategyMatrixPreview
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        strategies={generatedStrategies}
+        onSave={handleSaveStrategies}
+      />
     </div>
   )
 }
