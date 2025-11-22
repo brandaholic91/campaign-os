@@ -1453,3 +1453,472 @@ ANTHROPIC_API_KEY=sk-ant-...
 **Agent Orchestration:**
 - `lib/ai/copilotkit/orchestrator.ts` - Campaign Orchestrator agent
 
+---
+
+## Epic 3.0: Message Matrix Refactor - Communication Strategies
+
+**Date:** 2025-11-21
+**Epic:** Epic 3.0 - Message Matrix Refactor
+**Change Type:** Database schema refactor + UI refactor + AI generator refactor
+**Development Context:** Refactoring Message Matrix from concrete messages to communication strategies
+
+---
+
+### Epic 3.0 Context
+
+**Epic 1-2 Foundation (Complete):**
+- ✅ Manual campaign management (CRUD)
+- ✅ Audience segments and topics management
+- ✅ Message matrix UI (concrete messages)
+- ✅ AI-powered message generator (Story 2.3)
+- ✅ CopilotKit infrastructure
+- ✅ Database schema with 8 core tables
+
+**Epic 3.0 Goal:**
+Refactor the Message Matrix from concrete messages to communication strategies. The matrix should define *how* to communicate each topic to each segment (tone, guidelines, key messages), not generate specific message content. Concrete messages will be generated later in the Content Calendar (Epic 3.1) based on these strategies, ensuring consistent messaging across all generated content.
+
+---
+
+### Epic 3.0 Scope
+
+**In Scope:**
+1. **New `message_strategies` database table** - JSONB structure (4 main categories, 16 sub-fields)
+2. **Message Matrix UI refactor** - Display communication strategies instead of concrete messages
+3. **Strategy preview cards** - Short AI-generated summary (editable) in matrix cells
+4. **Strategy detail modal** - Full strategy view with all 16 sub-fields (4 sections)
+5. **Strategy AI Generator** - Generate complete communication strategies (refactor Story 2.3)
+6. **Strategy CRUD operations** - Create, edit, view, delete strategies
+7. **Strategy form** - 4 main sections (Strategy Core, Style & Tone, CTA & Funnel, Extra Fields)
+8. **Zod schema validation** - All strategy JSONB structures validated
+9. **Migration** - Existing `messages` table remains for Content Calendar use
+
+**Out of Scope (Epic 3.1+):**
+- Content Calendar AI generation (Epic 3.1)
+- Sprint/Task Planning AI (Epic 3.2)
+- Risk module AI
+- Strategy versioning/history
+
+---
+
+### Epic 3.0 Source Tree Changes
+
+**New files for Epic 3.0:**
+
+```
+campaign-os/
+├── supabase/
+│   └── migrations/
+│       └── YYYYMMDD_message_strategies.sql    # CREATE - message_strategies table
+├── app/
+│   └── api/
+│       └── strategies/
+│           ├── route.ts                       # CREATE - GET, POST strategies
+│           └── [id]/route.ts                 # CREATE - GET, PUT, DELETE strategy
+├── lib/
+│   └── ai/
+│       ├── schemas.ts                         # MODIFY - Add strategy Zod schemas
+│       └── prompts/
+│           └── strategy-generator.ts          # CREATE - Strategy generation prompt (refactor message-generator.ts)
+├── components/
+│   └── messages/
+│       ├── MessageMatrix.tsx                  # MODIFY - Refactor to display strategies
+│       ├── StrategyCell.tsx                   # CREATE - Cell component with preview
+│       ├── StrategyPreviewCard.tsx            # CREATE - Short summary card
+│       ├── StrategyDetailModal.tsx            # CREATE - Full strategy view modal
+│       ├── StrategyForm.tsx                   # CREATE - Strategy create/edit form
+│       └── StrategyFormSections/
+│           ├── StrategyCoreSection.tsx        # CREATE - Strategy Core form section
+│           ├── StyleToneSection.tsx          # CREATE - Style & Tone form section
+│           ├── CTAFunnelSection.tsx          # CREATE - CTA & Funnel form section
+│           └── ExtraFieldsSection.tsx        # CREATE - Extra Fields form section
+└── app/
+    └── api/
+        └── ai/
+            └── strategy-matrix/
+                └── route.ts                   # CREATE - Strategy AI generator (refactor message-matrix)
+```
+
+**Modified files:**
+- `components/messages/MessageMatrix.tsx` - Refactor to display strategies instead of messages
+- `app/campaigns/[id]/messages/page.tsx` - Fetch strategies instead of messages
+- `lib/ai/schemas.ts` - Add strategy Zod schemas
+- `lib/ai/prompts/message-generator.ts` - Deprecated (replaced by strategy-generator.ts)
+
+**Unchanged files (for Content Calendar use):**
+- `app/api/messages/route.ts` - Remains for Content Calendar message generation
+- `messages` database table - Remains for Content Calendar use
+
+---
+
+### Epic 3.0 Technical Approach
+
+**Database Schema:**
+
+```sql
+CREATE TABLE message_strategies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  segment_id UUID NOT NULL REFERENCES segments(id) ON DELETE CASCADE,
+  topic_id UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+  
+  -- Strategy Core (JSONB) - 5 sub-fields
+  strategy_core JSONB NOT NULL,
+  -- {
+  --   "positioning_statement": "1-2 sentences about essence",
+  --   "core_message": "1 sentence, crystal clear statement",
+  --   "supporting_messages": ["bullet 1", "bullet 2", "bullet 3-5"],
+  --   "proof_points": ["proof 1", "proof 2", "proof 3"],
+  --   "objections_reframes": ["objection 1 + reframe", ...] (optional)
+  -- }
+  
+  -- Style & Tone (JSONB) - 4 sub-fields
+  style_tone JSONB NOT NULL,
+  -- {
+  --   "tone_profile": {
+  --     "description": "short description",
+  --     "keywords": ["keyword1", "keyword2", "keyword3-5"]
+  --   },
+  --   "language_style": "tegezés/magázás, szakzsargon level, sentence length",
+  --   "communication_guidelines": {
+  --     "do": ["guideline 1", "guideline 2", ...],
+  --     "dont": ["avoid 1", "avoid 2", ...]
+  --   },
+  --   "emotional_temperature": "nyugodt/motiváló/energikus"
+  -- }
+  
+  -- CTA & Funnel (JSONB) - 4 sub-fields
+  cta_funnel JSONB NOT NULL,
+  -- {
+  --   "funnel_stage": "awareness/consideration/conversion/mobilization",
+  --   "cta_objectives": ["objective 1", "objective 2", ...],
+  --   "cta_patterns": ["pattern 1", "pattern 2", "pattern 3"],
+  --   "friction_reducers": ["reducer 1", ...] (optional)
+  -- }
+  
+  -- Extra Fields (JSONB, optional) - 3 sub-fields
+  extra_fields JSONB,
+  -- {
+  --   "framing_type": "probléma-megoldás/összehasonlító/történet-mesélés/adat-alapú",
+  --   "key_phrases": ["phrase 1", "phrase 2", ...],
+  --   "risk_notes": "sensitive points, attack surfaces" (optional)
+  -- }
+  
+  -- Preview summary (AI-generated, editable)
+  preview_summary TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  UNIQUE(campaign_id, segment_id, topic_id)
+);
+
+CREATE INDEX idx_message_strategies_campaign ON message_strategies(campaign_id);
+```
+
+**Zod Schema Validation:**
+
+```typescript
+// Strategy Core Schema
+const StrategyCoreSchema = z.object({
+  positioning_statement: z.string().min(10, "Positioning statement must be at least 10 characters"),
+  core_message: z.string().min(5, "Core message must be at least 5 characters"),
+  supporting_messages: z.array(z.string()).min(3).max(5),
+  proof_points: z.array(z.string()).min(2).max(3),
+  objections_reframes: z.array(z.string()).optional()
+});
+
+// Style & Tone Schema
+const StyleToneSchema = z.object({
+  tone_profile: z.object({
+    description: z.string(),
+    keywords: z.array(z.string()).min(3).max(5)
+  }),
+  language_style: z.string(),
+  communication_guidelines: z.object({
+    do: z.array(z.string()),
+    dont: z.array(z.string())
+  }),
+  emotional_temperature: z.string()
+});
+
+// CTA & Funnel Schema
+const CTAFunnelSchema = z.object({
+  funnel_stage: z.enum(['awareness', 'consideration', 'conversion', 'mobilization']),
+  cta_objectives: z.array(z.string()),
+  cta_patterns: z.array(z.string()).min(2).max(3),
+  friction_reducers: z.array(z.string()).optional()
+});
+
+// Extra Fields Schema
+const ExtraFieldsSchema = z.object({
+  framing_type: z.string().optional(),
+  key_phrases: z.array(z.string()).optional(),
+  risk_notes: z.string().optional()
+});
+
+// Complete Strategy Schema
+const MessageStrategySchema = z.object({
+  strategy_core: StrategyCoreSchema,
+  style_tone: StyleToneSchema,
+  cta_funnel: CTAFunnelSchema,
+  extra_fields: ExtraFieldsSchema.optional(),
+  preview_summary: z.string().optional()
+});
+```
+
+**UI/UX Approach:**
+
+**Message Matrix Cell States:**
+- Empty: "Nincs stratégia" + "Generate Strategy" button
+- Has strategy: Preview card showing:
+  - Positioning statement (first 1-2 sentences, truncated)
+  - Core message (1 sentence, bold)
+  - Tone keywords (badges: "közvetlen", "őszinte")
+  - Funnel stage badge ("awareness", "consideration", etc.)
+
+**Strategy Detail Modal:**
+- Tabs or accordion: "Stratégiai mag", "Stílus/tónus", "CTA/funnel", "Extra"
+- All 16 sub-fields visible and readable
+- "Edit Strategy" button
+- Full strategy content organized by category
+
+**Strategy Form:**
+- 4 main sections (accordion or tabs):
+  1. Strategy Core (5 fields)
+  2. Style & Tone (4 fields)
+  3. CTA & Funnel (4 fields)
+  4. Extra Fields (3 fields, optional)
+- Multi-input fields (supporting_messages, proof_points) → add/remove rows
+- Do/Don't lists (communication_guidelines) → two-column layout
+- Preview summary editor (auto-generated from strategy_core, editable)
+
+**AI Generation Approach:**
+
+**Strategy Generator Prompt:**
+- Single LLM call with structured JSON output (16 fields)
+- Prompt includes:
+  - Campaign context (campaign_type, goal_type, narratives)
+  - Segment details (demographics, psychographics)
+  - Topic details (name, description, category)
+  - Instructions for all 16 sub-fields
+- Zod schema validation ensures consistent output
+- Preview summary auto-generated from strategy_core
+- CopilotKit event stream for real-time generation progress
+
+---
+
+### Epic 3.0 Integration Points
+
+**Database:**
+- New `message_strategies` table with JSONB structure
+- UNIQUE constraint: (campaign_id, segment_id, topic_id) - one strategy per cell
+- Existing `messages` table remains unchanged (for Content Calendar use)
+
+**API Endpoints:**
+- `/api/strategies` - GET (list), POST (create)
+- `/api/strategies/[id]` - GET (single), PUT (update), DELETE
+- `/api/ai/strategy-matrix` - POST (generate strategies, refactor from `/api/ai/message-matrix`)
+
+**Frontend Components:**
+- `MessageMatrix.tsx` - Refactored to display strategies
+- `StrategyCell.tsx` - Cell component with preview card
+- `StrategyDetailModal.tsx` - Full strategy view
+- `StrategyForm.tsx` - Create/edit form with 4 sections
+
+**AI Integration:**
+- Reuse Epic 2 LLM infrastructure (`lib/ai/client.ts`)
+- New prompt template: `lib/ai/prompts/strategy-generator.ts`
+- Zod schema validation: `MessageStrategySchema`
+- CopilotKit event streaming (reuse from Epic 2)
+
+---
+
+### Epic 3.0 Implementation Steps
+
+**Phase 1: Database Migration (Story 3.0.1) - 2-3 days**
+
+1. Create migration: `supabase/migrations/YYYYMMDD_message_strategies.sql`
+2. Define JSONB structure for 4 main categories (16 sub-fields)
+3. Create Zod schemas in `lib/ai/schemas.ts`
+4. Generate TypeScript types: `supabase gen types`
+5. Test migration and schema validation
+
+**Phase 2: UI Refactor (Story 3.0.2) - 3-4 days**
+
+6. Refactor `MessageMatrix.tsx` to fetch and display strategies
+7. Create `StrategyCell.tsx` component
+8. Create `StrategyPreviewCard.tsx` component
+9. Create `StrategyDetailModal.tsx` component
+10. Update `/app/campaigns/[id]/messages/page.tsx` to fetch strategies
+11. Test UI components and cell states
+
+**Phase 3: Strategy AI Generator (Story 3.0.3) - 4-5 days**
+
+12. Create `lib/ai/prompts/strategy-generator.ts` prompt template
+13. Refactor `/api/ai/message-matrix` → `/api/ai/strategy-matrix`
+14. Implement 16-field JSON output generation
+15. Add preview summary generation (from strategy_core)
+16. Integrate CopilotKit event streaming
+17. Build preview modal with approve/reject per strategy
+18. Test AI generation and validation
+
+**Phase 4: Strategy Form + CRUD (Story 3.0.4) - 3-4 days**
+
+19. Create `/api/strategies` endpoints (GET, POST, PUT, DELETE)
+20. Create `StrategyForm.tsx` component with 4 sections
+21. Create form section components (StrategyCoreSection, StyleToneSection, etc.)
+22. Implement form validation (Zod schemas)
+23. Add preview summary editor (auto-generated, editable)
+24. Integrate with StrategyDetailModal (edit mode)
+25. Test CRUD operations and form validation
+
+**Total: 15-20 days (3-4 weeks)**
+
+---
+
+### Epic 3.0 Technical Details
+
+**Strategy JSONB Structure:**
+
+```typescript
+interface MessageStrategy {
+  strategy_core: {
+    positioning_statement: string;        // 1-2 sentences
+    core_message: string;                 // 1 sentence
+    supporting_messages: string[];        // 3-5 bullets
+    proof_points: string[];               // 2-3 proofs
+    objections_reframes?: string[];       // 2-3 objections + reframes (optional)
+  };
+  style_tone: {
+    tone_profile: {
+      description: string;
+      keywords: string[];                 // 3-5 keywords
+    };
+    language_style: string;               // tegezés/magázás, szakzsargon, sentence length
+    communication_guidelines: {
+      do: string[];
+      dont: string[];
+    };
+    emotional_temperature: string;        // nyugodt/motiváló/energikus
+  };
+  cta_funnel: {
+    funnel_stage: 'awareness' | 'consideration' | 'conversion' | 'mobilization';
+    cta_objectives: string[];
+    cta_patterns: string[];               // 2-3 patterns
+    friction_reducers?: string[];         // optional
+  };
+  extra_fields?: {
+    framing_type?: string;                // probléma-megoldás/összehasonlító/történet-mesélés/adat-alapú
+    key_phrases?: string[];               // 5-10 phrases
+    risk_notes?: string;                  // sensitive points (optional)
+  };
+  preview_summary?: string;               // AI-generated, editable
+}
+```
+
+**Preview Summary Generation:**
+
+AI generates preview summary from `strategy_core`:
+- Positioning statement (first 1-2 sentences)
+- Core message (1 sentence, bold)
+- Tone keywords (from `style_tone.tone_profile.keywords`)
+- Funnel stage (from `cta_funnel.funnel_stage`)
+
+User can edit preview summary manually.
+
+**Migration Strategy:**
+
+1. Create `message_strategies` table
+2. Existing `messages` table remains unchanged
+3. No data migration needed (strategies are new concept)
+4. Backward compatibility: `messages` table still used for Content Calendar (Epic 3.1)
+
+---
+
+### Epic 3.0 Dependencies
+
+**External:**
+- Epic 2 complete (LLM infrastructure, CopilotKit)
+- Anthropic Claude API (reuse from Epic 2)
+- Existing Epic 1-2 functionality
+
+**Internal:**
+- Epic 2 complete (all stories done)
+- Database schema from Epic 1-2
+- Existing MessageMatrix component (to be refactored)
+- Story 2.3 AI Message Generator (to be refactored to Strategy Generator)
+
+---
+
+### Epic 3.0 Testing Strategy
+
+**Story 3.0.1 (Database Migration):**
+- Unit tests: Zod schema validation
+- Integration tests: Database migration script
+- Manual tests: Verify table structure and constraints
+
+**Story 3.0.2 (UI Refactor):**
+- Unit tests: StrategyCell, StrategyPreviewCard components
+- Integration tests: MessageMatrix refactored display
+- E2E tests: View strategies in matrix, open detail modal
+
+**Story 3.0.3 (Strategy AI Generator):**
+- Unit tests: Prompt template, JSON parsing
+- Integration tests: `/api/ai/strategy-matrix` with mocked LLM
+- E2E tests: Generate strategies → preview → approve → save
+- Edge cases: Invalid input, API timeout, malformed JSON
+
+**Story 3.0.4 (Strategy Form + CRUD):**
+- Unit tests: Form validation, CRUD operations
+- Integration tests: `/api/strategies` endpoints
+- E2E tests: Create → edit → delete strategy
+- Edge cases: UNIQUE constraint violation, invalid JSONB
+
+**Manual testing checklist:**
+- [ ] Strategy AI generates valid JSON per Zod schema (16 fields)
+- [ ] Preview card shows correct summary
+- [ ] Detail modal displays all 16 sub-fields
+- [ ] Strategy form validates all required fields
+- [ ] UNIQUE constraint prevents duplicate strategies
+- [ ] Preview summary is editable
+- [ ] Existing messages table still functional
+
+---
+
+### Epic 3.0 Acceptance Criteria Summary
+
+1. ✅ Users can create communication strategies for segment × topic combinations
+2. ✅ Strategy contains 4 main categories: Strategy Core, Style & Tone, CTA & Funnel, Extra Fields
+3. ✅ AI generates complete strategies (16 sub-fields) for selected segment × topic combinations
+4. ✅ Preview cards show short summary (AI-generated, editable) in matrix cells
+5. ✅ Detail modal displays full strategy with all 16 sub-fields
+6. ✅ Strategy form allows editing all strategy fields organized by category
+7. ✅ One strategy per cell (segment × topic) - UNIQUE constraint enforced
+8. ✅ All strategy data validated against Zod schemas
+9. ✅ Existing `messages` table remains functional for Content Calendar use
+10. ✅ Migration preserves backward compatibility
+
+---
+
+### Epic 3.0 Key Code Locations
+
+**Database:**
+- `supabase/migrations/YYYYMMDD_message_strategies.sql` - Migration script
+- `lib/supabase/types.ts` - Generated TypeScript types
+
+**API Endpoints:**
+- `/api/strategies/route.ts` - Strategy CRUD
+- `/api/strategies/[id]/route.ts` - Single strategy operations
+- `/api/ai/strategy-matrix/route.ts` - Strategy AI generator
+
+**Frontend Components:**
+- `components/messages/MessageMatrix.tsx` - Refactored matrix
+- `components/messages/StrategyCell.tsx` - Cell component
+- `components/messages/StrategyPreviewCard.tsx` - Preview card
+- `components/messages/StrategyDetailModal.tsx` - Detail modal
+- `components/messages/StrategyForm.tsx` - Create/edit form
+
+**AI Integration:**
+- `lib/ai/schemas.ts` - Strategy Zod schemas
+- `lib/ai/prompts/strategy-generator.ts` - Strategy generation prompt
+

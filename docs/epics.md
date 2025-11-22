@@ -467,3 +467,298 @@ So that **I can get contextual assistance while manually creating campaigns, wit
 
 ---
 
+## Epic 3.0: Message Matrix Refactor - Communication Strategies
+
+**Slug:** campaign-os-epic3-message-matrix-refactor
+
+### Goal
+
+Refactor the Message Matrix from concrete messages to communication strategies. The matrix should define *how* to communicate each topic to each segment (tone, guidelines, key messages), not generate specific message content. Concrete messages will be generated later in the Content Calendar based on these strategies, ensuring consistent messaging across all generated content.
+
+### Scope
+
+**In Scope:**
+- New `message_strategies` database table with JSONB structure (4 main categories, 16 sub-fields)
+- Message Matrix UI refactor: display communication strategies instead of concrete messages
+- Strategy preview cards (short AI-generated summary, editable) + detail modal (full strategy)
+- Strategy AI Generator: generate complete communication strategies for segment × topic combinations
+- Strategy CRUD operations: create, edit, view, delete strategies
+- Strategy form with 4 main sections (Strategy Core, Style & Tone, CTA & Funnel, Extra Fields)
+- Migration: existing `messages` table remains for Content Calendar use
+- Zod schema validation for strategy JSONB structure
+
+**Out of Scope (Epic 3.1+):**
+- Content Calendar AI generation (Epic 3.1)
+- Sprint/Task Planning AI (Epic 3.2)
+- Risk module AI
+- Strategy versioning/history
+
+### Success Criteria
+
+1. ✅ Users can create communication strategies for segment × topic combinations
+2. ✅ Strategy contains 4 main categories: Strategy Core, Style & Tone, CTA & Funnel, Extra Fields
+3. ✅ AI generates complete strategies (16 sub-fields) for selected segment × topic combinations
+4. ✅ Preview cards show short summary (AI-generated, editable) in matrix cells
+5. ✅ Detail modal displays full strategy with all 16 sub-fields
+6. ✅ Strategy form allows editing all strategy fields organized by category
+7. ✅ One strategy per cell (segment × topic) - UNIQUE constraint enforced
+8. ✅ All strategy data validated against Zod schemas
+9. ✅ Existing `messages` table remains functional for Content Calendar use
+10. ✅ Migration preserves backward compatibility
+
+### Dependencies
+
+**External:**
+- Epic 2 complete (LLM infrastructure, CopilotKit)
+- Anthropic Claude API (reuse from Epic 2)
+- Existing Epic 1-2 functionality (campaigns, segments, topics, messages)
+
+**Internal:**
+- Epic 2 complete (all stories done)
+- Database schema from Epic 1-2
+- Existing MessageMatrix component (to be refactored)
+- Story 2.3 AI Message Generator (to be refactored to Strategy Generator)
+
+---
+
+## Story Map - Epic 3.0
+
+```
+Database Migration Layer
+├── Story 3.0.1: Database Migration + Schema
+│   └── message_strategies table, Zod schemas, migration script
+│
+UI Refactor Layer
+├── Story 3.0.2: Message Matrix Refactor (UI)
+│   └── Strategy cells, preview cards, detail modal
+│
+AI Generation Layer
+├── Story 3.0.3: Strategy AI Generator
+│   └── Strategy generator (refactor Story 2.3), prompt template, 16-field output
+│
+CRUD Operations Layer
+└── Story 3.0.4: Strategy Form + CRUD
+    └── Strategy form (4 sections), API endpoints, edit/create workflow
+```
+
+---
+
+## Stories - Epic 3.0
+
+### Story 3.0.1: Database Migration + Schema
+
+As a **developer**,
+I want **a new `message_strategies` table with JSONB structure and Zod validation schemas**,
+So that **communication strategies can be stored and validated properly**.
+
+**Acceptance Criteria:**
+
+**Given** I have Epic 2 database schema
+**When** I run the migration
+**Then** the `message_strategies` table is created with:
+- campaign_id, segment_id, topic_id (with UNIQUE constraint)
+- strategy_core JSONB (5 sub-fields)
+- style_tone JSONB (4 sub-fields)
+- cta_funnel JSONB (4 sub-fields)
+- extra_fields JSONB (3 sub-fields, optional)
+- preview_summary TEXT (AI-generated, editable)
+
+**And** Zod schemas are defined for all JSONB structures
+
+**And** TypeScript types are generated from the schema
+
+**And** existing `messages` table remains unchanged (for Content Calendar use)
+
+**Prerequisites:** Epic 2 complete
+
+**Technical Notes:**
+- Create migration: `supabase/migrations/YYYYMMDD_message_strategies.sql`
+- Define JSONB structure for 4 main categories (16 sub-fields total)
+- Create Zod schemas in `lib/ai/schemas.ts`:
+  - `StrategyCoreSchema` (positioning_statement, core_message, supporting_messages, proof_points, objections_reframes)
+  - `StyleToneSchema` (tone_profile, language_style, communication_guidelines, emotional_temperature)
+  - `CTAFunnelSchema` (funnel_stage, cta_objectives, cta_patterns, friction_reducers)
+  - `ExtraFieldsSchema` (framing_type, key_phrases, risk_notes)
+  - `MessageStrategySchema` (complete strategy with all 4 categories)
+- Generate TypeScript types: `supabase gen types`
+- UNIQUE constraint: (campaign_id, segment_id, topic_id)
+
+**Estimated Effort:** 5 points (2-3 days)
+
+---
+
+### Story 3.0.2: Message Matrix Refactor (UI)
+
+As a **campaign manager**,
+I want **to see communication strategies in the message matrix instead of concrete messages**,
+So that **I can plan how to communicate each topic to each segment before generating specific content**.
+
+**Acceptance Criteria:**
+
+**Given** I have a campaign with segments and topics
+**When** I view the message matrix page
+**Then** I see a table with segments as rows and topics as columns
+
+**And** each cell shows either:
+- Empty state: "Nincs stratégia" + "Generate Strategy" button
+- Strategy preview card: short summary (positioning statement + core message + tone keywords + funnel stage badge)
+
+**And** when I click a cell with strategy, a detail modal opens showing:
+- Full strategy with all 4 categories (tabs or accordion)
+- "Edit Strategy" button
+- All 16 sub-fields visible and readable
+
+**And** when I click an empty cell, a "Create Strategy" form opens
+
+**And** the UI is responsive and works on mobile, tablet, desktop
+
+**Prerequisites:** Story 3.0.1 (database schema must exist)
+
+**Technical Notes:**
+- Refactor `components/messages/MessageMatrix.tsx`:
+  - Replace message display with strategy display
+  - Update cell rendering logic
+- Create new components:
+  - `components/messages/StrategyCell.tsx` - cell component with preview
+  - `components/messages/StrategyPreviewCard.tsx` - short summary card
+  - `components/messages/StrategyDetailModal.tsx` - full strategy view (4 sections)
+- Update `/app/campaigns/[id]/messages/page.tsx` to fetch strategies instead of messages
+- Strategy preview card content:
+  - Positioning statement (first 1-2 sentences, truncated)
+  - Core message (1 sentence, bold)
+  - Tone keywords (badges: "közvetlen", "őszinte")
+  - Funnel stage badge ("awareness", "consideration", etc.)
+- Detail modal: tabs or accordion for 4 main categories
+
+**Estimated Effort:** 5 points (3-4 days)
+
+---
+
+### Story 3.0.3: Strategy AI Generator
+
+As a **campaign manager**,
+I want **to generate communication strategies for segment × topic combinations using AI**,
+So that **I can quickly define how to communicate each topic to each segment without manual planning**.
+
+**Acceptance Criteria:**
+
+**Given** I have a campaign with segments and topics
+**When** I select segments and topics and click "Generate Strategies"
+**Then** AI generates complete communication strategies for each combination
+
+**And** each strategy includes all 16 sub-fields across 4 categories:
+- Strategy Core (5 fields)
+- Style & Tone (4 fields)
+- CTA & Funnel (4 fields)
+- Extra Fields (3 fields, optional)
+
+**And** I can preview all generated strategies before saving
+
+**And** I can select which strategies to save and which to reject
+
+**And** generated strategies respect campaign context (campaign_type, goal_type, narratives)
+
+**And** AI also generates preview_summary for each strategy (editable)
+
+**And** I can regenerate strategies if not satisfied
+
+**Prerequisites:** Story 3.0.1 (database schema), Story 2.1 (LLM infrastructure)
+
+**Technical Notes:**
+- Refactor Story 2.3: `/api/ai/message-matrix` → `/api/ai/strategy-matrix`
+- Create prompt template: `lib/ai/prompts/strategy-generator.ts`
+- Single LLM call with structured JSON output (16 fields)
+- Prompt includes:
+  - Campaign context (campaign_type, goal_type, narratives)
+  - Segment details (demographics, psychographics)
+  - Topic details (name, description, category)
+  - Instructions for all 16 sub-fields
+- Zod schema validation: `MessageStrategySchema`
+- CopilotKit event stream for real-time generation progress
+- Batch generation with progress indication
+- Preview modal with approve/reject per strategy
+- Preview summary generation: AI creates short summary from strategy_core
+- Integration with existing strategy CRUD (Story 3.0.4)
+
+**Estimated Effort:** 8 points (4-5 days, complex prompt engineering)
+
+---
+
+### Story 3.0.4: Strategy Form + CRUD
+
+As a **campaign manager**,
+I want **to create and edit communication strategies manually**,
+So that **I can fine-tune AI-generated strategies or create custom strategies without AI**.
+
+**Acceptance Criteria:**
+
+**Given** I am on the message matrix page
+**When** I click an empty cell or "Edit Strategy" on an existing strategy
+**Then** a strategy form opens with 4 main sections:
+- Strategy Core (positioning statement, core message, supporting messages, proof points, objections/reframes)
+- Style & Tone (tone profile, language style, communication guidelines, emotional temperature)
+- CTA & Funnel (funnel stage, CTA objectives, CTA patterns, friction reducers)
+- Extra Fields (framing type, key phrases, risk notes)
+
+**And** I can fill in all fields (required fields validated)
+
+**And** I can save the strategy to the database
+
+**And** I can edit existing strategies
+
+**And** I can delete strategies
+
+**And** preview_summary is auto-generated from strategy_core (editable)
+
+**And** all strategy data is validated against Zod schemas before saving
+
+**Prerequisites:** Story 3.0.1 (database schema), Story 3.0.2 (UI components)
+
+**Technical Notes:**
+- Create `/api/strategies` endpoints:
+  - GET `/api/strategies?campaign_id=...` - list strategies
+  - POST `/api/strategies` - create strategy
+  - GET `/api/strategies/[id]` - get single strategy
+  - PUT `/api/strategies/[id]` - update strategy
+  - DELETE `/api/strategies/[id]` - delete strategy
+- Create `components/messages/StrategyForm.tsx`:
+  - 4 main sections (accordion or tabs)
+  - Multi-input fields (supporting_messages, proof_points) → add/remove rows
+  - Do/Don't lists (communication_guidelines) → two-column layout
+  - Form validation (Zod schemas)
+  - Preview summary editor (auto-generated, editable)
+- Create form section components:
+  - `components/messages/StrategyFormSections/StrategyCoreSection.tsx`
+  - `components/messages/StrategyFormSections/StyleToneSection.tsx`
+  - `components/messages/StrategyFormSections/CTAFunnelSection.tsx`
+  - `components/messages/StrategyFormSections/ExtraFieldsSection.tsx`
+- Integration with StrategyDetailModal (edit mode)
+- Error handling and loading states
+
+**Estimated Effort:** 5 points (3-4 days)
+
+---
+
+## Implementation Timeline - Epic 3.0
+
+**Total Story Points:** 23 points
+
+**Estimated Timeline:** 15-20 days (approximately 3-4 weeks with buffer)
+
+**Story Sequence:**
+1. Story 3.0.1: Database Migration (must complete first - foundation)
+2. Story 3.0.2: UI Refactor (depends on 3.0.1)
+3. Story 3.0.3: Strategy AI Generator (depends on 3.0.1, uses Epic 2 LLM infrastructure)
+4. Story 3.0.4: Strategy Form + CRUD (depends on 3.0.1 and 3.0.2)
+
+**Notes:**
+- Story 3.0.1 is critical path - database foundation required for all other stories
+- Story 3.0.2 and 3.0.4 can work in parallel after 3.0.1 (UI components)
+- Story 3.0.3 requires careful prompt engineering for 16-field output
+- Preview summary: AI-generated but editable (stored in database)
+- UNIQUE constraint ensures one strategy per cell (segment × topic)
+- Existing `messages` table remains for Content Calendar use (Epic 3.1)
+- Story 2.3 refactor: message generator → strategy generator (same endpoint pattern, different output)
+
+---
+
