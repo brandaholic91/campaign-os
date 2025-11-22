@@ -402,6 +402,9 @@ export default function MessageMatrix({
         <StrategyDetailModal
           strategy={selectedCell.strategy.content}
           strategyId={selectedCell.strategy.id}
+          campaignId={campaignId}
+          segmentId={selectedCell.segmentId}
+          topicId={selectedCell.topicId}
           isOpen={isDetailOpen}
           onClose={() => setIsDetailOpen(false)}
           onRefresh={() => router.refresh()}

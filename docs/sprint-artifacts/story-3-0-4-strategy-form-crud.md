@@ -283,6 +283,78 @@ This story implements manual strategy creation and editing with full CRUD operat
 
 ---
 
+## Implementation Notes
+
+**Implemented: 2025-11-22**
+
+### Completed Tasks
+
+#### API Endpoints (AC #5)
+- [x] Created `/api/strategies/route.ts` with GET (list) and POST (create)
+  - GET endpoint with campaign_id query parameter
+  - POST endpoint with Zod schema validation
+  - UNIQUE constraint enforcement (segment_id + topic_id)
+  - Proper error handling and status codes
+- [x] Created `/api/strategies/[id]/route.ts` with GET, PUT, DELETE
+  - GET single strategy with JOIN queries for segment/topic names
+  - PUT with schema validation and updated_at timestamp
+  - DELETE with proper error handling
+
+#### Form Components (AC #1, #2, #3, #4)
+- [x] Created `StrategyForm.tsx` main form component
+  - Tabs-based layout for 4 main sections
+  - React Hook Form with Zod resolver
+  - Create mode and edit mode support
+  - Auto-generate preview summary functionality
+  - Loading states and error handling
+- [x] Created section components:
+  - `StrategyCoreSection.tsx` - Strategy Core fields (5 fields)
+  - `StyleToneSection.tsx` - Style & Tone fields (4 fields)
+  - `CTAFunnelSection.tsx` - CTA & Funnel fields (4 fields)
+  - `ExtraFieldsSection.tsx` - Extra fields (3 optional fields)
+- [x] Dynamic array fields with add/remove:
+  - Supporting messages, proof points, objections & reframes
+  - Tone keywords, CTA objectives, CTA patterns, friction reducers
+  - Communication guidelines (Do/Don't two-column layout)
+  - Key phrases
+
+#### Integration (AC #6, #7)
+- [x] MessageMatrix integration
+  - Empty cell click opens StrategyForm in create mode
+  - Pre-filled campaign/segment/topic IDs
+  - Matrix refresh after save via `router.refresh()`
+- [x] StrategyDetailModal integration
+  - "Edit Strategy" button opens StrategyForm in edit mode
+  - Nested form component within modal
+  - Pre-populated with existing strategy data
+  - Modal refresh after save
+
+#### Error Handling (AC #8)
+- [x] Network error handling with toast notifications
+- [x] Zod validation errors displayed inline
+- [x] UNIQUE constraint violation handling (409 status)
+- [x] Loading states during API calls
+
+### Key Features
+- ✅ Full CRUD operations (Create, Read, Update, Delete)
+- ✅ 16 sub-fields across 4 main categories
+- ✅ Auto-generated preview summary (editable)
+- ✅ Two-column Do/Don't communication guidelines
+- ✅ Dynamic array fields with min/max constraints
+- ✅ Seamless integration with MessageMatrix and StrategyDetailModal
+- ✅ Comprehensive error handling and validation
+
+### Verification
+- Verified strategy creation from empty cell
+- Verified strategy editing from detail modal
+- Verified strategy deletion with confirmation
+- Verified form validation (required fields, array constraints)
+- Verified preview summary auto-generation
+- Verified UNIQUE constraint handling
+- Verified matrix/modal refresh after CRUD operations
+
+---
+
 ## Context References
 
 **Tech-Spec:** [tech-spec.md](../tech-spec.md) - Epic 3.0: Message Matrix Refactor

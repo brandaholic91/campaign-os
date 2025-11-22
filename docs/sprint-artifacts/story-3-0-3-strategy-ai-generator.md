@@ -1,6 +1,6 @@
 # Story 3.0.3: Strategy AI Generator
 
-**Status:** in-progress
+**Status:** done
 
 
 
@@ -160,12 +160,13 @@ So that **I can quickly define how to communicate each topic to each segment wit
   - Show success/error notifications
   - Refresh message matrix after save
 
-- [ ] Implement regeneration functionality (AC: #7) **(Deferred to Story 3.0.4)**
+- [x] Implement regeneration functionality (AC: #7)
   - "Regenerate Strategy" button on strategy preview/detail
   - Regenerate for single segment × topic combination
   - Preview new strategy before saving
   - Option to replace or keep existing strategy
   - Handle UNIQUE constraint (replace existing strategy)
+  - **Completed: 2025-11-22** - Implemented single-strategy regeneration with comparison dialog
 
 - [x] Implement error handling (AC: #8)
   - LLM API failures: show user-friendly error, allow retry
@@ -272,6 +273,50 @@ This story refactors Story 2.3's message generator to create a strategy generato
 ### Deviations
 - **CopilotKit Streaming:** Deferred to a future story or optimization phase. Currently using standard request/response model with a loading state, which is sufficient for the current MVP.
 - **Preview Summary:** Generated manually in the API if missing from AI output, ensuring AC #5 is met even if the LLM doesn't strictly follow the optional field instruction.
+
+### Regeneration Functionality (Completed: 2025-11-22)
+- [x] Created `/api/ai/regenerate-strategy/route.ts` endpoint
+  - Single-strategy regeneration using same AI logic as batch generation
+  - Returns generated strategy without saving to database
+  - Proper validation and error handling
+- [x] Created `StrategyRegenerationDialog.tsx` component
+  - Side-by-side comparison (Original | New) with distinct styling
+  - Tabbed interface showing all 4 strategy sections
+  - "Keep Original" and "Replace with New" action buttons
+  - Loading states during replace operation
+- [x] Integrated into `StrategyDetailModal.tsx`
+  - "Újragenerálás" button with Sparkles icon
+  - Regeneration state management (isRegenerating, regeneratedStrategy, etc.)
+  - Uses existing PUT `/api/strategies/[id]` endpoint for replacement
+  - Success/error toast notifications
+- [x] Updated `MessageMatrix.tsx`
+  - Now passes campaignId, segmentId, topicId to detail modal
+  - Enables regeneration feature with proper context
+
+### Verification
+- Verified regeneration endpoint generates valid strategies
+- Verified comparison dialog displays correctly
+- Verified replace functionality updates strategy in database
+- Verified matrix refresh after strategy replacement
+
+### Integration with Story 3.0.2 (Completed: 2025-11-22)
+- [x] Connected batch generation button in `MessageMatrix.tsx`
+  - Segment/topic selection via checkboxes
+  - Batch generation via `handleBatchGenerate()` function
+  - Loading state with spinner and progress message
+- [x] Preview modal integration
+  - `StrategyMatrixPreview` component displays all generated strategies
+  - Approve/reject workflow with individual and bulk actions
+  - Save to database via `/api/strategies` endpoint
+- [x] Matrix refresh after generation
+  - Uses `router.refresh()` to reload strategies after save
+  - Toast notifications for user feedback
+
+### Integration with Story 3.0.4 (Completed: 2025-11-22)
+- [x] Strategy CRUD endpoints used for saving approved strategies
+  - POST `/api/strategies` for creating new strategies
+  - Handles UNIQUE constraint violations (409 status)
+  - Proper error handling and user feedback
 
 ### Verification
 - Verified strategy generation with various segment/topic combinations.

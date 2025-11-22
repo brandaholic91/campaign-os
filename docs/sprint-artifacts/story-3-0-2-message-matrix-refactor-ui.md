@@ -1,6 +1,6 @@
 # Story 3.0.2: Message Matrix Refactor (UI)
 
-**Status:** in-progress
+**Status:** done
 
 **Status note:** Story drafted 2025-11-22 - UI refactor to display communication strategies instead of concrete messages
 
@@ -134,12 +134,12 @@ So that **I can plan how to communicate each topic to each segment before genera
   - Empty state: show when no strategies exist for campaign
   - Network error handling: display user-friendly error messages
 
-- [ ] Integration with Story 3.0.3 (AI Generator) (AC: #3)
+- [x] Integration with Story 3.0.3 (AI Generator) (AC: #3)
   - Connect "Generate Strategy" button to AI generation workflow
   - Show loading state during generation
   - Refresh matrix after successful generation
 
-- [ ] Integration with Story 3.0.4 (Strategy Form) (AC: #4, #5)
+- [x] Integration with Story 3.0.4 (Strategy Form) (AC: #4, #5)
   - Connect "Create Strategy" button to StrategyForm dialog
   - Connect "Edit Strategy" button to StrategyForm dialog (edit mode)
   - Refresh matrix after save/update
@@ -191,6 +191,58 @@ This story refactors the Message Matrix UI to display communication strategies i
 - `components/ui/dialog.tsx` - Shadcn/ui dialog component for modal
 - `components/ui/tabs.tsx` - Shadcn/ui tabs component for category sections
 - `app/api/strategies/route.ts` - Strategies API endpoint (Story 3.0.4)
+
+---
+
+## Implementation Notes
+
+**Implemented: 2025-11-22**
+
+### Completed Integration Work
+
+#### Story 3.0.3 Integration (AI Generator)
+- [x] Connected "Generate Strategy" button via `handleBatchGenerate()` function
+  - Implemented segment/topic selection checkboxes
+  - Added batch generation UI panel with combination counter
+  - Integrated with `/api/ai/strategy-matrix` endpoint
+  - Loading state displays "Generálás folyamatban..." with spinner
+- [x] Preview modal integration via `StrategyMatrixPreview` component
+  - Displays all generated strategies in scrollable list
+  - Approve/reject workflow with bulk actions
+  - Saves approved strategies via `/api/strategies` endpoint
+- [x] Matrix refresh after successful generation
+  - Uses Next.js `router.refresh()` to reload strategies
+  - Toast notifications for success/error feedback
+
+#### Story 3.0.4 Integration (Strategy Form)
+- [x] Connected "Create Strategy" button in `StrategyCell` empty state
+  - Opens `StrategyForm` dialog with pre-filled campaign/segment/topic IDs
+  - Handled via `handleCreateStrategy()` function
+- [x] Connected "Edit Strategy" button in `StrategyDetailModal`
+  - Opens `StrategyForm` dialog in edit mode with existing strategy data
+  - Implemented in nested `StrategyForm` component within detail modal
+- [x] Matrix refresh after save/update
+  - Both create and edit flows call `router.refresh()` on save
+  - Implemented via `handleCreateFormSave()` and modal `onRefresh` prop
+- [x] Delete confirmation and refresh
+  - Native browser `confirm()` dialog for delete confirmation
+  - Refresh triggered after successful deletion
+  - Implemented in both `StrategyDetailModal` and `StrategyForm`
+
+### Key Components Involved
+- `MessageMatrix.tsx` - Main matrix component with selection, generation, and integration logic
+- `StrategyCell.tsx` - Cell component with empty state CTAs (Generate/Create)
+- `StrategyDetailModal.tsx` - Detail view with Edit/Delete actions
+- `StrategyForm.tsx` - CRUD form for manual strategy creation/editing
+- `StrategyMatrixPreview.tsx` - Preview modal for AI-generated strategies
+
+### Verification
+- Verified batch AI generation with multiple segment × topic selections
+- Verified preview modal approve/reject workflow
+- Verified manual strategy creation from empty cells
+- Verified strategy editing from detail modal
+- Verified strategy deletion with confirmation
+- Verified matrix refresh after all CRUD operations
 
 ---
 

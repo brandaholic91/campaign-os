@@ -89,12 +89,12 @@ development_status:
   
   # Story 3.0.2: Message Matrix Refactor (UI)
   # Note: Story drafted 2025-11-22 - UI refactor to display communication strategies instead of concrete messages
-  3-0-2-message-matrix-refactor-ui: in-progress
+  3-0-2-message-matrix-refactor-ui: done
   
   # Story 3.0.3: Strategy AI Generator
   # Note: Story drafted 2025-11-22 - AI-powered strategy generation for segment × topic combinations
   # Note: Status updated to in-progress (2025-11-22) - Implemented strategy generation API, prompt, and preview UI
-  3-0-3-strategy-ai-generator: in-progress
+  3-0-3-strategy-ai-generator: done
   
   # Story 3.0.4: Strategy Form + CRUD
   # Note: Story drafted 2025-11-22 - Manual strategy creation and editing with full CRUD operations

@@ -10,14 +10,18 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Edit, Trash2 } from 'lucide-react'
+import { Edit, Trash2, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StrategyForm } from './StrategyForm'
+import { StrategyRegenerationDialog } from './StrategyRegenerationDialog'
 import { useState } from 'react'
 
 interface StrategyDetailModalProps {
   strategy: MessageStrategy
   strategyId: string
+  campaignId: string
+  segmentId: string
+  topicId: string
   isOpen: boolean
   onClose: () => void
   onRefresh: () => void
@@ -26,6 +30,9 @@ interface StrategyDetailModalProps {
 export function StrategyDetailModal({
   strategy,
   strategyId,
+  campaignId,
+  segmentId,
+  topicId,
   isOpen,
   onClose,
   onRefresh,
@@ -33,6 +40,10 @@ export function StrategyDetailModal({
   const { strategy_core, style_tone, cta_funnel, extra_fields } = strategy
   const [isEditFormOpen, setIsEditFormOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isRegenerating, setIsRegenerating] = useState(false)
+  const [regeneratedStrategy, setRegeneratedStrategy] = useState<MessageStrategy | null>(null)
+  const [showRegenerationDialog, setShowRegenerationDialog] = useState(false)
+  const [isReplacing, setIsReplacing] = useState(false)
 
   const handleEdit = () => {
     setIsEditFormOpen(true)
@@ -69,6 +80,75 @@ export function StrategyDetailModal({
   const handleEditFormSave = () => {
     setIsEditFormOpen(false)
     onRefresh()
+  }
+
+  const handleRegenerate = async () => {
+    setIsRegenerating(true)
+    try {
+      const response = await fetch('/api/ai/regenerate-strategy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          segment_id: segmentId,
+          topic_id: topicId,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Hiba történt az újragenerálás során')
+      }
+
+      const data = await response.json()
+      setRegeneratedStrategy(data.strategy)
+      setShowRegenerationDialog(true)
+      
+      const { toast } = await import('sonner')
+      toast.success('Stratégia sikeresen újragenerálva')
+    } catch (error) {
+      console.error('Regeneration error:', error)
+      const { toast } = await import('sonner')
+      toast.error(error instanceof Error ? error.message : 'Hiba történt az újragenerálás során')
+    } finally {
+      setIsRegenerating(false)
+    }
+  }
+
+  const handleReplaceStrategy = async () => {
+    if (!regeneratedStrategy) return
+
+    setIsReplacing(true)
+    try {
+      const response = await fetch(`/api/strategies/${strategyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(regeneratedStrategy),
+      })
+
+      if (!response.ok) {
+        throw new Error('Hiba történt a csere során')
+      }
+
+      const { toast } = await import('sonner')
+      toast.success('Stratégia sikeresen frissítve az új verzióval')
+      setShowRegenerationDialog(false)
+      setRegeneratedStrategy(null)
+      onRefresh()
+    } catch (error) {
+      console.error('Replace error:', error)
+      const { toast } = await import('sonner')
+      toast.error('Hiba történt a csere során')
+    } finally {
+      setIsReplacing(false)
+    }
+  }
+
+  const handleKeepOriginal = async () => {
+    setShowRegenerationDialog(false)
+    setRegeneratedStrategy(null)
+    const { toast } = await import('sonner')
+    toast.info('Eredeti stratégia megtartva')
   }
 
   return (
@@ -247,15 +327,33 @@ export function StrategyDetailModal({
             variant="destructive" 
             size="sm" 
             onClick={handleDelete}
-            disabled={isDeleting}
+            disabled={isDeleting || isRegenerating}
             className="gap-2"
           >
             <Trash2 className="w-4 h-4" />
             {isDeleting ? 'Törlés...' : 'Törlés'}
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>Bezárás</Button>
-            <Button onClick={handleEdit} className="gap-2">
+            <Button variant="outline" onClick={onClose} disabled={isRegenerating}>Bezárás</Button>
+            <Button 
+              variant="outline" 
+              onClick={handleRegenerate} 
+              disabled={isRegenerating}
+              className="gap-2"
+            >
+              {isRegenerating ? (
+                <>
+                  <div className="w-4 h-4 mr-2 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  Generálás...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Újragenerálás
+                </>
+              )}
+            </Button>
+            <Button onClick={handleEdit} disabled={isRegenerating} className="gap-2">
               <Edit className="w-4 h-4" />
               Szerkesztés
             </Button>
@@ -275,6 +373,18 @@ export function StrategyDetailModal({
             content: strategy,
           }}
           onSave={handleEditFormSave}
+        />
+      )}
+
+      {showRegenerationDialog && regeneratedStrategy && (
+        <StrategyRegenerationDialog
+          isOpen={showRegenerationDialog}
+          onClose={() => setShowRegenerationDialog(false)}
+          originalStrategy={strategy}
+          regeneratedStrategy={regeneratedStrategy}
+          onReplace={handleReplaceStrategy}
+          onKeep={handleKeepOriginal}
+          isReplacing={isReplacing}
         />
       )}
     </Dialog>
