@@ -1,5 +1,20 @@
 import { z } from 'zod'
 
+// Helper to create flexible array schemas that handle AI output inconsistencies
+// Handles: undefined → [], nested arrays → flattened, mixed types
+const flexibleStringArray = () => z.preprocess((val) => {
+  if (!val) return []
+  if (Array.isArray(val)) {
+    // Flatten nested arrays and filter to strings only
+    return val.flatMap(item => 
+      Array.isArray(item) ? item.filter(v => typeof v === 'string') : 
+      typeof item === 'string' ? [item] : []
+    )
+  }
+  if (typeof val === 'string') return [val]
+  return []
+}, z.array(z.string()))
+
 export const GoalSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
@@ -7,19 +22,90 @@ export const GoalSchema = z.object({
   priority: z.number().int().nonnegative(),
 })
 
-export const SegmentSchema = z.object({
+export const DemographicProfileSchema = z.object({
+  age_range: z.string(),
+  location_type: z.string(),
+  income_level: z.string().optional(),
+  other_demographics: z.string().optional(),
+})
+
+export const PsychographicProfileSchema = z.object({
+  values: flexibleStringArray(),
+  attitudes_to_campaign_topic: flexibleStringArray(),
+  motivations: flexibleStringArray(),
+  pain_points: flexibleStringArray(),
+})
+
+export const MediaHabitsSchema = z.object({
+  primary_channels: flexibleStringArray(),
+  secondary_channels: flexibleStringArray().optional(),
+  notes: z.string().optional(),
+})
+
+export const ExamplePersonaSchema = z.object({
   name: z.string(),
+  one_sentence_story: z.string(),
+})
+
+export const SegmentSchema = z.object({
+  id: z.string().optional(), // Optional for new segments before saving
+  name: z.string(),
+  short_label: z.string().optional(),
   description: z.string().optional(),
+  demographic_profile: DemographicProfileSchema.optional(),
+  psychographic_profile: PsychographicProfileSchema.optional(),
+  media_habits: MediaHabitsSchema.optional(),
+  funnel_stage_focus: z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization']).optional(),
+  example_persona: ExamplePersonaSchema.optional(),
+  priority: z.enum(['primary', 'secondary']).default('secondary'),
+  // Legacy fields for backward compatibility
   demographics: z.record(z.string(), z.any()).optional(),
   psychographics: z.record(z.string(), z.any()).optional(),
-  priority: z.number().int().nonnegative(),
 })
 
 export const TopicSchema = z.object({
+  id: z.string().optional(), // Optional for new topics before saving
   name: z.string(),
+  short_label: z.string().optional(),
   description: z.string().optional(),
-  category: z.string().optional(),
+  topic_type: z.enum(['benefit', 'problem', 'value', 'proof', 'story']).optional(),
+  related_goal_types: flexibleStringArray().optional(),
+  core_narrative: z.string().optional(),
+  content_angles: flexibleStringArray().optional(),
+  recommended_channels: flexibleStringArray().optional(),
+  risk_notes: z.union([z.string(), z.array(z.string())]).optional().transform((val) => {
+    if (typeof val === 'string') {
+      return val.trim() ? [val] : []
+    }
+    return val
+  }),
+  priority: z.enum(['primary', 'secondary']).default('secondary'),
+  category: z.string().optional(), // Legacy field
 })
+
+// Schema for segment-topic matrix with indices (from AI generation)
+export const SegmentTopicMatrixEntryWithIndicesSchema = z.object({
+  segment_index: z.number().int().nonnegative(),
+  topic_index: z.number().int().nonnegative(),
+  importance: z.enum(['high', 'medium', 'low']),
+  role: z.enum(['core_message', 'support', 'experimental']),
+  summary: z.string().max(500).optional(),
+})
+
+// Schema for segment-topic matrix with IDs (for database)
+export const SegmentTopicMatrixSchema = z.object({
+  segment_id: z.string().uuid(),
+  topic_id: z.string().uuid(),
+  importance: z.enum(['high', 'medium', 'low']),
+  role: z.enum(['core_message', 'support', 'experimental']),
+  summary: z.string().max(500).optional(),
+})
+
+// Union schema that accepts both formats
+export const SegmentTopicMatrixEntrySchema = z.union([
+  SegmentTopicMatrixEntryWithIndicesSchema,
+  SegmentTopicMatrixSchema,
+])
 
 export const NarrativeSchema = z.object({
   title: z.string(),
@@ -31,7 +117,8 @@ export const CampaignStructureSchema = z.object({
   goals: z.array(GoalSchema),
   segments: z.array(SegmentSchema),
   topics: z.array(TopicSchema),
-  narratives: z.array(NarrativeSchema),
+  narratives: z.array(NarrativeSchema).optional().default([]),
+  segment_topic_matrix: z.array(SegmentTopicMatrixEntrySchema).optional(),
 })
 
 export const BriefNormalizerOutputSchema = z.object({
@@ -107,3 +194,53 @@ export function validateGeneratedMessage(data: unknown): GeneratedMessage {
 export function validateGeneratedMessages(data: unknown): GeneratedMessage[] {
   return GeneratedMessagesSchema.parse(data)
 }
+
+// Epic 3.0: Message Strategy Schemas
+
+export const StrategyCoreSchema = z.object({
+  positioning_statement: z.string().min(10),
+  core_message: z.string().min(5),
+  supporting_messages: flexibleStringArray().refine(arr => arr.length >= 3 && arr.length <= 5, { message: "Must have 3-5 items" }),
+  proof_points: flexibleStringArray().refine(arr => arr.length >= 2 && arr.length <= 3, { message: "Must have 2-3 items" }),
+  objections_reframes: flexibleStringArray().optional(),
+})
+
+export const StyleToneSchema = z.object({
+  tone_profile: z.object({
+    description: z.string(),
+    keywords: flexibleStringArray().refine(arr => arr.length >= 3 && arr.length <= 5, { message: "Must have 3-5 keywords" }),
+  }),
+  language_style: z.string(),
+  communication_guidelines: z.object({
+    do: flexibleStringArray(),
+    dont: flexibleStringArray(),
+  }),
+  emotional_temperature: z.string(),
+})
+
+export const CTAFunnelSchema = z.object({
+  funnel_stage: z.enum(['awareness', 'consideration', 'conversion', 'mobilization']),
+  cta_objectives: flexibleStringArray(),
+  cta_patterns: flexibleStringArray().refine(arr => arr.length >= 2 && arr.length <= 3, { message: "Must have 2-3 patterns" }),
+  friction_reducers: flexibleStringArray().optional(),
+})
+
+export const ExtraFieldsSchema = z.object({
+  framing_type: z.string().optional(),
+  key_phrases: flexibleStringArray().optional(),
+  risk_notes: z.string().optional(),
+})
+
+export const MessageStrategySchema = z.object({
+  strategy_core: StrategyCoreSchema,
+  style_tone: StyleToneSchema,
+  cta_funnel: CTAFunnelSchema,
+  extra_fields: ExtraFieldsSchema.optional(),
+  preview_summary: z.string().optional(),
+})
+
+export type StrategyCore = z.infer<typeof StrategyCoreSchema>
+export type StyleTone = z.infer<typeof StyleToneSchema>
+export type CTAFunnel = z.infer<typeof CTAFunnelSchema>
+export type ExtraFields = z.infer<typeof ExtraFieldsSchema>
+export type MessageStrategy = z.infer<typeof MessageStrategySchema>

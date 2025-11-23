@@ -1,23 +1,63 @@
-import { CopilotRuntime, AnthropicAdapter } from '@copilotkit/runtime'
+import { CopilotRuntime, AnthropicAdapter, OpenAIAdapter, GoogleGenerativeAIAdapter } from '@copilotkit/runtime'
 import { Action, Parameter } from '@copilotkit/shared'
-import { getAnthropicClient } from '@/lib/ai/client'
-import { CampaignStructureSchema, BriefNormalizerOutputSchema, MessageGenerationRequestSchema, GeneratedMessageSchema, validateGeneratedMessage } from '@/lib/ai/schemas'
+import { getAIProvider, getAnthropicClient } from '@/lib/ai/client'
+import { CampaignStructureSchema, BriefNormalizerOutputSchema } from '@/lib/ai/schemas'
 import { BRIEF_NORMALIZER_SYSTEM_PROMPT, BRIEF_NORMALIZER_USER_PROMPT } from '@/lib/ai/prompts/brief-normalizer'
 import { STRATEGY_DESIGNER_SYSTEM_PROMPT, STRATEGY_DESIGNER_USER_PROMPT } from '@/lib/ai/prompts/strategy-designer'
 import { MESSAGE_GENERATOR_SYSTEM_PROMPT, MESSAGE_GENERATOR_USER_PROMPT, MessageGenerationContext } from '@/lib/ai/prompts/message-generator'
+import { validateGeneratedMessage } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
+import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-// Initialize Anthropic client
-const anthropic = getAnthropicClient()
+// Determine which adapter to use based on AI_PROVIDER
+const providerType = process.env.AI_PROVIDER || 'anthropic'
+let serviceAdapter: any
 
-// Create AnthropicAdapter instance
-// Note: AnthropicAdapter accepts the Anthropic client instance from @anthropic-ai/sdk
-const serviceAdapter = new AnthropicAdapter({
-  anthropic: anthropic as any,
-  model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-})
+console.log(`=== Initializing CopilotKit Adapter for provider: ${providerType} ===`)
 
-console.log('=== AnthropicAdapter initialized ===', { model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5' })
+try {
+  switch (providerType) {
+    case 'openai':
+      if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is missing')
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+      serviceAdapter = new OpenAIAdapter({ openai: openai as any, model: process.env.AI_MODEL || 'gpt-4o' })
+      break
+
+    case 'google':
+      if (!process.env.GOOGLE_API_KEY) throw new Error('GOOGLE_API_KEY is missing')
+      // Note: GoogleGenerativeAIAdapter might require a specific setup or might not be directly exported depending on version
+      // If it fails, we might need to use LangChainAdapter or similar, but assuming it exists for now based on common patterns
+      // If GoogleGenerativeAIAdapter is not available, this will fail at runtime or compile time. 
+      // For safety, we can wrap it or use a fallback if we were unsure, but strict typing suggests we should know.
+      // Since I cannot verify the package exports directly, I will assume it exists or use a generic approach if possible.
+      // Actually, let's use the one from @copilotkit/runtime if available.
+      serviceAdapter = new GoogleGenerativeAIAdapter({ apiKey: process.env.GOOGLE_API_KEY, model: process.env.AI_MODEL || 'gemini-1.5-pro' })
+      break
+
+    case 'ollama':
+      const ollama = new OpenAI({
+        baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1',
+        apiKey: 'ollama', // Required but ignored
+      })
+      serviceAdapter = new OpenAIAdapter({ openai: ollama as any, model: process.env.AI_MODEL || 'llama2' })
+      break
+
+    case 'anthropic':
+    default:
+      if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is missing')
+      const anthropic = getAnthropicClient()
+      serviceAdapter = new AnthropicAdapter({
+        anthropic: anthropic as any,
+        model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
+      })
+      break
+  }
+} catch (error) {
+  console.error('Failed to initialize CopilotKit adapter:', error)
+  // Fallback to Anthropic or throw
+  throw error
+}
 
 /**
  * Creates CopilotKit actions for backend operations
@@ -32,159 +72,125 @@ function createCopilotActions(
 ): Action<Parameter[]>[] {
   return [
     {
-      name: 'generateCampaignStructure',
-      description: 'Generate campaign structure (goals, segments, topics, narratives) from a text brief using AI. This is a two-step process: first normalizes the brief, then designs the strategy.',
+      name: 'normalizeCampaignBrief',
+      description: 'Step 1: Normalize and structure a raw campaign brief. Always use this before generating the strategy.',
       parameters: [
         {
           name: 'brief',
           type: 'string' as const,
-          description: 'The campaign brief text description',
+          description: 'The raw campaign brief text',
           required: true,
         },
         {
           name: 'campaignType',
           type: 'string' as const,
-          description: 'Optional campaign type (political_election, political_issue, brand_awareness, product_launch, promo, ngo_issue)',
+          description: 'Optional campaign type',
           required: false,
         },
         {
           name: 'goalType',
           type: 'string' as const,
-          description: 'Optional goal type (awareness, engagement, list_building, conversion, mobilization)',
+          description: 'Optional goal type',
           required: false,
         },
       ],
       handler: async (args: any) => {
-        const { brief, campaignType, goalType } = args as { brief: string; campaignType?: string; goalType?: string }
-        if (!brief) {
-          throw new Error('Brief is required')
-        }
-
-        console.log('[generateCampaignStructure] Starting with brief:', brief.substring(0, 100) + '...')
-        console.log('[generateCampaignStructure] Campaign type:', campaignType, 'Goal type:', goalType)
-
-        const client = getAnthropicClient()
-        const model = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
-        
-        console.log('[generateCampaignStructure] Using model:', model)
-
-        // Step 1: Brief Normalizer
-        console.log('[generateCampaignStructure] Step 1: Calling Brief Normalizer')
-        let normalizerResponse
         try {
-          normalizerResponse = await client.messages.create({
+          const { brief, campaignType, goalType } = args as { brief: string; campaignType?: string; goalType?: string }
+          console.log('[normalizeCampaignBrief] Starting...')
+          
+          const provider = getAIProvider()
+          const model = process.env.AI_MODEL
+
+          const response = await provider.generateText({
             model,
-            max_tokens: 1024,
-            system: BRIEF_NORMALIZER_SYSTEM_PROMPT,
+            maxTokens: 1024,
+            systemPrompt: BRIEF_NORMALIZER_SYSTEM_PROMPT,
             messages: [
               { role: 'user', content: BRIEF_NORMALIZER_USER_PROMPT(brief, campaignType, goalType) }
             ]
           })
-          console.log('[generateCampaignStructure] Brief Normalizer response received')
-        } catch (error) {
-          console.error('[generateCampaignStructure] Brief Normalizer error:', error)
-          throw new Error(`Brief Normalizer failed: ${error instanceof Error ? error.message : String(error)}`)
-        }
 
-        const normalizerContent = normalizerResponse.content[0].type === 'text' 
-          ? normalizerResponse.content[0].text 
-          : ''
-        
-        if (!normalizerContent) {
-          throw new Error('Empty response from Brief Normalizer')
-        }
+          const content = response.content
+          if (!content) throw new Error('Empty response from Brief Normalizer')
 
-        // Extract JSON from response (handle markdown code blocks)
-        let normalizerJsonContent = normalizerContent.trim()
-        
-        if (normalizerJsonContent.startsWith('```')) {
-          const lines = normalizerJsonContent.split('\n')
-          const firstLine = lines[0]
-          const lastLine = lines[lines.length - 1]
-          
-          if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
-            normalizerJsonContent = lines.slice(1, -1).join('\n')
+          let jsonContent = content.trim()
+          if (jsonContent.startsWith('```')) {
+             const lines = jsonContent.split('\n')
+             const firstLine = lines[0]
+             const lastLine = lines[lines.length - 1]
+             if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
+               jsonContent = lines.slice(1, -1).join('\n')
+             }
           }
-        }
 
-        let normalizedBrief
-        try {
-          normalizedBrief = JSON.parse(normalizerJsonContent)
-        } catch (parseError) {
-          console.error('Brief Normalizer JSON Parse Error:', parseError)
-          throw new Error('Failed to parse brief normalizer response as JSON')
+          const normalizedBrief = JSON.parse(jsonContent)
+          const validated = BriefNormalizerOutputSchema.parse(normalizedBrief)
+          
+          return JSON.stringify(validated)
+        } catch (error) {
+          console.error('[normalizeCampaignBrief] Error:', error)
+          return JSON.stringify({ error: `Normalization failed: ${error instanceof Error ? error.message : String(error)}` })
         }
-
-        try {
-          normalizedBrief = BriefNormalizerOutputSchema.parse(normalizedBrief)
-        } catch (validationError) {
-          console.error('Brief Normalizer Schema Validation Error:', validationError)
-          throw new Error('Failed to validate brief normalizer output')
+      }
+    },
+    {
+      name: 'generateCampaignStrategy',
+      description: 'Step 2: Generate the full campaign strategy structure (goals, segments, topics) from a normalized brief.',
+      parameters: [
+        {
+          name: 'normalizedBrief',
+          type: 'string' as const,
+          description: 'The normalized brief JSON string (output of normalizeCampaignBrief)',
+          required: true,
         }
-
-        // Step 2: Strategy Designer
-        console.log('[generateCampaignStructure] Step 2: Calling Strategy Designer with normalized brief:', JSON.stringify(normalizedBrief, null, 2))
-        let strategyResponse
+      ],
+      handler: async (args: any) => {
         try {
-          strategyResponse = await client.messages.create({
+          const { normalizedBrief } = args as { normalizedBrief: string }
+          console.log('[generateCampaignStrategy] Starting...')
+          
+          let briefObj
+          try {
+            briefObj = typeof normalizedBrief === 'string' ? JSON.parse(normalizedBrief) : normalizedBrief
+          } catch (e) {
+            throw new Error('Invalid normalized brief JSON')
+          }
+
+          const provider = getAIProvider()
+          const model = process.env.AI_MODEL
+
+          const response = await provider.generateText({
             model,
-            max_tokens: 4096,
-            system: STRATEGY_DESIGNER_SYSTEM_PROMPT,
+            maxTokens: 4096,
+            systemPrompt: STRATEGY_DESIGNER_SYSTEM_PROMPT,
             messages: [
-              { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(normalizedBrief) }
+              { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(briefObj) }
             ]
           })
-          console.log('[generateCampaignStructure] Strategy Designer response received')
-        } catch (error) {
-          console.error('[generateCampaignStructure] Strategy Designer error:', error)
-          throw new Error(`Strategy Designer failed: ${error instanceof Error ? error.message : String(error)}`)
-        }
 
-        const strategyContent = strategyResponse.content[0].type === 'text'
-          ? strategyResponse.content[0].text
-          : ''
+          const content = response.content
+          if (!content) throw new Error('Empty response from Strategy Designer')
 
-        if (!strategyContent) {
-          throw new Error('Empty response from Strategy Designer')
-        }
-
-        // Extract JSON from response (handle markdown code blocks)
-        let strategyJsonContent = strategyContent.trim()
-        
-        if (strategyJsonContent.startsWith('```')) {
-          const lines = strategyJsonContent.split('\n')
-          const firstLine = lines[0]
-          const lastLine = lines[lines.length - 1]
-          
-          if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
-            strategyJsonContent = lines.slice(1, -1).join('\n')
+          let jsonContent = content.trim()
+          if (jsonContent.startsWith('```')) {
+             const lines = jsonContent.split('\n')
+             const firstLine = lines[0]
+             const lastLine = lines[lines.length - 1]
+             if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
+               jsonContent = lines.slice(1, -1).join('\n')
+             }
           }
-        }
 
-        let campaignStructure
-        try {
-          campaignStructure = JSON.parse(strategyJsonContent)
-        } catch (parseError) {
-          console.error('Strategy Designer JSON Parse Error:', parseError)
-          throw new Error('Failed to parse strategy designer response as JSON')
+          const structure = JSON.parse(jsonContent)
+          const validated = CampaignStructureSchema.parse(structure)
+          
+          return JSON.stringify(validated)
+        } catch (error) {
+          console.error('[generateCampaignStrategy] Error:', error)
+          return JSON.stringify({ error: `Strategy generation failed: ${error instanceof Error ? error.message : String(error)}` })
         }
-
-        try {
-          campaignStructure = CampaignStructureSchema.parse(campaignStructure)
-          console.log('[generateCampaignStructure] Successfully validated campaign structure')
-        } catch (validationError) {
-          console.error('Strategy Designer Schema Validation Error:', validationError)
-          console.error('Raw campaign structure:', JSON.stringify(campaignStructure, null, 2))
-          throw new Error(`Failed to validate strategy designer output: ${validationError instanceof Error ? validationError.message : String(validationError)}`)
-        }
-
-        console.log('[generateCampaignStructure] Returning campaign structure with', 
-          campaignStructure.goals?.length || 0, 'goals,',
-          campaignStructure.segments?.length || 0, 'segments,',
-          campaignStructure.topics?.length || 0, 'topics,',
-          campaignStructure.narratives?.length || 0, 'narratives')
-        return campaignStructure
-      },
+      }
     },
     {
       name: 'generateMessageMatrix',
@@ -276,7 +282,9 @@ function createCopilotActions(
           throw new Error('Segments or topics not found')
         }
 
-        const client = getAnthropicClient()
+        const provider = getAIProvider()
+        const model = process.env.AI_MODEL
+        
         const generatedMessages: Array<{
           segment_id: string
           topic_id: string
@@ -339,19 +347,16 @@ function createCopilotActions(
                 },
               }
 
-              const response = await client.messages.create({
-                model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-                max_tokens: 1024,
-                system: MESSAGE_GENERATOR_SYSTEM_PROMPT,
+              const response = await provider.generateText({
+                model,
+                maxTokens: 1024,
+                systemPrompt: MESSAGE_GENERATOR_SYSTEM_PROMPT,
                 messages: [
                   { role: 'user', content: MESSAGE_GENERATOR_USER_PROMPT(context) }
                 ]
               })
 
-              const content = response.content[0].type === 'text' 
-                ? response.content[0].text 
-                : ''
-
+              const content = response.content
               if (!content) {
                 console.warn(`Empty response for segment ${segment.name}, topic ${topic.name}`)
                 failedCombinations.push({

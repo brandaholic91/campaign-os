@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAnthropicClient } from '@/lib/ai/client'
+import { getAIProvider } from '@/lib/ai/client'
 import { MESSAGE_GENERATOR_SYSTEM_PROMPT, MESSAGE_GENERATOR_USER_PROMPT, MessageGenerationContext } from '@/lib/ai/prompts/message-generator'
-import { MessageGenerationRequestSchema, GeneratedMessageSchema, validateGeneratedMessage } from '@/lib/ai/schemas'
+import { MessageGenerationRequestSchema, validateGeneratedMessage } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
@@ -56,7 +56,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Segments or topics not found' }, { status: 404 })
     }
 
-    const client = getAnthropicClient()
+    const provider = getAIProvider()
+    const model = process.env.AI_MODEL
+    
+    if (!model) {
+      return NextResponse.json({ 
+        error: 'AI_MODEL environment variable is not set',
+        details: 'Please set the AI_MODEL environment variable to use AI features'
+      }, { status: 500 })
+    }
+
+    // Reasoning modelleknél (gpt-5, o1) több token kell, mert a reasoning tokenek is beleszámítanak
+    const isReasoningModel = model.startsWith('gpt-5') || model.startsWith('o1');
+    const maxTokens = isReasoningModel ? 4096 : 1024; // Reasoning modelleknél több token, hogy legyen hely a válasznak
+
     const generatedMessages: Array<{ segment_id: string; topic_id: string; headline: string; body: string; proof_point?: string; cta?: string; message_type: 'core' | 'supporting' | 'contrast' }> = []
 
     // Parse narratives if available
@@ -102,18 +115,16 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-          const response = await client.messages.create({
-            model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-            max_tokens: 1024,
-            system: MESSAGE_GENERATOR_SYSTEM_PROMPT,
+          const response = await provider.generateText({
+            model,
+            maxTokens,
+            systemPrompt: MESSAGE_GENERATOR_SYSTEM_PROMPT,
             messages: [
               { role: 'user', content: MESSAGE_GENERATOR_USER_PROMPT(context) }
             ]
           })
 
-          const content = response.content[0].type === 'text' 
-            ? response.content[0].text 
-            : ''
+          const content = response.content
 
           if (!content) {
             console.warn(`Empty response for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id})`)

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAnthropicClient } from '@/lib/ai/client'
+import { getAIProvider } from '@/lib/ai/client'
 import { BRIEF_NORMALIZER_SYSTEM_PROMPT, BRIEF_NORMALIZER_USER_PROMPT } from '@/lib/ai/prompts/brief-normalizer'
 import { STRATEGY_DESIGNER_SYSTEM_PROMPT, STRATEGY_DESIGNER_USER_PROMPT } from '@/lib/ai/prompts/strategy-designer'
-import { BriefNormalizerOutputSchema, CampaignStructureSchema } from '@/lib/ai/schemas'
+import { BriefNormalizerOutputSchema } from '@/lib/ai/schemas'
+
+export const maxDuration = 60 // Increase timeout for AI generation
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,25 +14,55 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Brief is required' }, { status: 400 })
     }
 
-    const client = getAnthropicClient()
+    const provider = getAIProvider()
+    const model = process.env.AI_MODEL
+
+    if (!model) {
+      console.error('Brief Normalizer: AI_MODEL environment variable is not set')
+      return NextResponse.json({ 
+        error: 'AI_MODEL environment variable is not set',
+        details: 'Please set the AI_MODEL environment variable to use AI features'
+      }, { status: 500 })
+    }
+
+    console.log('[Brief Normalizer] Starting with model:', model)
+
+    // Reasoning modelleknél (gpt-5, o1) több token kell, mert a reasoning tokenek is beleszámítanak
+    // A max_completion_tokens tartalmazza a reasoning tokeneket ÉS a válasz tokeneket is
+    const isReasoningModel = model.startsWith('gpt-5') || model.startsWith('o1');
+    const maxTokens = isReasoningModel ? 4096 : 1024; // Reasoning modelleknél több token, hogy legyen hely a válasznak
 
     // Step 1: Brief Normalizer
-    const normalizerResponse = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-      max_tokens: 1024,
-      system: BRIEF_NORMALIZER_SYSTEM_PROMPT,
+    const normalizerResponse = await provider.generateText({
+      model,
+      maxTokens,
+      systemPrompt: BRIEF_NORMALIZER_SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: BRIEF_NORMALIZER_USER_PROMPT(brief, campaignType, goalType) }
       ]
     })
 
-    const normalizerContent = normalizerResponse.content[0].type === 'text' 
-      ? normalizerResponse.content[0].text 
-      : ''
+    console.log('[Brief Normalizer] Response received:', {
+      hasContent: !!normalizerResponse.content,
+      contentLength: normalizerResponse.content?.length || 0,
+      model: normalizerResponse.model,
+      usage: normalizerResponse.usage,
+    })
+
+    const normalizerContent = normalizerResponse.content
     
     if (!normalizerContent) {
-      console.error('Brief Normalizer: Empty response')
-      throw new Error('Empty response from Brief Normalizer')
+      console.error('Brief Normalizer: Empty response', {
+        model,
+        responseModel: normalizerResponse.model,
+        usage: normalizerResponse.usage,
+      })
+      return NextResponse.json({ 
+        error: 'Empty response from Brief Normalizer',
+        details: `The AI model (${model}) returned an empty response. This might be due to model limitations or configuration issues.`,
+        model: model,
+        usage: normalizerResponse.usage,
+      }, { status: 500 })
     }
 
     // Extract JSON from response (handle markdown code blocks)
@@ -73,66 +105,42 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
-    // Step 2: Strategy Designer
-    const strategyResponse = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-      max_tokens: 4096,
-      system: STRATEGY_DESIGNER_SYSTEM_PROMPT,
+    // Step 2: Strategy Designer (Streaming)
+    // Reasoning modelleknél több token kell
+    const strategyMaxTokens = isReasoningModel ? 16384 : 8192;
+    const stream = provider.generateStream({
+      model,
+      maxTokens: strategyMaxTokens,
+      systemPrompt: STRATEGY_DESIGNER_SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(normalizedBrief) }
       ]
     })
 
-    const strategyContent = strategyResponse.content[0].type === 'text'
-      ? strategyResponse.content[0].text
-      : ''
-
-    if (!strategyContent) {
-      console.error('Strategy Designer: Empty response')
-      throw new Error('Empty response from Strategy Designer')
-    }
-
-    // Extract JSON from response (handle markdown code blocks)
-    let strategyJsonContent = strategyContent.trim()
+    const encoder = new TextEncoder()
     
-    // Remove markdown code blocks if present
-    if (strategyJsonContent.startsWith('```')) {
-      const lines = strategyJsonContent.split('\n')
-      const firstLine = lines[0]
-      const lastLine = lines[lines.length - 1]
-      
-      // Remove first and last line if they are code block markers
-      if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
-        strategyJsonContent = lines.slice(1, -1).join('\n')
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of stream) {
+            if (chunk.content) {
+              controller.enqueue(encoder.encode(chunk.content))
+            }
+          }
+          controller.close()
+        } catch (error) {
+          console.error('Streaming error:', error)
+          controller.error(error)
+        }
       }
-    }
+    })
 
-    let campaignStructure
-    try {
-      campaignStructure = JSON.parse(strategyJsonContent)
-    } catch (parseError) {
-      console.error('Strategy Designer JSON Parse Error:', parseError)
-      console.error('Raw Output:', strategyContent)
-      console.error('Extracted JSON:', strategyJsonContent)
-      return NextResponse.json({ 
-        error: 'Failed to parse strategy designer response as JSON',
-        details: parseError instanceof Error ? parseError.message : 'Unknown parse error'
-      }, { status: 500 })
-    }
-
-    try {
-      campaignStructure = CampaignStructureSchema.parse(campaignStructure)
-    } catch (validationError) {
-      console.error('Strategy Designer Schema Validation Error:', validationError)
-      console.error('Parsed JSON:', campaignStructure)
-      console.error('Raw Output:', strategyContent)
-      return NextResponse.json({ 
-        error: 'Failed to validate strategy designer output',
-        details: validationError instanceof Error ? validationError.message : 'Schema validation failed'
-      }, { status: 500 })
-    }
-
-    return NextResponse.json(campaignStructure)
+    return new NextResponse(readable, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+      },
+    })
 
   } catch (error) {
     console.error('Campaign Generation Error:', error)

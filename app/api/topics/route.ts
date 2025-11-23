@@ -64,8 +64,16 @@ export async function POST(request: NextRequest) {
       .insert({
         campaign_id: body.campaign_id,
         name: body.name,
+        short_label: body.short_label,
         description: body.description || null,
-        category: body.category || null,
+        topic_type: body.topic_type || null,
+        related_goal_types: body.related_goal_types || [],
+        core_narrative: body.core_narrative || null,
+        content_angles: body.content_angles || [],
+        recommended_channels: body.recommended_channels || [],
+        risk_notes: body.risk_notes || [],
+        priority: body.priority || 'secondary',
+        category: body.category || null, // Legacy
       })
       .select()
       .single()

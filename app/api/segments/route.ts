@@ -83,10 +83,17 @@ export async function POST(request: NextRequest) {
       .insert({
         campaign_id: body.campaign_id,
         name: body.name,
+        short_label: body.short_label,
         description: body.description || null,
-        demographics,
-        psychographics,
-        priority: body.priority || null,
+        demographic_profile: body.demographic_profile || {},
+        psychographic_profile: body.psychographic_profile || {},
+        media_habits: body.media_habits || {},
+        funnel_stage_focus: body.funnel_stage_focus,
+        example_persona: body.example_persona || {},
+        priority: body.priority || 'secondary',
+        // Legacy fields
+        demographics: body.demographics || body.demographic_profile || null,
+        psychographics: body.psychographics || body.psychographic_profile || null,
       })
       .select()
       .single()
@@ -148,6 +155,9 @@ export async function PUT(request: NextRequest) {
       .from('segments')
       .update({
         ...updateData,
+        // Ensure legacy fields are synced if not explicitly provided but new ones are
+        demographics: updateData.demographics || updateData.demographic_profile || undefined,
+        psychographics: updateData.psychographics || updateData.psychographic_profile || undefined,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

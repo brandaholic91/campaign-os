@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { CampaignForm } from '@/components/campaigns/CampaignForm'
+import EditCampaignClient from './EditCampaignClient'
 import { Database } from '@/lib/supabase/types'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
@@ -33,16 +33,6 @@ export default async function EditCampaignPage({ params }: EditCampaignPageProps
     notFound()
   }
 
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Kampány szerkesztése</h1>
-        <p className="text-muted-foreground mt-2">
-          {campaign.name}
-        </p>
-      </div>
-      <CampaignForm campaign={campaign} />
-    </div>
-  )
+  return <EditCampaignClient campaign={campaign} />
 }
 

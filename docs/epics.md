@@ -467,3 +467,534 @@ So that **I can get contextual assistance while manually creating campaigns, wit
 
 ---
 
+## Epic 3.0: Message Matrix Refactor - Communication Strategies
+
+**Slug:** campaign-os-epic3-message-matrix-refactor
+
+### Goal
+
+Refactor the Message Matrix from concrete messages to communication strategies. The matrix should define *how* to communicate each topic to each segment (tone, guidelines, key messages), not generate specific message content. Concrete messages will be generated later in the Content Calendar based on these strategies, ensuring consistent messaging across all generated content.
+
+### Scope
+
+**In Scope:**
+- New `message_strategies` database table with JSONB structure (4 main categories, 16 sub-fields)
+- Message Matrix UI refactor: display communication strategies instead of concrete messages
+- Strategy preview cards (short AI-generated summary, editable) + detail modal (full strategy)
+- Strategy AI Generator: generate complete communication strategies for segment × topic combinations
+- Strategy CRUD operations: create, edit, view, delete strategies
+- Strategy form with 4 main sections (Strategy Core, Style & Tone, CTA & Funnel, Extra Fields)
+- Migration: existing `messages` table remains for Content Calendar use
+- Zod schema validation for strategy JSONB structure
+
+**Out of Scope (Epic 3.1+):**
+- Content Calendar AI generation (Epic 3.1)
+- Sprint/Task Planning AI (Epic 3.2)
+- Risk module AI
+- Strategy versioning/history
+
+### Success Criteria
+
+1. ✅ Users can create communication strategies for segment × topic combinations
+2. ✅ Strategy contains 4 main categories: Strategy Core, Style & Tone, CTA & Funnel, Extra Fields
+3. ✅ AI generates complete strategies (16 sub-fields) for selected segment × topic combinations
+4. ✅ Preview cards show short summary (AI-generated, editable) in matrix cells
+5. ✅ Detail modal displays full strategy with all 16 sub-fields
+6. ✅ Strategy form allows editing all strategy fields organized by category
+7. ✅ One strategy per cell (segment × topic) - UNIQUE constraint enforced
+8. ✅ All strategy data validated against Zod schemas
+9. ✅ Existing `messages` table remains functional for Content Calendar use
+10. ✅ Migration preserves backward compatibility
+
+### Dependencies
+
+**External:**
+- Epic 2 complete (LLM infrastructure, CopilotKit)
+- Anthropic Claude API (reuse from Epic 2)
+- Existing Epic 1-2 functionality (campaigns, segments, topics, messages)
+
+**Internal:**
+- Epic 2 complete (all stories done)
+- Database schema from Epic 1-2
+- Existing MessageMatrix component (to be refactored)
+- Story 2.3 AI Message Generator (to be refactored to Strategy Generator)
+
+---
+
+## Story Map - Epic 3.0
+
+```
+Database Migration Layer
+├── Story 3.0.1: Database Migration + Schema
+│   └── message_strategies table, Zod schemas, migration script
+│
+Schema Enhancement Layer
+├── Story 3.0.5: Enhanced Segment & Topic Schema
+│   └── Detailed profiles, priority system, segment-topic matrix
+│
+UI Refactor Layer
+├── Story 3.0.2: Message Matrix Refactor (UI)
+│   └── Strategy cells, preview cards, detail modal
+│
+AI Generation Layer
+├── Story 3.0.3: Strategy AI Generator
+│   └── Strategy generator (refactor Story 2.3), prompt template, 16-field output
+│
+CRUD Operations Layer
+├── Story 3.0.4: Strategy Form + CRUD
+│   └── Strategy form (4 sections), API endpoints, edit/create workflow
+│
+AI Infrastructure Layer
+└── Story 3.0.6: AI Provider Abstraction
+    └── Multi-provider support (Anthropic, OpenAI, Google, Ollama), unified interface
+```
+
+---
+
+## Stories - Epic 3.0
+
+### Story 3.0.1: Database Migration + Schema
+
+As a **developer**,
+I want **a new `message_strategies` table with JSONB structure and Zod validation schemas**,
+So that **communication strategies can be stored and validated properly**.
+
+**Acceptance Criteria:**
+
+**Given** I have Epic 2 database schema
+**When** I run the migration
+**Then** the `message_strategies` table is created with:
+- campaign_id, segment_id, topic_id (with UNIQUE constraint)
+- strategy_core JSONB (5 sub-fields)
+- style_tone JSONB (4 sub-fields)
+- cta_funnel JSONB (4 sub-fields)
+- extra_fields JSONB (3 sub-fields, optional)
+- preview_summary TEXT (AI-generated, editable)
+
+**And** Zod schemas are defined for all JSONB structures
+
+**And** TypeScript types are generated from the schema
+
+**And** existing `messages` table remains unchanged (for Content Calendar use)
+
+**Prerequisites:** Epic 2 complete
+
+**Technical Notes:**
+- Create migration: `supabase/migrations/YYYYMMDD_message_strategies.sql`
+  - Use actual date format: `20251121_message_strategies.sql` (or current date)
+  - Create `message_strategies` table with:
+    - id (UUID, primary key, default uuid_generate_v4())
+    - campaign_id (UUID, NOT NULL, FK to campaigns, ON DELETE CASCADE)
+    - segment_id (UUID, NOT NULL, FK to segments, ON DELETE CASCADE)
+    - topic_id (UUID, NOT NULL, FK to topics, ON DELETE CASCADE)
+    - strategy_core (JSONB, NOT NULL)
+    - style_tone (JSONB, NOT NULL)
+    - cta_funnel (JSONB, NOT NULL)
+    - extra_fields (JSONB, nullable)
+    - preview_summary (TEXT, nullable)
+    - created_at (TIMESTAMPTZ, default NOW())
+    - updated_at (TIMESTAMPTZ, default NOW())
+    - UNIQUE constraint on (campaign_id, segment_id, topic_id)
+  - Create index: `CREATE INDEX idx_message_strategies_campaign ON message_strategies(campaign_id);`
+  - Create trigger for updated_at: automatic timestamp update on row change
+- Define JSONB structure for 4 main categories (16 sub-fields total):
+  - Strategy Core (5 fields): positioning_statement, core_message, supporting_messages[], proof_points[], objections_reframes[]?
+  - Style & Tone (4 fields): tone_profile{description, keywords[]}, language_style, communication_guidelines{do[], dont[]}, emotional_temperature
+  - CTA & Funnel (4 fields): funnel_stage, cta_objectives[], cta_patterns[], friction_reducers[]?
+  - Extra Fields (3 fields, optional): framing_type?, key_phrases[]?, risk_notes?
+- Create Zod schemas in `lib/ai/schemas.ts`:
+  - `StrategyCoreSchema`: z.object with positioning_statement (min 10 chars), core_message (min 5 chars), supporting_messages (array, min 3, max 5), proof_points (array, min 2, max 3), objections_reframes (optional array)
+  - `StyleToneSchema`: z.object with tone_profile{description, keywords (array, min 3, max 5)}, language_style (string), communication_guidelines{do (array), dont (array)}, emotional_temperature (string)
+  - `CTAFunnelSchema`: z.object with funnel_stage (enum: awareness/consideration/conversion/mobilization), cta_objectives (array), cta_patterns (array, min 2, max 3), friction_reducers (optional array)
+  - `ExtraFieldsSchema`: z.object with framing_type (optional string), key_phrases (optional array), risk_notes (optional string)
+  - `MessageStrategySchema`: z.object combining all 4 categories (strategy_core, style_tone, cta_funnel, extra_fields?, preview_summary?)
+- Generate TypeScript types: `supabase gen types typescript --project-id <project-id> > lib/supabase/types.ts`
+  - Verify `message_strategies` table types are generated
+  - Export types if needed for use in components
+- Test migration:
+  - Run migration on local Supabase instance
+  - Verify table structure matches spec
+  - Test UNIQUE constraint (try inserting duplicate strategy)
+  - Test CASCADE delete (delete campaign, verify strategies deleted)
+  - Test JSONB structure validation
+
+**Estimated Effort:** 5 points (2-3 days)
+
+---
+
+### Story 3.0.2: Message Matrix Refactor (UI)
+
+As a **campaign manager**,
+I want **to see communication strategies in the message matrix instead of concrete messages**,
+So that **I can plan how to communicate each topic to each segment before generating specific content**.
+
+**Acceptance Criteria:**
+
+**Given** I have a campaign with segments and topics
+**When** I view the message matrix page
+**Then** I see a table with segments as rows and topics as columns
+
+**And** each cell shows either:
+- Empty state: "Nincs stratégia" + "Generate Strategy" button
+- Strategy preview card: short summary (positioning statement + core message + tone keywords + funnel stage badge)
+
+**And** when I click a cell with strategy, a detail modal opens showing:
+- Full strategy with all 4 categories (tabs or accordion)
+- "Edit Strategy" button
+- All 16 sub-fields visible and readable
+
+**And** when I click an empty cell, a "Create Strategy" form opens
+
+**And** the UI is responsive and works on mobile, tablet, desktop
+
+**Prerequisites:** Story 3.0.1 (database schema must exist)
+
+**Technical Notes:**
+- Refactor `components/messages/MessageMatrix.tsx`:
+  - Replace message display with strategy display
+  - Update cell rendering logic to use StrategyCell component
+  - Fetch strategies from `/api/strategies?campaign_id=...` instead of messages
+- Create new components:
+  - `components/messages/StrategyCell.tsx` - cell component with preview card or empty state
+  - `components/messages/StrategyPreviewCard.tsx` - short summary card component
+  - `components/messages/StrategyDetailModal.tsx` - full strategy view modal (4 sections)
+- Update `/app/campaigns/[id]/messages/page.tsx` to fetch strategies instead of messages
+- Strategy preview card content:
+  - Positioning statement (first 1-2 sentences, truncated with ellipsis)
+  - Core message (1 sentence, bold text)
+  - Tone keywords (badges: "közvetlen", "őszinte", etc. from tone_profile.keywords)
+  - Funnel stage badge ("awareness", "consideration", "conversion", "mobilization")
+- Detail modal structure:
+  - Tabs or accordion for 4 main categories: "Stratégiai mag", "Stílus/tónus", "CTA/funnel", "Extra"
+  - All 16 sub-fields visible and readable
+  - "Edit Strategy" button that opens StrategyForm in edit mode
+  - "Delete Strategy" button with confirmation
+- Empty state handling:
+  - Show "Nincs stratégia" text
+  - "Generate Strategy" button (triggers AI generation - Story 3.0.3)
+  - "Create Strategy" button (opens manual form - Story 3.0.4)
+- Responsive design: mobile, tablet, desktop layouts
+- Loading states and error handling
+
+**Estimated Effort:** 5 points (3-4 days)
+
+---
+
+### Story 3.0.5: Enhanced Segment & Topic Schema with Priority and Matrix
+
+As a **campaign manager**,
+I want **detailed segment and topic schemas with priority classification, structured profiles, and segment-topic matrix mapping**,
+So that **the AI can generate more targeted and effective campaign messages based on rich audience and content context**.
+
+**Acceptance Criteria:**
+
+**Given** I have Epic 1-3 database schema
+**When** I run the migration
+**Then** segments table is enhanced with:
+- Structured demographic_profile, psychographic_profile (replaces existing JSONB)
+- media_habits JSONB (primary_channels, secondary_channels, notes)
+- funnel_stage_focus (awareness/engagement/consideration/conversion/mobilization)
+- example_persona JSONB (name, one_sentence_story)
+- priority changed from INTEGER to TEXT enum ('primary' | 'secondary')
+- short_label field for UI display
+
+**And** topics table is enhanced with:
+- topic_type (benefit/problem/value/proof/story)
+- related_goal_types JSONB array
+- core_narrative (1-2 sentence description)
+- content_angles JSONB array
+- recommended_channels JSONB array
+- risk_notes JSONB array
+- priority TEXT enum ('primary' | 'secondary')
+- short_label field for UI display
+
+**And** segment_topic_matrix table is created:
+- Maps segments to topics with importance (high/medium/low) and role (core_message/support/experimental)
+- UNIQUE constraint on (segment_id, topic_id)
+
+**And** AI prompt updated to generate:
+- 3-5 primary segments (max 7 total) with priority classification
+- 4-7 primary topics (max 9 total) with priority classification
+- Segment-topic matrix with importance and role mapping (limit 5-6 high-importance connections)
+
+**And** Zod schemas updated for all new structures
+
+**And** API endpoints updated to handle new fields and matrix
+
+**And** UI components updated to display/edit new fields
+
+**Prerequisites:** Story 3.0.1 (database foundation), Epic 2 complete (LLM infrastructure)
+
+**Technical Notes:**
+- Create migration: `supabase/migrations/YYYYMMDD_enhanced_segments_topics.sql`
+  - Enhance segments table: add new fields, migrate existing JSONB to structured format, change priority to enum
+  - Enhance topics table: add new fields, add priority enum
+  - Create segment_topic_matrix table with importance and role fields
+  - Migrate existing priority values (INTEGER 1-2 → 'primary', 3-5 → 'secondary')
+  - Preserve backward compatibility (keep old fields as fallback)
+- Update Zod schemas in `lib/ai/schemas.ts`:
+  - Update `SegmentSchema` with all new structured fields
+  - Update `TopicSchema` with all new fields
+  - Create `SegmentTopicMatrixSchema`
+- Update AI prompt in `lib/ai/prompts/strategy-designer.ts`:
+  - Add instructions for priority classification
+  - Add instructions for segment-topic matrix generation
+  - Update output schema to match new structure
+- Update API endpoints:
+  - `/api/ai/campaign-brief` - handle new schema in response
+  - `/api/campaigns/structure` - save new fields and matrix
+  - `/api/segments`, `/api/topics` - CRUD with new fields
+  - Create `/api/segment-topic-matrix` - matrix CRUD operations
+- Update UI components:
+  - `CampaignWizard.tsx` - form fields for new schema
+  - `SegmentManager.tsx`, `TopicManager.tsx` - display/edit new fields
+  - `MessageMatrix.tsx` - use matrix for display
+
+**Estimated Effort:** 13 points (5-7 days)
+
+---
+
+### Story 3.0.3: Strategy AI Generator
+
+As a **campaign manager**,
+I want **to generate communication strategies for segment × topic combinations using AI**,
+So that **I can quickly define how to communicate each topic to each segment without manual planning**.
+
+**Acceptance Criteria:**
+
+**Given** I have a campaign with segments and topics
+**When** I select segments and topics and click "Generate Strategies"
+**Then** AI generates complete communication strategies for each combination
+
+**And** each strategy includes all 16 sub-fields across 4 categories:
+- Strategy Core (5 fields)
+- Style & Tone (4 fields)
+- CTA & Funnel (4 fields)
+- Extra Fields (3 fields, optional)
+
+**And** I can preview all generated strategies before saving
+
+**And** I can select which strategies to save and which to reject
+
+**And** generated strategies respect campaign context (campaign_type, goal_type, narratives)
+
+**And** AI also generates preview_summary for each strategy (editable)
+
+**And** I can regenerate strategies if not satisfied
+
+**Prerequisites:** Story 3.0.1 (database schema), Story 2.1 (LLM infrastructure)
+
+**Technical Notes:**
+- Refactor Story 2.3: `/api/ai/message-matrix` → `/api/ai/strategy-matrix`
+  - Keep existing endpoint pattern but change output structure
+  - Update request body to include campaign_id, selected segment_ids, topic_ids
+- Create prompt template: `lib/ai/prompts/strategy-generator.ts`
+  - Single LLM call with structured JSON output (16 fields across 4 categories)
+  - Prompt includes:
+    - Campaign context (campaign_type, goal_type, narratives from campaigns table)
+    - Segment details (name, description, demographics, psychographics)
+    - Topic details (name, description, category)
+    - Instructions for all 16 sub-fields with examples
+    - Format requirements for each field
+- Zod schema validation: `MessageStrategySchema` from Story 3.0.1
+  - Validate each generated strategy before saving
+  - Return validation errors if LLM output doesn't match schema
+- CopilotKit event stream for real-time generation progress
+  - Stream generation status for each segment × topic combination
+  - Show progress: "Generating strategy for Segment X × Topic Y..."
+  - Stream completed strategies as they're generated
+- Batch generation with progress indication
+  - Generate strategies for all selected combinations in parallel (if API allows) or sequentially
+  - Show progress bar: "Generated 3 of 12 strategies"
+  - Allow cancellation mid-generation
+- Preview modal with approve/reject per strategy
+  - Display all generated strategies in a scrollable list
+  - Each strategy shows: preview card + "Approve" / "Reject" buttons
+  - Bulk actions: "Approve All", "Reject All", "Approve Selected"
+  - Selected strategies are saved to database via `/api/strategies` endpoint
+- Preview summary generation: AI creates short summary from strategy_core
+  - Extract: positioning_statement (first 1-2 sentences) + core_message + tone keywords + funnel stage
+  - Format: "Positioning: [statement]. Core: [message]. Tone: [keywords]. Stage: [funnel_stage]"
+  - Summary is editable after generation
+- Integration with existing strategy CRUD (Story 3.0.4)
+  - Use POST `/api/strategies` to save approved strategies
+  - Handle UNIQUE constraint errors (strategy already exists for segment × topic)
+  - Show success/error notifications
+- Error handling:
+  - LLM API failures: show user-friendly error, allow retry
+  - Rate limiting: queue requests or show wait message
+  - Schema validation errors: log error, show message, allow regeneration
+- Regeneration: "Regenerate Strategy" button for individual strategies
+
+**Estimated Effort:** 8 points (4-5 days, complex prompt engineering)
+
+---
+
+### Story 3.0.4: Strategy Form + CRUD
+
+As a **campaign manager**,
+I want **to create and edit communication strategies manually**,
+So that **I can fine-tune AI-generated strategies or create custom strategies without AI**.
+
+**Acceptance Criteria:**
+
+**Given** I am on the message matrix page
+**When** I click an empty cell or "Edit Strategy" on an existing strategy
+**Then** a strategy form opens with 4 main sections:
+- Strategy Core (positioning statement, core message, supporting messages, proof points, objections/reframes)
+- Style & Tone (tone profile, language style, communication guidelines, emotional temperature)
+- CTA & Funnel (funnel stage, CTA objectives, CTA patterns, friction reducers)
+- Extra Fields (framing type, key phrases, risk notes)
+
+**And** I can fill in all fields (required fields validated)
+
+**And** I can save the strategy to the database
+
+**And** I can edit existing strategies
+
+**And** I can delete strategies
+
+**And** preview_summary is auto-generated from strategy_core (editable)
+
+**And** all strategy data is validated against Zod schemas before saving
+
+**Prerequisites:** Story 3.0.1 (database schema), Story 3.0.2 (UI components)
+
+**Technical Notes:**
+- Create `/api/strategies` endpoints:
+  - GET `/api/strategies?campaign_id=...` - list all strategies for a campaign
+    - Returns array of strategies with segment and topic details (JOIN)
+  - POST `/api/strategies` - create new strategy
+    - Request body: { campaign_id, segment_id, topic_id, strategy_core, style_tone, cta_funnel, extra_fields?, preview_summary? }
+    - Validate against MessageStrategySchema before saving
+    - Handle UNIQUE constraint violation (strategy already exists)
+  - GET `/api/strategies/[id]` - get single strategy by ID
+    - Include segment and topic details in response
+  - PUT `/api/strategies/[id]` - update existing strategy
+    - Validate against MessageStrategySchema
+    - Update updated_at timestamp
+  - DELETE `/api/strategies/[id]` - delete strategy
+    - Cascade handled by database (no additional logic needed)
+- Create `components/messages/StrategyForm.tsx`:
+  - Props: `campaignId`, `segmentId`, `topicId`, `initialData?` (for edit mode), `onSave`, `onCancel`
+  - 4 main sections (accordion or tabs): "Stratégiai mag", "Stílus/tónus", "CTA/funnel", "Extra"
+  - Multi-input fields:
+    - `supporting_messages`: array of text inputs with "Add" / "Remove" buttons (min 3, max 5)
+    - `proof_points`: array of text inputs with "Add" / "Remove" buttons (min 2, max 3)
+    - `objections_reframes`: optional array of text inputs
+    - `tone_profile.keywords`: array of text inputs (min 3, max 5)
+    - `cta_objectives`: array of text inputs
+    - `cta_patterns`: array of text inputs (min 2, max 3)
+    - `communication_guidelines`: two-column layout (Do / Don't lists) with add/remove rows
+    - `key_phrases`: optional array of text inputs
+  - Form validation using Zod schemas:
+    - Validate each section independently
+    - Show field-level error messages
+    - Disable submit until all required fields valid
+  - Preview summary editor:
+    - Auto-generate from strategy_core on change (or button "Generate Summary")
+    - Editable textarea
+    - Character count display
+  - Form actions: "Save Strategy" (primary), "Cancel" (secondary), "Delete" (danger, edit mode only)
+- Create form section components:
+  - `components/messages/StrategyFormSections/StrategyCoreSection.tsx`
+    - Fields: positioning_statement (textarea), core_message (textarea), supporting_messages (dynamic array), proof_points (dynamic array), objections_reframes (optional dynamic array)
+  - `components/messages/StrategyFormSections/StyleToneSection.tsx`
+    - Fields: tone_profile.description (textarea), tone_profile.keywords (dynamic array), language_style (textarea), communication_guidelines (two-column Do/Don't lists), emotional_temperature (select)
+  - `components/messages/StrategyFormSections/CTAFunnelSection.tsx`
+    - Fields: funnel_stage (select: awareness/consideration/conversion/mobilization), cta_objectives (dynamic array), cta_patterns (dynamic array, min 2, max 3), friction_reducers (optional dynamic array)
+  - `components/messages/StrategyFormSections/ExtraFieldsSection.tsx`
+    - Fields: framing_type (select, optional), key_phrases (optional dynamic array), risk_notes (optional textarea)
+- Integration with StrategyDetailModal (edit mode):
+  - Modal has "Edit Strategy" button that opens StrategyForm in a dialog
+  - Form pre-populated with existing strategy data
+  - On save: update strategy via PUT `/api/strategies/[id]`, refresh modal view
+- Integration with MessageMatrix (create mode):
+  - Empty cell click → opens StrategyForm dialog
+  - Form requires campaign_id, segment_id, topic_id (pre-filled from cell context)
+  - On save: create strategy via POST `/api/strategies`, refresh matrix
+- Error handling:
+  - Network errors: show toast notification
+  - Validation errors: show inline field errors
+  - UNIQUE constraint violation: show error "Strategy already exists for this segment × topic combination"
+- Loading states:
+  - Submit button shows spinner during save
+  - Form fields disabled during save
+  - Success toast notification after save
+
+**Estimated Effort:** 5 points (3-4 days)
+
+---
+
+### Story 3.0.6: AI Provider Abstraction
+
+As a **developer**,
+I want **multiple AI provider support (Anthropic, OpenAI, Google Gemini, Ollama) with a unified abstraction layer**,
+So that **I can switch between providers and models via environment variables without code changes, enabling cost optimization and vendor independence**.
+
+**Acceptance Criteria:**
+
+**Given** I have the existing Anthropic client implementation
+**When** I implement the provider abstraction
+**Then** a unified `AIProvider` interface is created with `generateText()` and `generateStream()` methods
+
+**And** provider implementations are created for Anthropic, OpenAI, Google Gemini, and Ollama
+
+**And** factory function `getAIProvider()` selects provider based on `AI_PROVIDER` environment variable
+
+**And** all API routes use the unified provider interface
+
+**And** CopilotKit integration works with all providers
+
+**And** backward compatibility is maintained (`getAnthropicClient()` still works)
+
+**And** provider switching works via environment variables without code changes
+
+**Prerequisites:** Epic 2 complete (LLM infrastructure), Story 2.1 (LLM + CopilotKit Infrastructure), Story 3.0.3 (Strategy AI Generator)
+
+**Technical Notes:**
+- Create `lib/ai/types.ts` with unified type definitions
+- Create `lib/ai/providers/base.ts` with `BaseAIProvider` abstract class
+- Implement providers: `lib/ai/providers/anthropic.ts`, `openai.ts`, `google.ts`, `ollama.ts`
+- Refactor `lib/ai/client.ts` with factory pattern
+- Update all API routes: `campaign-brief`, `message-matrix`, `strategy-matrix`, `regenerate-strategy`
+- Update `lib/ai/copilotkit/server.ts` for multi-provider support
+- Environment variables: `AI_PROVIDER`, `AI_MODEL`, provider-specific API keys
+- Default provider: Anthropic (backward compatibility)
+- Default model: `gpt-5-mini-2025-08-07`
+- Error handling: unified `AIProviderError` class with provider-specific wrapping
+
+**Estimated Effort:** 13 points (8-11 hours)
+
+---
+
+## Implementation Timeline - Epic 3.0
+
+**Total Story Points:** 49 points (increased from 36 due to AI provider abstraction)
+
+**Estimated Timeline:** 25-30 days (approximately 5-6 weeks with buffer)
+
+**Story Sequence:**
+1. Story 3.0.1: Database Migration (must complete first - foundation)
+2. Story 3.0.5: Enhanced Segment & Topic Schema (depends on 3.0.1, enhances foundation for 3.0.2-3.0.4)
+3. Story 3.0.2: UI Refactor (depends on 3.0.1 and 3.0.5 - benefits from enhanced segments/topics)
+4. Story 3.0.3: Strategy AI Generator (depends on 3.0.1 and 3.0.5, uses Epic 2 LLM infrastructure)
+5. Story 3.0.4: Strategy Form + CRUD (depends on 3.0.1, 3.0.2, and 3.0.5)
+6. Story 3.0.6: AI Provider Abstraction (depends on Epic 2 complete, Story 2.1, Story 3.0.3 - enables multi-provider support)
+
+**Notes:**
+- Story 3.0.1 is critical path - database foundation required for all other stories
+- Story 3.0.5 enhances segments/topics schema - should complete early to benefit other stories
+- Story 3.0.2 and 3.0.4 can work in parallel after 3.0.1 and 3.0.5 (UI components)
+- Story 3.0.3 requires careful prompt engineering for 16-field output, benefits from enhanced schema
+- Story 3.0.6 enables multi-provider support - can be implemented after Story 3.0.3 (uses AI endpoints)
+- Preview summary: AI-generated but editable (stored in database)
+- UNIQUE constraint ensures one strategy per cell (segment × topic)
+- Existing `messages` table remains for Content Calendar use (Epic 3.1)
+- Story 2.3 refactor: message generator → strategy generator (same endpoint pattern, different output)
+- Story 3.0.5 adds segment-topic matrix for explicit relationship mapping (importance, role)
+- Priority system (primary/secondary) enables better filtering and AI generation focus
+- Story 3.0.6: AI Provider Abstraction enables cost optimization and vendor independence via environment variables
+
+---
+

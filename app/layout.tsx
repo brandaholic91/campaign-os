@@ -3,6 +3,7 @@ import Link from 'next/link'
 import './globals.css'
 import { Button } from '@/components/ui/button'
 import { CopilotKitProvider } from '@/components/providers/CopilotKitProvider'
+import { Toaster } from '@/components/ui/sonner'
 
 export const metadata: Metadata = {
   title: 'Campaign OS',
@@ -49,6 +50,7 @@ export default function RootLayout({
           </nav>
           <main>{children}</main>
         </CopilotKitProvider>
+        <Toaster />
       </body>
     </html>
   )
