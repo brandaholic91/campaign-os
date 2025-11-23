@@ -5,6 +5,8 @@ import { Database } from '@/lib/supabase/types'
 import { format } from 'date-fns'
 import { DeleteCampaignButton } from '@/components/campaigns/DeleteCampaignButton'
 import { CampaignStatusCard } from '@/components/campaigns/CampaignStatusCard'
+import { ValidationStatusSection } from '@/components/ai/ValidationStatusSection'
+import { ValidationStatusBadge } from '@/components/ai/ValidationStatusBadge'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 
@@ -100,6 +102,8 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
             <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold border border-gray-200 uppercase tracking-wide">
               {goalTypeLabels[campaign.primary_goal_type]}
             </span>
+            {/* Validation Status Badge */}
+            <ValidationStatusBadge campaignId={id} />
           </div>
         </div>
 
@@ -178,6 +182,11 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
             </div>
           </div>
         )}
+
+        {/* Validation Status Checklist (Full Width) */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <ValidationStatusSection campaignId={id} />
+        </div>
 
         {/* Navigation / Module Cards */}
         
