@@ -19,7 +19,7 @@ describe('AI Campaign Generation', () => {
     it('should validate valid CampaignStructure output', () => {
       const validStructure = {
         goals: [{ title: 'Goal 1', description: 'Desc 1', priority: 1 }],
-        segments: [{ name: 'Segment 1', description: 'Desc 1', priority: 1 }],
+        segments: [{ name: 'Segment 1', description: 'Desc 1', priority: 'primary' }],
         topics: [{ name: 'Topic 1', description: 'Desc 1' }],
         narratives: [{ title: 'Narrative 1', description: 'Desc 1', priority: 1 }]
       }
