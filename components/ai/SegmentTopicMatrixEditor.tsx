@@ -305,22 +305,22 @@ export function SegmentTopicMatrixEditor({
                 : 'Új Matrix Kapcsolat'}
             </DialogTitle>
             <DialogDescription>
-              {editingCell && (
-                <>
-                  <div className="mt-2 space-y-1">
-                    <p>
-                      <span className="font-semibold">Segment:</span>{' '}
-                      {segments[editingCell.segmentIndex]?.name}
-                    </p>
-                    <p>
-                      <span className="font-semibold">Topic:</span>{' '}
-                      {topics[editingCell.topicIndex]?.name}
-                    </p>
-                  </div>
-                </>
-              )}
+              Állítsd be a kapcsolat fontosságát, szerepét és adj hozzá egy összefoglalót.
             </DialogDescription>
           </DialogHeader>
+
+          {editingCell && (
+            <div className="pt-2 pb-4 space-y-1 text-sm border-b">
+              <div>
+                <span className="font-semibold">Segment:</span>{' '}
+                {segments[editingCell.segmentIndex]?.name}
+              </div>
+              <div>
+                <span className="font-semibold">Topic:</span>{' '}
+                {topics[editingCell.topicIndex]?.name}
+              </div>
+            </div>
+          )}
 
           {editValues && (
             <div className="space-y-4 py-4">

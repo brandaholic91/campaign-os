@@ -168,35 +168,59 @@ export async function POST(req: NextRequest) {
           // Validate strategy
           try {
             // Normalize data to match schema constraints before validation
-            // Fix cta_patterns array length (max 3)
+            // Fix cta_patterns array length (2-3 items)
             if (strategyData.cta_funnel?.cta_patterns && Array.isArray(strategyData.cta_funnel.cta_patterns)) {
-              if (strategyData.cta_funnel.cta_patterns.length > 3) {
-                console.warn(`[Strategy Generation] cta_patterns has ${strategyData.cta_funnel.cta_patterns.length} items, truncating to 3`)
-                strategyData.cta_funnel.cta_patterns = strategyData.cta_funnel.cta_patterns.slice(0, 3)
+              const patterns = strategyData.cta_funnel.cta_patterns
+              if (patterns.length > 3) {
+                console.warn(`[Strategy Generation] cta_patterns has ${patterns.length} items, truncating to 3`)
+                strategyData.cta_funnel.cta_patterns = patterns.slice(0, 3)
+              } else if (patterns.length < 2 && patterns.length > 0) {
+                console.warn(`[Strategy Generation] cta_patterns has only ${patterns.length} item, padding to 2`)
+                strategyData.cta_funnel.cta_patterns = [patterns[0], patterns[0]]
               }
             }
             
             // Fix supporting_messages array length (3-5 items)
             if (strategyData.strategy_core?.supporting_messages && Array.isArray(strategyData.strategy_core.supporting_messages)) {
-              if (strategyData.strategy_core.supporting_messages.length > 5) {
-                console.warn(`[Strategy Generation] supporting_messages has ${strategyData.strategy_core.supporting_messages.length} items, truncating to 5`)
-                strategyData.strategy_core.supporting_messages = strategyData.strategy_core.supporting_messages.slice(0, 5)
+              const messages = strategyData.strategy_core.supporting_messages
+              if (messages.length > 5) {
+                console.warn(`[Strategy Generation] supporting_messages has ${messages.length} items, truncating to 5`)
+                strategyData.strategy_core.supporting_messages = messages.slice(0, 5)
+              } else if (messages.length < 3 && messages.length > 0) {
+                console.warn(`[Strategy Generation] supporting_messages has only ${messages.length} items, padding to 3`)
+                const padded = [...messages]
+                while (padded.length < 3) {
+                  padded.push(messages[padded.length % messages.length])
+                }
+                strategyData.strategy_core.supporting_messages = padded
               }
             }
             
             // Fix proof_points array length (2-3 items)
             if (strategyData.strategy_core?.proof_points && Array.isArray(strategyData.strategy_core.proof_points)) {
-              if (strategyData.strategy_core.proof_points.length > 3) {
-                console.warn(`[Strategy Generation] proof_points has ${strategyData.strategy_core.proof_points.length} items, truncating to 3`)
-                strategyData.strategy_core.proof_points = strategyData.strategy_core.proof_points.slice(0, 3)
+              const points = strategyData.strategy_core.proof_points
+              if (points.length > 3) {
+                console.warn(`[Strategy Generation] proof_points has ${points.length} items, truncating to 3`)
+                strategyData.strategy_core.proof_points = points.slice(0, 3)
+              } else if (points.length < 2 && points.length > 0) {
+                console.warn(`[Strategy Generation] proof_points has only ${points.length} item, padding to 2`)
+                strategyData.strategy_core.proof_points = [points[0], points[0]]
               }
             }
             
             // Fix tone_profile keywords array length (3-5 items)
             if (strategyData.style_tone?.tone_profile?.keywords && Array.isArray(strategyData.style_tone.tone_profile.keywords)) {
-              if (strategyData.style_tone.tone_profile.keywords.length > 5) {
-                console.warn(`[Strategy Generation] tone_profile.keywords has ${strategyData.style_tone.tone_profile.keywords.length} items, truncating to 5`)
-                strategyData.style_tone.tone_profile.keywords = strategyData.style_tone.tone_profile.keywords.slice(0, 5)
+              const keywords = strategyData.style_tone.tone_profile.keywords
+              if (keywords.length > 5) {
+                console.warn(`[Strategy Generation] tone_profile.keywords has ${keywords.length} items, truncating to 5`)
+                strategyData.style_tone.tone_profile.keywords = keywords.slice(0, 5)
+              } else if (keywords.length < 3 && keywords.length > 0) {
+                console.warn(`[Strategy Generation] tone_profile.keywords has only ${keywords.length} items, padding to 3`)
+                const padded = [...keywords]
+                while (padded.length < 3) {
+                  padded.push(keywords[padded.length % keywords.length])
+                }
+                strategyData.style_tone.tone_profile.keywords = padded
               }
             }
             
