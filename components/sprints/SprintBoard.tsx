@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Settings } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import TaskCard from './TaskCard'
 import SprintForm from './SprintForm'
 import TaskForm from './TaskForm'
@@ -353,9 +354,32 @@ export default function SprintBoard({
       </div>
 
       {currentSprint && (
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-6">
+        <div className="flex items-center gap-2 text-sm text-gray-600 mb-6 flex-wrap">
           <span>{format(new Date(currentSprint.start_date), 'MMM d')} - {format(new Date(currentSprint.end_date), 'MMM d, yyyy')}</span>
           <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+          {currentSprint.status && (
+            <>
+              <Badge
+                variant="outline"
+                className={
+                  currentSprint.status === 'active'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : currentSprint.status === 'closed'
+                    ? 'bg-gray-50 text-gray-700 border-gray-200'
+                    : 'bg-purple-50 text-purple-700 border-purple-200'
+                }
+              >
+                {currentSprint.status === 'planned'
+                  ? 'Tervezett'
+                  : currentSprint.status === 'active'
+                  ? 'Aktív'
+                  : currentSprint.status === 'closed'
+                  ? 'Lezárva'
+                  : currentSprint.status}
+              </Badge>
+              <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+            </>
+          )}
           <span className="font-medium text-gray-900">Goal: {currentSprint.focus_goal || 'No goal set'}</span>
         </div>
       )}
