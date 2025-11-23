@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,11 +13,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Database } from '@/lib/supabase/types'
+import { Database, Json } from '@/lib/supabase/types'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
 type TopicInsert = Database['campaign_os']['Tables']['topics']['Insert']
+
+// Type for JSONB fields
+type ContentAnglesData = Json | null
+type RecommendedChannelsData = Json | null
+type RelatedGoalTypesData = Json | null
+type RiskNotesData = Json | null
 
 interface TopicManagerProps {
   campaignId: string
@@ -32,8 +38,18 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
     name: '',
     description: '',
     category: '',
+    content_angles: null,
+    recommended_channels: null,
+    related_goal_types: null,
+    risk_notes: null,
   })
+  // Store JSON as strings in form for easier editing
+  const [contentAnglesJson, setContentAnglesJson] = useState<string>('')
+  const [recommendedChannelsJson, setRecommendedChannelsJson] = useState<string>('')
+  const [relatedGoalTypesJson, setRelatedGoalTypesJson] = useState<string>('')
+  const [riskNotesJson, setRiskNotesJson] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+  const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTopics()
@@ -58,11 +74,61 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
     setError(null)
 
     try {
+      // Parse and validate JSON fields
+      let contentAngles: ContentAnglesData = null
+      let recommendedChannels: RecommendedChannelsData = null
+      let relatedGoalTypes: RelatedGoalTypesData = null
+      let riskNotes: RiskNotesData = null
+
+      if (contentAnglesJson.trim()) {
+        try {
+          const parsed = JSON.parse(contentAnglesJson.trim())
+          contentAngles = typeof parsed === 'object' && parsed !== null ? parsed : null
+        } catch (parseError) {
+          setError('Érvénytelen JSON formátum a tartalomszögeknél. Kérlek ellenőrizd a szintaxist.')
+          return
+        }
+      }
+
+      if (recommendedChannelsJson.trim()) {
+        try {
+          const parsed = JSON.parse(recommendedChannelsJson.trim())
+          recommendedChannels = typeof parsed === 'object' && parsed !== null ? parsed : null
+        } catch (parseError) {
+          setError('Érvénytelen JSON formátum az ajánlott csatornáknál. Kérlek ellenőrizd a szintaxist.')
+          return
+        }
+      }
+
+      if (relatedGoalTypesJson.trim()) {
+        try {
+          const parsed = JSON.parse(relatedGoalTypesJson.trim())
+          relatedGoalTypes = typeof parsed === 'object' && parsed !== null ? parsed : null
+        } catch (parseError) {
+          setError('Érvénytelen JSON formátum a kapcsolódó cél típusoknál. Kérlek ellenőrizd a szintaxist.')
+          return
+        }
+      }
+
+      if (riskNotesJson.trim()) {
+        try {
+          const parsed = JSON.parse(riskNotesJson.trim())
+          riskNotes = typeof parsed === 'object' && parsed !== null ? parsed : null
+        } catch (parseError) {
+          setError('Érvénytelen JSON formátum a kockázati megjegyzéseknél. Kérlek ellenőrizd a szintaxist.')
+          return
+        }
+      }
+
       const payload = {
         ...formData,
         campaign_id: campaignId,
         description: formData.description || null,
         category: formData.category || null,
+        content_angles: contentAngles,
+        recommended_channels: recommendedChannels,
+        related_goal_types: relatedGoalTypes,
+        risk_notes: riskNotes,
       }
 
       let response
@@ -87,7 +153,11 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
 
       setShowForm(false)
       setEditingId(null)
-      setFormData({ name: '', description: '', category: '' })
+      setFormData({ name: '', description: '', category: '', content_angles: null, recommended_channels: null, related_goal_types: null, risk_notes: null })
+      setContentAnglesJson('')
+      setRecommendedChannelsJson('')
+      setRelatedGoalTypesJson('')
+      setRiskNotesJson('')
       fetchTopics()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save topic')
@@ -119,14 +189,43 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
       topic_type: topic.topic_type || 'benefit',
       core_narrative: topic.core_narrative || '',
       priority: topic.priority || 'secondary',
+      content_angles: topic.content_angles as ContentAnglesData,
+      recommended_channels: topic.recommended_channels as RecommendedChannelsData,
+      related_goal_types: topic.related_goal_types as RelatedGoalTypesData,
+      risk_notes: topic.risk_notes as RiskNotesData,
     })
+    // Convert JSONB to string for editing
+    setContentAnglesJson(
+      topic.content_angles 
+        ? JSON.stringify(topic.content_angles as ContentAnglesData, null, 2)
+        : ''
+    )
+    setRecommendedChannelsJson(
+      topic.recommended_channels 
+        ? JSON.stringify(topic.recommended_channels as RecommendedChannelsData, null, 2)
+        : ''
+    )
+    setRelatedGoalTypesJson(
+      topic.related_goal_types 
+        ? JSON.stringify(topic.related_goal_types as RelatedGoalTypesData, null, 2)
+        : ''
+    )
+    setRiskNotesJson(
+      topic.risk_notes 
+        ? JSON.stringify(topic.risk_notes as RiskNotesData, null, 2)
+        : ''
+    )
     setShowForm(true)
   }
 
   function handleCancel() {
     setShowForm(false)
     setEditingId(null)
-    setFormData({ name: '', description: '', category: '' })
+    setFormData({ name: '', description: '', category: '', content_angles: null, recommended_channels: null, related_goal_types: null, risk_notes: null })
+    setContentAnglesJson('')
+    setRecommendedChannelsJson('')
+    setRelatedGoalTypesJson('')
+    setRiskNotesJson('')
   }
 
   if (loading) {
@@ -235,6 +334,54 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="content_angles">Tartalomszögek (JSON)</Label>
+            <Textarea
+              id="content_angles"
+              value={contentAnglesJson}
+              onChange={(e) => setContentAnglesJson(e.target.value)}
+              placeholder='["Szöveg alapú posztok", "Infografikák", "Videó tartalom"]'
+              rows={3}
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="recommended_channels">Ajánlott Csatornák (JSON)</Label>
+            <Textarea
+              id="recommended_channels"
+              value={recommendedChannelsJson}
+              onChange={(e) => setRecommendedChannelsJson(e.target.value)}
+              placeholder='["Facebook", "Instagram", "TikTok"]'
+              rows={3}
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="related_goal_types">Kapcsolódó Cél Típusok (JSON)</Label>
+            <Textarea
+              id="related_goal_types"
+              value={relatedGoalTypesJson}
+              onChange={(e) => setRelatedGoalTypesJson(e.target.value)}
+              placeholder='["awareness", "engagement", "conversion"]'
+              rows={2}
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="risk_notes">Kockázati Megjegyzések (JSON)</Label>
+            <Textarea
+              id="risk_notes"
+              value={riskNotesJson}
+              onChange={(e) => setRiskNotesJson(e.target.value)}
+              placeholder='["Politikai érzékenység", "Jogi korlátok"]'
+              rows={2}
+              className="font-mono text-sm"
+            />
+          </div>
+
           <div className="flex gap-2">
             <Button type="submit">{editingId ? 'Frissítés' : 'Létrehozás'}</Button>
             <Button type="button" variant="secondary" onClick={handleCancel}>
@@ -261,45 +408,154 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {topics.map((topic) => (
-                <tr key={topic.id} className="group hover:bg-gray-50/50 transition-colors">
-                  <td className="py-6 px-4 align-top">
-                    <span className="font-display font-bold text-gray-900 text-sm leading-snug block">
-                      {topic.name}
-                    </span>
-                  </td>
-                  <td className="py-6 px-4 align-top">
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {topic.description || '-'}
-                    </p>
-                  </td>
-                  <td className="py-6 px-4 align-top">
-                    {topic.category ? (
-                      <span className="inline-flex px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-100">
-                        {topic.category}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
+              {topics.map((topic) => {
+                const isExpanded = expandedTopicId === topic.id
+                return (
+                  <React.Fragment key={topic.id}>
+                    <tr className="group hover:bg-gray-50/50 transition-colors">
+                      <td className="py-6 px-4 align-top">
+                        <span className="font-display font-bold text-gray-900 text-sm leading-snug block">
+                          {topic.name}
+                        </span>
+                        {topic.short_label && (
+                          <span className="text-xs text-gray-500 mt-1 block">{topic.short_label}</span>
+                        )}
+                      </td>
+                      <td className="py-6 px-4 align-top">
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {topic.description || '-'}
+                        </p>
+                        {topic.core_narrative && (
+                          <p className="text-xs text-gray-500 mt-2 italic">{topic.core_narrative}</p>
+                        )}
+                      </td>
+                      <td className="py-6 px-4 align-top">
+                        <div className="flex flex-col gap-2">
+                          {topic.category && (
+                            <span className="inline-flex px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-100 w-fit">
+                              {topic.category}
+                            </span>
+                          )}
+                          {topic.priority && (
+                            <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-medium w-fit ${
+                              topic.priority === 'primary' 
+                                ? 'bg-primary-100 text-primary-700' 
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {topic.priority === 'primary' ? 'Elsődleges' : 'Másodlagos'}
+                            </span>
+                          )}
+                          {topic.topic_type && (
+                            <span className="inline-flex px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 text-xs font-semibold border border-purple-100 w-fit">
+                              {topic.topic_type}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-6 px-4 align-top text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            className="p-2 bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:text-primary-600 transition-colors shadow-sm"
+                            onClick={() => setExpandedTopicId(isExpanded ? null : topic.id)}
+                            title={isExpanded ? 'Összecsukás' : 'Részletek'}
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isExpanded ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+                            </svg>
+                          </button>
+                          <button 
+                            className="p-2 bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:text-primary-600 transition-colors shadow-sm"
+                            onClick={() => handleEdit(topic)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button 
+                            className="p-2 bg-white border border-gray-200 rounded-lg hover:border-rose-300 hover:text-rose-600 transition-colors shadow-sm"
+                            onClick={() => handleDelete(topic.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-gray-50/50">
+                        <td colSpan={4} className="px-4 py-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Alapnarratíva */}
+                            {topic.core_narrative && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Alapnarratíva</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <p className="text-sm text-gray-600">{topic.core_narrative}</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Téma Típusa */}
+                            {topic.topic_type && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Téma Típusa</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <span className="text-sm text-gray-600">{topic.topic_type}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Tartalomszögek */}
+                            {topic.content_angles && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Tartalomszögek</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
+                                    {JSON.stringify(topic.content_angles, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Ajánlott Csatornák */}
+                            {topic.recommended_channels && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Ajánlott Csatornák</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
+                                    {JSON.stringify(topic.recommended_channels, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Kapcsolódó Cél Típusok */}
+                            {topic.related_goal_types && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Kapcsolódó Cél Típusok</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
+                                    {JSON.stringify(topic.related_goal_types, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Kockázati Megjegyzések */}
+                            {topic.risk_notes && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Kockázati Megjegyzések</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
+                                    {JSON.stringify(topic.risk_notes, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="py-6 px-4 align-top text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        className="p-2 bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:text-primary-600 transition-colors shadow-sm"
-                        onClick={() => handleEdit(topic)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="p-2 bg-white border border-gray-200 rounded-lg hover:border-rose-300 hover:text-rose-600 transition-colors shadow-sm"
-                        onClick={() => handleDelete(topic.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                  </React.Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>
