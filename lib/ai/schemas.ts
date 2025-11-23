@@ -1,5 +1,20 @@
 import { z } from 'zod'
 
+// Helper to create flexible array schemas that handle AI output inconsistencies
+// Handles: undefined → [], nested arrays → flattened, mixed types
+const flexibleStringArray = () => z.preprocess((val) => {
+  if (!val) return []
+  if (Array.isArray(val)) {
+    // Flatten nested arrays and filter to strings only
+    return val.flatMap(item => 
+      Array.isArray(item) ? item.filter(v => typeof v === 'string') : 
+      typeof item === 'string' ? [item] : []
+    )
+  }
+  if (typeof val === 'string') return [val]
+  return []
+}, z.array(z.string()))
+
 export const GoalSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
@@ -15,15 +30,15 @@ export const DemographicProfileSchema = z.object({
 })
 
 export const PsychographicProfileSchema = z.object({
-  values: z.array(z.string()),
-  attitudes_to_campaign_topic: z.array(z.string()),
-  motivations: z.array(z.string()),
-  pain_points: z.array(z.string()),
+  values: flexibleStringArray(),
+  attitudes_to_campaign_topic: flexibleStringArray(),
+  motivations: flexibleStringArray(),
+  pain_points: flexibleStringArray(),
 })
 
 export const MediaHabitsSchema = z.object({
-  primary_channels: z.array(z.string()),
-  secondary_channels: z.array(z.string()).optional(),
+  primary_channels: flexibleStringArray(),
+  secondary_channels: flexibleStringArray().optional(),
   notes: z.string().optional(),
 })
 
@@ -54,11 +69,16 @@ export const TopicSchema = z.object({
   short_label: z.string().optional(),
   description: z.string().optional(),
   topic_type: z.enum(['benefit', 'problem', 'value', 'proof', 'story']).optional(),
-  related_goal_types: z.array(z.string()).optional(),
+  related_goal_types: flexibleStringArray().optional(),
   core_narrative: z.string().optional(),
-  content_angles: z.array(z.string()).optional(),
-  recommended_channels: z.array(z.string()).optional(),
-  risk_notes: z.array(z.string()).optional(),
+  content_angles: flexibleStringArray().optional(),
+  recommended_channels: flexibleStringArray().optional(),
+  risk_notes: z.union([z.string(), z.array(z.string())]).optional().transform((val) => {
+    if (typeof val === 'string') {
+      return val.trim() ? [val] : []
+    }
+    return val
+  }),
   priority: z.enum(['primary', 'secondary']).default('secondary'),
   category: z.string().optional(), // Legacy field
 })
@@ -180,34 +200,34 @@ export function validateGeneratedMessages(data: unknown): GeneratedMessage[] {
 export const StrategyCoreSchema = z.object({
   positioning_statement: z.string().min(10),
   core_message: z.string().min(5),
-  supporting_messages: z.array(z.string()).min(3).max(5),
-  proof_points: z.array(z.string()).min(2).max(3),
-  objections_reframes: z.array(z.string()).optional(),
+  supporting_messages: flexibleStringArray().refine(arr => arr.length >= 3 && arr.length <= 5, { message: "Must have 3-5 items" }),
+  proof_points: flexibleStringArray().refine(arr => arr.length >= 2 && arr.length <= 3, { message: "Must have 2-3 items" }),
+  objections_reframes: flexibleStringArray().optional(),
 })
 
 export const StyleToneSchema = z.object({
   tone_profile: z.object({
     description: z.string(),
-    keywords: z.array(z.string()).min(3).max(5),
+    keywords: flexibleStringArray().refine(arr => arr.length >= 3 && arr.length <= 5, { message: "Must have 3-5 keywords" }),
   }),
   language_style: z.string(),
   communication_guidelines: z.object({
-    do: z.array(z.string()),
-    dont: z.array(z.string()),
+    do: flexibleStringArray(),
+    dont: flexibleStringArray(),
   }),
   emotional_temperature: z.string(),
 })
 
 export const CTAFunnelSchema = z.object({
   funnel_stage: z.enum(['awareness', 'consideration', 'conversion', 'mobilization']),
-  cta_objectives: z.array(z.string()),
-  cta_patterns: z.array(z.string()).min(2).max(3),
-  friction_reducers: z.array(z.string()).optional(),
+  cta_objectives: flexibleStringArray(),
+  cta_patterns: flexibleStringArray().refine(arr => arr.length >= 2 && arr.length <= 3, { message: "Must have 2-3 patterns" }),
+  friction_reducers: flexibleStringArray().optional(),
 })
 
 export const ExtraFieldsSchema = z.object({
   framing_type: z.string().optional(),
-  key_phrases: z.array(z.string()).optional(),
+  key_phrases: flexibleStringArray().optional(),
   risk_notes: z.string().optional(),
 })
 

@@ -88,6 +88,7 @@ export default function CampaignAIPage() {
   const totalSteps = 7
   const [generatedStructure, setGeneratedStructure] = useState<any>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isManualGenerating, setIsManualGenerating] = useState(false)
   const [progressStage, setProgressStage] = useState<'idle' | 'brief-normalizer' | 'strategy-designer' | 'done'>('idle')
 
   // Form State - same as CampaignWizard
@@ -346,6 +347,7 @@ export default function CampaignAIPage() {
       
       if (resultKey !== currentKey) {
         try {
+          // Validate structure (risk_notes transformation now handled by schema)
           const validated = CampaignStructureSchema.safeParse(parsedResult)
           
           if (validated.success) {
@@ -404,6 +406,7 @@ export default function CampaignAIPage() {
       return
     }
 
+    setIsManualGenerating(true)
     setGeneratedStructure(null)
     setProgressStage('brief-normalizer')
 
@@ -461,12 +464,10 @@ export default function CampaignAIPage() {
           console.log('JSON repaired successfully')
         } catch (repairError) {
           console.error('JSON Repair Failed:', repairError)
-          console.error('Raw Output Length:', resultText.length)
-          throw new Error('A generálás megszakadt és nem sikerült helyreállítani. Kérlek próbáld újra.')
         }
       }
       
-      // Validate structure
+      // Validate structure (risk_notes transformation now handled by schema)
       const validated = CampaignStructureSchema.safeParse(structure)
       if (validated.success) {
         setGeneratedStructure(validated.data)
@@ -482,6 +483,8 @@ export default function CampaignAIPage() {
       console.error('Error generating campaign:', error)
       toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás során')
       setProgressStage('idle')
+    } finally {
+      setIsManualGenerating(false)
     }
   }
 
@@ -1100,7 +1103,7 @@ export default function CampaignAIPage() {
               )}
 
               {/* Loading Indicator */}
-              {isGenerating && (
+              {(isGenerating || isManualGenerating) && (
                 <div className="mt-8 pt-8 border-t border-gray-100">
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1156,10 +1159,10 @@ export default function CampaignAIPage() {
               {currentStep === totalSteps ? (
                 <Button
                   onClick={handleNext}
-                  disabled={isGenerating || isSaving}
+                  disabled={isGenerating || isManualGenerating || isSaving}
                   className="px-8 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold shadow-lg shadow-primary-600/20 hover:shadow-primary-600/30 transition-all flex items-center gap-2"
                 >
-                  {isGenerating ? (
+                  {(isGenerating || isManualGenerating) ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       {progressStage === 'brief-normalizer' && 'Brief elemzése...'}
