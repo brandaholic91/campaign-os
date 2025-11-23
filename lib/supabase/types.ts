@@ -1,5 +1,14 @@
 // Stub type for Database - should be generated from Supabase schema
 // This is a minimal stub to allow builds to succeed
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 export type Database = {
   campaign_os: {
     Tables: {
