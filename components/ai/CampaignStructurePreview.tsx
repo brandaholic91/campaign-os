@@ -82,7 +82,10 @@ export function CampaignStructurePreview({ structure: initialStructure, onSave, 
     if (!editingItem || !editValues) return
 
     const newStructure = { ...structure }
-    newStructure[editingItem.section][editingItem.index] = editValues
+    const sectionData = newStructure[editingItem.section]
+    if (Array.isArray(sectionData)) {
+      sectionData[editingItem.index] = editValues
+    }
     setStructure(newStructure)
     setEditingItem(null)
     setEditValues(null)
@@ -146,8 +149,8 @@ export function CampaignStructurePreview({ structure: initialStructure, onSave, 
             return (
               <TabsContent key={section.key} value={section.key} className="mt-6">
                 <SegmentTopicMatrixEditor
-                  segments={structure.segments}
-                  topics={structure.topics}
+                  segments={structure.segments as any}
+                  topics={structure.topics as any}
                   matrix={structure.segment_topic_matrix || []}
                   onMatrixChange={handleMatrixChange}
                 />

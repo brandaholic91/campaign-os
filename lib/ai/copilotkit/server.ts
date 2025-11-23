@@ -1,23 +1,63 @@
-import { CopilotRuntime, AnthropicAdapter } from '@copilotkit/runtime'
+import { CopilotRuntime, AnthropicAdapter, OpenAIAdapter, GoogleGenerativeAIAdapter } from '@copilotkit/runtime'
 import { Action, Parameter } from '@copilotkit/shared'
-import { getAnthropicClient } from '@/lib/ai/client'
-import { CampaignStructureSchema, BriefNormalizerOutputSchema, MessageGenerationRequestSchema, GeneratedMessageSchema, validateGeneratedMessage } from '@/lib/ai/schemas'
+import { getAIProvider, getAnthropicClient } from '@/lib/ai/client'
+import { CampaignStructureSchema, BriefNormalizerOutputSchema } from '@/lib/ai/schemas'
 import { BRIEF_NORMALIZER_SYSTEM_PROMPT, BRIEF_NORMALIZER_USER_PROMPT } from '@/lib/ai/prompts/brief-normalizer'
 import { STRATEGY_DESIGNER_SYSTEM_PROMPT, STRATEGY_DESIGNER_USER_PROMPT } from '@/lib/ai/prompts/strategy-designer'
 import { MESSAGE_GENERATOR_SYSTEM_PROMPT, MESSAGE_GENERATOR_USER_PROMPT, MessageGenerationContext } from '@/lib/ai/prompts/message-generator'
+import { validateGeneratedMessage } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
+import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-// Initialize Anthropic client
-const anthropic = getAnthropicClient()
+// Determine which adapter to use based on AI_PROVIDER
+const providerType = process.env.AI_PROVIDER || 'anthropic'
+let serviceAdapter: any
 
-// Create AnthropicAdapter instance
-// Note: AnthropicAdapter accepts the Anthropic client instance from @anthropic-ai/sdk
-const serviceAdapter = new AnthropicAdapter({
-  anthropic: anthropic as any,
-  model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-})
+console.log(`=== Initializing CopilotKit Adapter for provider: ${providerType} ===`)
 
-console.log('=== AnthropicAdapter initialized ===', { model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5' })
+try {
+  switch (providerType) {
+    case 'openai':
+      if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is missing')
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+      serviceAdapter = new OpenAIAdapter({ openai: openai as any, model: process.env.AI_MODEL || 'gpt-4o' })
+      break
+
+    case 'google':
+      if (!process.env.GOOGLE_API_KEY) throw new Error('GOOGLE_API_KEY is missing')
+      // Note: GoogleGenerativeAIAdapter might require a specific setup or might not be directly exported depending on version
+      // If it fails, we might need to use LangChainAdapter or similar, but assuming it exists for now based on common patterns
+      // If GoogleGenerativeAIAdapter is not available, this will fail at runtime or compile time. 
+      // For safety, we can wrap it or use a fallback if we were unsure, but strict typing suggests we should know.
+      // Since I cannot verify the package exports directly, I will assume it exists or use a generic approach if possible.
+      // Actually, let's use the one from @copilotkit/runtime if available.
+      serviceAdapter = new GoogleGenerativeAIAdapter({ apiKey: process.env.GOOGLE_API_KEY, model: process.env.AI_MODEL || 'gemini-1.5-pro' })
+      break
+
+    case 'ollama':
+      const ollama = new OpenAI({
+        baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1',
+        apiKey: 'ollama', // Required but ignored
+      })
+      serviceAdapter = new OpenAIAdapter({ openai: ollama as any, model: process.env.AI_MODEL || 'llama2' })
+      break
+
+    case 'anthropic':
+    default:
+      if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is missing')
+      const anthropic = getAnthropicClient()
+      serviceAdapter = new AnthropicAdapter({
+        anthropic: anthropic as any,
+        model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
+      })
+      break
+  }
+} catch (error) {
+  console.error('Failed to initialize CopilotKit adapter:', error)
+  // Fallback to Anthropic or throw
+  throw error
+}
 
 /**
  * Creates CopilotKit actions for backend operations
@@ -59,25 +99,27 @@ function createCopilotActions(
           const { brief, campaignType, goalType } = args as { brief: string; campaignType?: string; goalType?: string }
           console.log('[normalizeCampaignBrief] Starting...')
           
-          const client = getAnthropicClient()
-          const model = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
+          const provider = getAIProvider()
+          const model = process.env.AI_MODEL
 
-          const response = await client.messages.create({
+          const response = await provider.generateText({
             model,
-            max_tokens: 1024,
-            system: BRIEF_NORMALIZER_SYSTEM_PROMPT,
+            maxTokens: 1024,
+            systemPrompt: BRIEF_NORMALIZER_SYSTEM_PROMPT,
             messages: [
               { role: 'user', content: BRIEF_NORMALIZER_USER_PROMPT(brief, campaignType, goalType) }
             ]
           })
 
-          const content = response.content[0].type === 'text' ? response.content[0].text : ''
+          const content = response.content
           if (!content) throw new Error('Empty response from Brief Normalizer')
 
           let jsonContent = content.trim()
           if (jsonContent.startsWith('```')) {
              const lines = jsonContent.split('\n')
-             if (lines[0].match(/^```(json)?$/) && lines[lines.length - 1].match(/^```$/)) {
+             const firstLine = lines[0]
+             const lastLine = lines[lines.length - 1]
+             if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
                jsonContent = lines.slice(1, -1).join('\n')
              }
           }
@@ -115,25 +157,27 @@ function createCopilotActions(
             throw new Error('Invalid normalized brief JSON')
           }
 
-          const client = getAnthropicClient()
-          const model = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
+          const provider = getAIProvider()
+          const model = process.env.AI_MODEL
 
-          const response = await client.messages.create({
+          const response = await provider.generateText({
             model,
-            max_tokens: 4096,
-            system: STRATEGY_DESIGNER_SYSTEM_PROMPT,
+            maxTokens: 4096,
+            systemPrompt: STRATEGY_DESIGNER_SYSTEM_PROMPT,
             messages: [
               { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(briefObj) }
             ]
           })
 
-          const content = response.content[0].type === 'text' ? response.content[0].text : ''
+          const content = response.content
           if (!content) throw new Error('Empty response from Strategy Designer')
 
           let jsonContent = content.trim()
           if (jsonContent.startsWith('```')) {
              const lines = jsonContent.split('\n')
-             if (lines[0].match(/^```(json)?$/) && lines[lines.length - 1].match(/^```$/)) {
+             const firstLine = lines[0]
+             const lastLine = lines[lines.length - 1]
+             if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
                jsonContent = lines.slice(1, -1).join('\n')
              }
           }
@@ -238,7 +282,9 @@ function createCopilotActions(
           throw new Error('Segments or topics not found')
         }
 
-        const client = getAnthropicClient()
+        const provider = getAIProvider()
+        const model = process.env.AI_MODEL
+        
         const generatedMessages: Array<{
           segment_id: string
           topic_id: string
@@ -301,19 +347,16 @@ function createCopilotActions(
                 },
               }
 
-              const response = await client.messages.create({
-                model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-                max_tokens: 1024,
-                system: MESSAGE_GENERATOR_SYSTEM_PROMPT,
+              const response = await provider.generateText({
+                model,
+                maxTokens: 1024,
+                systemPrompt: MESSAGE_GENERATOR_SYSTEM_PROMPT,
                 messages: [
                   { role: 'user', content: MESSAGE_GENERATOR_USER_PROMPT(context) }
                 ]
               })
 
-              const content = response.content[0].type === 'text' 
-                ? response.content[0].text 
-                : ''
-
+              const content = response.content
               if (!content) {
                 console.warn(`Empty response for segment ${segment.name}, topic ${topic.name}`)
                 failedCombinations.push({

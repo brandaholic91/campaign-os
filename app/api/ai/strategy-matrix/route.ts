@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAnthropicClient } from '@/lib/ai/client'
+import { getAIProvider } from '@/lib/ai/client'
 import { STRATEGY_GENERATOR_SYSTEM_PROMPT, STRATEGY_GENERATOR_USER_PROMPT, StrategyGenerationContext } from '@/lib/ai/prompts/strategy-generator'
 import { MessageGenerationRequestSchema, MessageStrategySchema, MessageStrategy } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
@@ -56,7 +56,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Segments or topics not found' }, { status: 404 })
     }
 
-    const client = getAnthropicClient()
+    const provider = getAIProvider()
+    const model = process.env.AI_MODEL
     const generatedStrategies: Array<{ segment_id: string; topic_id: string; strategy: MessageStrategy }> = []
 
     // Parse narratives if available
@@ -103,25 +104,22 @@ export async function POST(req: NextRequest) {
 
         try {
           console.log(`[Strategy Generation] Starting for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id})`)
-          const response = await client.messages.create({
-            model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-            max_tokens: 4096,
-            system: STRATEGY_GENERATOR_SYSTEM_PROMPT,
+          const response = await provider.generateText({
+            model,
+            maxTokens: 4096,
+            systemPrompt: STRATEGY_GENERATOR_SYSTEM_PROMPT,
             messages: [
               { role: 'user', content: STRATEGY_GENERATOR_USER_PROMPT(context) }
             ]
           })
 
           console.log(`[Strategy Generation] Received response for segment ${segment.name}, topic ${topic.name}`)
-          const content = response.content[0].type === 'text' 
-            ? response.content[0].text 
-            : ''
+          const content = response.content
 
           if (!content) {
             console.error(`[Strategy Generation] Empty response for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id})`)
             console.error(`[Strategy Generation] Response structure:`, {
               contentLength: response.content.length,
-              firstContentType: response.content[0]?.type
             })
             continue
           }

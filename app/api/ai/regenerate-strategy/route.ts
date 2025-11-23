@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAnthropicClient } from '@/lib/ai/client'
+import { getAIProvider } from '@/lib/ai/client'
 import { STRATEGY_GENERATOR_SYSTEM_PROMPT, STRATEGY_GENERATOR_USER_PROMPT, StrategyGenerationContext } from '@/lib/ai/prompts/strategy-generator'
-import { MessageStrategySchema, MessageStrategy } from '@/lib/ai/schemas'
+import { MessageStrategySchema } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -95,19 +95,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate strategy using AI
-    const client = getAnthropicClient()
-    const response = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-      max_tokens: 2048,
-      system: STRATEGY_GENERATOR_SYSTEM_PROMPT,
+    const provider = getAIProvider()
+    const model = process.env.AI_MODEL
+    
+    const response = await provider.generateText({
+      model,
+      maxTokens: 2048,
+      systemPrompt: STRATEGY_GENERATOR_SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: STRATEGY_GENERATOR_USER_PROMPT(context) }
       ]
     })
 
-    const content = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : ''
+    const content = response.content
 
     if (!content) {
       return NextResponse.json({ 

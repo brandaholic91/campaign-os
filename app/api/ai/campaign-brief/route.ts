@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAnthropicClient } from '@/lib/ai/client'
+import { getAIProvider } from '@/lib/ai/client'
 import { BRIEF_NORMALIZER_SYSTEM_PROMPT, BRIEF_NORMALIZER_USER_PROMPT } from '@/lib/ai/prompts/brief-normalizer'
 import { STRATEGY_DESIGNER_SYSTEM_PROMPT, STRATEGY_DESIGNER_USER_PROMPT } from '@/lib/ai/prompts/strategy-designer'
-import { BriefNormalizerOutputSchema, CampaignStructureSchema } from '@/lib/ai/schemas'
+import { BriefNormalizerOutputSchema } from '@/lib/ai/schemas'
 
 export const maxDuration = 60 // Increase timeout for AI generation
 
@@ -14,21 +14,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Brief is required' }, { status: 400 })
     }
 
-    const client = getAnthropicClient()
+    const provider = getAIProvider()
+    const model = process.env.AI_MODEL
 
     // Step 1: Brief Normalizer
-    const normalizerResponse = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-      max_tokens: 1024,
-      system: BRIEF_NORMALIZER_SYSTEM_PROMPT,
+    const normalizerResponse = await provider.generateText({
+      model,
+      maxTokens: 1024,
+      systemPrompt: BRIEF_NORMALIZER_SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: BRIEF_NORMALIZER_USER_PROMPT(brief, campaignType, goalType) }
       ]
     })
 
-    const normalizerContent = normalizerResponse.content[0].type === 'text' 
-      ? normalizerResponse.content[0].text 
-      : ''
+    const normalizerContent = normalizerResponse.content
     
     if (!normalizerContent) {
       console.error('Brief Normalizer: Empty response')
@@ -76,16 +75,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 2: Strategy Designer (Streaming)
-    const stream = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-      max_tokens: 8192,
-      system: STRATEGY_DESIGNER_SYSTEM_PROMPT,
+    const stream = provider.generateStream({
+      model,
+      maxTokens: 8192,
+      systemPrompt: STRATEGY_DESIGNER_SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(normalizedBrief) }
-      ],
-      stream: true,
-    }, {
-      timeout: 120 * 1000 // 2 minutes timeout
+      ]
     })
 
     const encoder = new TextEncoder()
@@ -94,8 +90,8 @@ export async function POST(req: NextRequest) {
       async start(controller) {
         try {
           for await (const chunk of stream) {
-            if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-              controller.enqueue(encoder.encode(chunk.delta.text))
+            if (chunk.content) {
+              controller.enqueue(encoder.encode(chunk.content))
             }
           }
           controller.close()

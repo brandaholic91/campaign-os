@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Invalid campaign data',
-          details: campaignValidation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+          details: campaignValidation.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
         },
         { status: 400 }
       )

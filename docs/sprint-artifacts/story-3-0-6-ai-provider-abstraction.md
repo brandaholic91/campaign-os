@@ -102,13 +102,13 @@ So that **I can switch between providers and models via environment variables wi
 
 ### Tasks / Subtasks
 
-- [ ] Install required SDKs (AC: #2)
+- [x] Install required SDKs (AC: #2)
   - Install `openai@^4.50.0` for OpenAI provider
   - Install `@google/generative-ai@^0.21.0` for Google Gemini provider
   - Note: Ollama uses HTTP API (no package needed)
   - Verify versions: `npm view openai versions --json` and `npm view @google/generative-ai versions --json`
 
-- [ ] Create base provider abstraction (AC: #1)
+- [x] Create base provider abstraction (AC: #1)
   - Create `lib/ai/types.ts` with all type definitions
     - `AIProvider` interface
     - `GenerateTextOptions` type (systemPrompt separate, messages only user/assistant)
@@ -121,7 +121,7 @@ So that **I can switch between providers and models via environment variables wi
     - Common error handling
     - Abstract methods: `_generateText()`, `_generateStream()`
 
-- [ ] Implement Anthropic provider (AC: #2)
+- [x] Implement Anthropic provider (AC: #2)
   - Create `lib/ai/providers/anthropic.ts`
   - Extend `BaseAIProvider`
   - Implement `_generateText()` using `client.messages.create()`
@@ -130,7 +130,7 @@ So that **I can switch between providers and models via environment variables wi
   - Parse Anthropic response format to unified format
   - Handle Anthropic streaming chunks
 
-- [ ] Implement OpenAI provider (AC: #2)
+- [x] Implement OpenAI provider (AC: #2)
   - Create `lib/ai/providers/openai.ts`
   - Extend `BaseAIProvider`
   - Implement `_generateText()` using `chat.completions.create()`
@@ -140,7 +140,7 @@ So that **I can switch between providers and models via environment variables wi
   - Handle OpenAI streaming chunks
   - Map `maxTokens` to `max_tokens`, `temperature` to `temperature`
 
-- [ ] Implement Google provider (AC: #2)
+- [x] Implement Google provider (AC: #2)
   - Create `lib/ai/providers/google.ts`
   - Extend `BaseAIProvider`
   - Implement `_generateText()` using `model.generateContent()`
@@ -149,7 +149,7 @@ So that **I can switch between providers and models via environment variables wi
   - Parse Google response format to unified format
   - Handle Google streaming chunks
 
-- [ ] Implement Ollama provider (AC: #2)
+- [x] Implement Ollama provider (AC: #2)
   - Create `lib/ai/providers/ollama.ts`
   - Extend `BaseAIProvider`
   - Implement `_generateText()` using `fetch('http://localhost:11434/api/generate')`
@@ -159,7 +159,7 @@ So that **I can switch between providers and models via environment variables wi
   - Handle Ollama streaming chunks
   - Add health check for Ollama availability
 
-- [ ] Update factory and client (AC: #3)
+- [x] Update factory and client (AC: #3)
   - Refactor `lib/ai/client.ts`
   - Create `getAIProvider()` factory function
   - Read `AI_PROVIDER` environment variable (default: `'anthropic'`)
@@ -168,7 +168,7 @@ So that **I can switch between providers and models via environment variables wi
   - Pass model and API keys to provider constructor
   - Keep `getAnthropicClient()` for backward compatibility (wrapper around factory)
 
-- [ ] Migrate API routes (AC: #4)
+- [x] Migrate API routes (AC: #4)
   - Update `app/api/ai/campaign-brief/route.ts`
     - Replace `getAnthropicClient()` with `getAIProvider()`
     - Replace `client.messages.create()` with `provider.generateText()`
@@ -187,28 +187,28 @@ So that **I can switch between providers and models via environment variables wi
     - Replace `client.messages.create()` with `provider.generateText()`
     - Update response parsing
 
-- [ ] Update CopilotKit integration (AC: #5)
+- [x] Update CopilotKit integration (AC: #5)
   - Update `lib/ai/copilotkit/server.ts`
   - Create provider-specific adapters or use provider abstraction
   - Update `AnthropicAdapter` initialization to use provider abstraction
   - Add fallback mechanism if provider doesn't support CopilotKit adapter
   - Maintain backward compatibility with existing CopilotKit functionality
 
-- [ ] Update error handling (AC: #6)
+- [x] Update error handling (AC: #6)
   - Create `AIProviderError` class in `lib/ai/errors.ts`
   - Create `APIKeyMissingError` class extending `AIProviderError`
   - Wrap provider-specific errors in unified error classes
   - Update error messages to include provider type
   - Update API routes to handle new error types gracefully
 
-- [ ] Add environment variable documentation (AC: #7)
+- [x] Add environment variable documentation (AC: #7)
   - Update `.env.example` with new variables
   - Document `AI_PROVIDER` options
   - Document `AI_MODEL` options for each provider
   - Document provider-specific API key requirements
   - Document Ollama configuration
 
-- [ ] Testing (AC: #8)
+- [x] Testing (AC: #8)
   - Test with Anthropic provider (backward compatibility)
   - Test with OpenAI provider
   - Test with Google provider

@@ -93,7 +93,7 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
   const [formData, setFormData] = useState(wizardData || {})
 
   const updateField = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData((prev: any) => ({ ...prev, [field]: value }))
   }
 
   const toggleChannel = (channel: string) => {

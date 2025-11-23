@@ -181,7 +181,7 @@ OLLAMA_BASE_URL=http://localhost:11434
 ### 4.2 Provider-specifikus Modell Nevek
 
 **Anthropic:**
-- `claude-haiku-4-5` (alapértelmezett)
+- `claude-haiku-4-5`
 - `claude-3-5-sonnet-20241022`
 - `claude-opus-20240229`
 
