@@ -62,7 +62,7 @@ export function StrategyCell({
     return (
       <div className="h-full min-h-[200px] p-4 border-r border-b border-gray-100 bg-white hover:bg-gray-50/50 transition-colors relative group">
         {matrixEntry && (
-          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <div className="absolute top-2 right-2 z-10 flex gap-1.5">
              <span className={cn(
                "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
                matrixEntry.importance === 'high' ? "bg-rose-50 text-rose-600 border-rose-100" :
@@ -70,6 +70,17 @@ export function StrategyCell({
                "bg-gray-50 text-gray-500 border-gray-100"
              )}>
                {matrixEntry.importance}
+             </span>
+             <span className={cn(
+               "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
+               matrixEntry.role === 'core_message' ? "bg-blue-50 text-blue-600 border-blue-100" :
+               matrixEntry.role === 'support' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+               "bg-purple-50 text-purple-600 border-purple-100"
+             )}>
+               {matrixEntry.role === 'core_message' ? 'CORE' : 
+                matrixEntry.role === 'support' ? 'SUPPORT' : 
+                matrixEntry.role === 'experimental' ? 'EXPERIMENTAL' : 
+                matrixEntry.role}
              </span>
           </div>
         )}
@@ -97,8 +108,16 @@ export function StrategyCell({
              )}>
                {matrixEntry.importance}
              </span>
-             <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border bg-blue-50 text-blue-600 border-blue-100">
-               {matrixEntry.role}
+             <span className={cn(
+               "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border",
+               matrixEntry.role === 'core_message' ? "bg-blue-50 text-blue-600 border-blue-100" :
+               matrixEntry.role === 'support' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+               "bg-purple-50 text-purple-600 border-purple-100"
+             )}>
+               {matrixEntry.role === 'core_message' ? 'CORE' : 
+                matrixEntry.role === 'support' ? 'SUPPORT' : 
+                matrixEntry.role === 'experimental' ? 'EXPERIMENTAL' : 
+                matrixEntry.role}
              </span>
           </div>
           {matrixEntry.summary && (
