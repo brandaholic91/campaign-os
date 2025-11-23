@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +22,8 @@ type SegmentInsert = Database['campaign_os']['Tables']['segments']['Insert']
 // Type for JSONB fields
 type DemographicsData = Json | null
 type PsychographicsData = Json | null
+type MediaHabitsData = Json | null
+type ExamplePersonaData = Json | null
 
 interface SegmentManagerProps {
   campaignId: string
@@ -37,12 +39,17 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
     description: '',
     demographics: null,
     psychographics: null,
+    media_habits: null,
+    example_persona: null,
     priority: null,
   })
   // Store JSON as strings in form for easier editing
   const [demographicsJson, setDemographicsJson] = useState<string>('')
   const [psychographicsJson, setPsychographicsJson] = useState<string>('')
+  const [mediaHabitsJson, setMediaHabitsJson] = useState<string>('')
+  const [examplePersonaJson, setExamplePersonaJson] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+  const [expandedSegmentId, setExpandedSegmentId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchSegments()
@@ -70,6 +77,8 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
       // Parse and validate JSON fields
       let demographics: DemographicsData = null
       let psychographics: PsychographicsData = null
+      let mediaHabits: MediaHabitsData = null
+      let examplePersona: ExamplePersonaData = null
 
       if (demographicsJson.trim()) {
         try {
@@ -91,11 +100,33 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
         }
       }
 
+      if (mediaHabitsJson.trim()) {
+        try {
+          const parsed = JSON.parse(mediaHabitsJson.trim())
+          mediaHabits = typeof parsed === 'object' && parsed !== null ? parsed : null
+        } catch (parseError) {
+          setError('Érvénytelen JSON formátum a média szokásoknál. Kérlek ellenőrizd a szintaxist.')
+          return
+        }
+      }
+
+      if (examplePersonaJson.trim()) {
+        try {
+          const parsed = JSON.parse(examplePersonaJson.trim())
+          examplePersona = typeof parsed === 'object' && parsed !== null ? parsed : null
+        } catch (parseError) {
+          setError('Érvénytelen JSON formátum a példa personánál. Kérlek ellenőrizd a szintaxist.')
+          return
+        }
+      }
+
       const payload = {
         ...formData,
         campaign_id: campaignId,
         demographics,
         psychographics,
+        media_habits: mediaHabits,
+        example_persona: examplePersona,
       }
 
       let response
@@ -120,9 +151,11 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
 
       setShowForm(false)
       setEditingId(null)
-      setFormData({ name: '', description: '', demographics: null, psychographics: null, priority: null })
+      setFormData({ name: '', description: '', demographics: null, psychographics: null, media_habits: null, example_persona: null, priority: null })
       setDemographicsJson('')
       setPsychographicsJson('')
+      setMediaHabitsJson('')
+      setExamplePersonaJson('')
       fetchSegments()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save segment')
@@ -151,6 +184,8 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
       description: segment.description || '',
       demographics: segment.demographics as DemographicsData,
       psychographics: segment.psychographics as PsychographicsData,
+      media_habits: segment.media_habits as MediaHabitsData,
+      example_persona: segment.example_persona as ExamplePersonaData,
       priority: segment.priority,
     })
     // Convert JSONB to string for editing
@@ -164,15 +199,27 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
         ? JSON.stringify(segment.psychographics as PsychographicsData, null, 2)
         : ''
     )
+    setMediaHabitsJson(
+      segment.media_habits 
+        ? JSON.stringify(segment.media_habits as MediaHabitsData, null, 2)
+        : ''
+    )
+    setExamplePersonaJson(
+      segment.example_persona 
+        ? JSON.stringify(segment.example_persona as ExamplePersonaData, null, 2)
+        : ''
+    )
     setShowForm(true)
   }
 
   function handleCancel() {
     setShowForm(false)
     setEditingId(null)
-    setFormData({ name: '', description: '', demographics: null, psychographics: null, priority: null })
+    setFormData({ name: '', description: '', demographics: null, psychographics: null, media_habits: null, example_persona: null, priority: null })
     setDemographicsJson('')
     setPsychographicsJson('')
+    setMediaHabitsJson('')
+    setExamplePersonaJson('')
   }
 
   if (loading) {
@@ -285,6 +332,30 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="media_habits">Média Szokások (JSON)</Label>
+            <Textarea
+              id="media_habits"
+              value={mediaHabitsJson}
+              onChange={(e) => setMediaHabitsJson(e.target.value)}
+              placeholder='{"primary_channels": ["Facebook", "Instagram"], "secondary_channels": ["TikTok"], "notes": "Aktív social media felhasználók"}'
+              rows={4}
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="example_persona">Példa Persona (JSON)</Label>
+            <Textarea
+              id="example_persona"
+              value={examplePersonaJson}
+              onChange={(e) => setExamplePersonaJson(e.target.value)}
+              placeholder='{"name": "Márta", "one_sentence_story": "30 éves marketinges, aki értékeli a fenntarthatóságot"}'
+              rows={3}
+              className="font-mono text-sm"
+            />
+          </div>
+
           <div className="flex gap-2">
             <Button type="submit">{editingId ? 'Frissítés' : 'Létrehozás'}</Button>
             <Button type="button" variant="secondary" onClick={handleCancel}>
@@ -311,45 +382,134 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {segments.map((segment) => (
-                <tr key={segment.id} className="group hover:bg-gray-50/50 transition-colors">
-                  <td className="py-6 px-4 align-top">
-                    <span className="font-display font-bold text-gray-900 text-sm leading-snug block">
-                      {segment.name}
-                    </span>
-                  </td>
-                  <td className="py-6 px-4 align-top">
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {segment.description || '-'}
-                    </p>
-                  </td>
-                  <td className="py-6 px-4 align-top text-center">
-                    {segment.priority ? (
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-600 font-bold text-xs">
-                        {segment.priority}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
+              {segments.map((segment) => {
+                const isExpanded = expandedSegmentId === segment.id
+                return (
+                  <React.Fragment key={segment.id}>
+                    <tr className="group hover:bg-gray-50/50 transition-colors">
+                      <td className="py-6 px-4 align-top">
+                        <span className="font-display font-bold text-gray-900 text-sm leading-snug block">
+                          {segment.name}
+                        </span>
+                        {segment.short_label && (
+                          <span className="text-xs text-gray-500 mt-1 block">{segment.short_label}</span>
+                        )}
+                      </td>
+                      <td className="py-6 px-4 align-top">
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {segment.description || '-'}
+                        </p>
+                      </td>
+                      <td className="py-6 px-4 align-top text-center">
+                        {segment.priority ? (
+                          <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-medium ${
+                            segment.priority === 'primary' 
+                              ? 'bg-primary-100 text-primary-700' 
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {segment.priority === 'primary' ? 'Elsődleges' : 'Másodlagos'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="py-6 px-4 align-top text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            className="p-2 bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:text-primary-600 transition-colors shadow-sm"
+                            onClick={() => setExpandedSegmentId(isExpanded ? null : segment.id)}
+                            title={isExpanded ? 'Összecsukás' : 'Részletek'}
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isExpanded ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+                            </svg>
+                          </button>
+                          <button 
+                            className="p-2 bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:text-primary-600 transition-colors shadow-sm"
+                            onClick={() => handleEdit(segment)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button 
+                            className="p-2 bg-white border border-gray-200 rounded-lg hover:border-rose-300 hover:text-rose-600 transition-colors shadow-sm"
+                            onClick={() => handleDelete(segment.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-gray-50/50">
+                        <td colSpan={4} className="px-4 py-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Demográfiai Profil */}
+                            {segment.demographics && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Demográfiai Profil</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
+                                    {JSON.stringify(segment.demographics, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Pszichográfiai Profil */}
+                            {segment.psychographics && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Pszichográfiai Profil</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
+                                    {JSON.stringify(segment.psychographics, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Média Szokások */}
+                            {segment.media_habits && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Média Szokások</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
+                                    {JSON.stringify(segment.media_habits, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Példa Persona */}
+                            {segment.example_persona && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700">Példa Persona</h4>
+                                <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
+                                    {JSON.stringify(segment.example_persona, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* További információk */}
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold text-gray-700">További információk</h4>
+                              <div className="bg-white p-3 rounded-lg border border-gray-200 space-y-2">
+                                {segment.funnel_stage_focus && (
+                                  <div>
+                                    <span className="text-xs font-medium text-gray-500">Funnel Fókusz: </span>
+                                    <span className="text-xs text-gray-700">{segment.funnel_stage_focus}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="py-6 px-4 align-top text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        className="p-2 bg-white border border-gray-200 rounded-lg hover:border-primary-300 hover:text-primary-600 transition-colors shadow-sm"
-                        onClick={() => handleEdit(segment)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="p-2 bg-white border border-gray-200 rounded-lg hover:border-rose-300 hover:text-rose-600 transition-colors shadow-sm"
-                        onClick={() => handleDelete(segment.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                  </React.Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>
