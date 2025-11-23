@@ -21,6 +21,25 @@ import TaskCard from './TaskCard'
 import SprintForm from './SprintForm'
 import TaskForm from './TaskForm'
 import { format } from 'date-fns'
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
+  useDroppable,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { useRouter } from 'next/navigation'
 
 type Sprint = Database['campaign_os']['Tables']['sprints']['Row']
 type Task = Database['campaign_os']['Tables']['tasks']['Row']
@@ -33,12 +52,89 @@ interface SprintBoardProps {
   channels: Channel[]
 }
 
+type TaskStatus = 'todo' | 'in_progress' | 'done'
+
+interface DroppableColumnProps {
+  id: TaskStatus
+  title: string
+  tasks: Task[]
+  onTaskClick: (task: Task) => void
+  onCreateTask: () => void
+  emptyMessage: string
+  titleColor: string
+  enableDragDrop?: boolean
+}
+
+function DroppableColumn({
+  id,
+  title,
+  tasks,
+  onTaskClick,
+  onCreateTask,
+  emptyMessage,
+  titleColor,
+  enableDragDrop = true,
+}: DroppableColumnProps) {
+  // Always call the hook (React rules), but disable it when drag and drop is not enabled
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+    data: {
+      type: 'column',
+      status: id,
+    },
+    disabled: !enableDragDrop,
+  })
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4 px-1">
+        <h3 className={`text-xs font-bold ${titleColor} uppercase tracking-wider`}>
+          {title} ({tasks.length})
+        </h3>
+        <button 
+          className="text-gray-400 hover:text-gray-600"
+          onClick={onCreateTask}
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+      <div
+        ref={setNodeRef}
+        className={`flex-1 bg-gray-100/50 rounded-2xl p-3 border border-gray-200/50 overflow-y-auto transition-colors ${
+          isOver ? 'bg-blue-50 border-blue-300' : ''
+        }`}
+      >
+        {tasks.length === 0 ? (
+          <div className="h-32 flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl text-xs text-gray-400">
+            {emptyMessage}
+          </div>
+        ) : enableDragDrop ? (
+          <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-3">
+              {tasks.map((task) => (
+                <TaskCard key={task.id} task={task} onClick={onTaskClick} enableDragDrop={enableDragDrop} />
+              ))}
+            </div>
+          </SortableContext>
+        ) : (
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <TaskCard key={task.id} task={task} onClick={onTaskClick} enableDragDrop={false} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function SprintBoard({
   campaignId,
   sprints,
   tasks,
   channels,
 }: SprintBoardProps) {
+  const router = useRouter()
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(
     sprints.length > 0 ? sprints[0].id : null
   )
@@ -46,6 +142,26 @@ export default function SprintBoard({
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false)
   const [editingSprint, setEditingSprint] = useState<Sprint | undefined>(undefined)
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined)
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  // Optimistic updates: track task status changes locally
+  const [optimisticTasks, setOptimisticTasks] = useState<Map<string, TaskStatus>>(new Map())
+  // Prevent hydration mismatch by only rendering DndContext on client
+  const [isMounted, setIsMounted] = useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px mozgás kell a drag aktiválásához
+      },
+    }),
+    useSensor(KeyboardSensor)
+  )
+
+  // Set mounted flag after component mounts on client
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Update selected sprint if sprints change (e.g. after delete)
   useEffect(() => {
@@ -57,11 +173,25 @@ export default function SprintBoard({
   }, [sprints, selectedSprintId])
 
   const currentSprint = sprints.find((s) => s.id === selectedSprintId)
-  const sprintTasks = tasks.filter((t) => t.sprint_id === selectedSprintId)
+  // Apply optimistic updates to tasks
+  const sprintTasks = tasks
+    .filter((t) => t.sprint_id === selectedSprintId)
+    .map((task) => {
+      const optimisticStatus = optimisticTasks.get(task.id)
+      if (optimisticStatus) {
+        return { ...task, status: optimisticStatus }
+      }
+      return task
+    })
 
   const todoTasks = sprintTasks.filter((t) => t.status === 'todo')
   const inProgressTasks = sprintTasks.filter((t) => t.status === 'in_progress')
   const doneTasks = sprintTasks.filter((t) => t.status === 'done')
+
+  // Reset optimistic updates when tasks prop changes (after refresh)
+  useEffect(() => {
+    setOptimisticTasks(new Map())
+  }, [tasks])
 
   const handleCreateSprint = () => {
     setEditingSprint(undefined)
@@ -94,6 +224,88 @@ export default function SprintBoard({
 
   const onTaskSaved = () => {
     setIsTaskDialogOpen(false)
+  }
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    const task = sprintTasks.find((t) => t.id === active.id)
+    if (task) {
+      setActiveTask(task)
+    }
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveTask(null)
+
+    if (!over) return
+
+    const taskId = active.id as string
+    const task = sprintTasks.find((t) => t.id === taskId)
+    if (!task) return
+
+    // Determine the target status
+    let newStatus: TaskStatus | null = null
+    
+    // Check if dropped on a column (status)
+    if (['todo', 'in_progress', 'done'].includes(over.id as string)) {
+      newStatus = over.id as TaskStatus
+    } else {
+      // Dropped on another task - find which column it belongs to
+      const targetTask = sprintTasks.find((t) => t.id === over.id)
+      if (targetTask) {
+        newStatus = targetTask.status as TaskStatus
+      }
+    }
+
+    // If no valid status found or status hasn't changed, do nothing
+    if (!newStatus || task.status === newStatus) return
+
+    // Optimistic update: immediately update local state
+    setOptimisticTasks((prev) => {
+      const next = new Map(prev)
+      next.set(taskId, newStatus)
+      return next
+    })
+
+    setIsUpdating(true)
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: taskId,
+          status: newStatus,
+          title: task.title,
+          description: task.description,
+          category: task.category,
+          channel_id: task.channel_id,
+          due_date: task.due_date,
+          assignee: task.assignee,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update task status')
+      }
+
+      // Refresh to get the latest data from server
+      router.refresh()
+      
+      // Clear optimistic update after successful API call
+      // The refresh will update the tasks prop, which will reset optimisticTasks
+    } catch (error) {
+      console.error('Error updating task status:', error)
+      // Revert optimistic update on error
+      setOptimisticTasks((prev) => {
+        const next = new Map(prev)
+        next.delete(taskId)
+        return next
+      })
+      // Optionally show an error toast here
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   return (
@@ -150,85 +362,85 @@ export default function SprintBoard({
 
       {/* Kanban Board */}
       {currentSprint ? (
-        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* To Do Column */}
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">To Do ({todoTasks.length})</h3>
-              <button 
-                className="text-gray-400 hover:text-gray-600"
-                onClick={() => handleCreateTask('todo')}
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+        isMounted ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <DroppableColumn
+                id="todo"
+                title="To Do"
+                tasks={todoTasks}
+                onTaskClick={handleEditTask}
+                onCreateTask={() => handleCreateTask('todo')}
+                emptyMessage="Nincs aktív feladat"
+                titleColor="text-gray-500"
+              />
+              <DroppableColumn
+                id="in_progress"
+                title="In Progress"
+                tasks={inProgressTasks}
+                onTaskClick={handleEditTask}
+                onCreateTask={() => handleCreateTask('in_progress')}
+                emptyMessage="Nincs aktív feladat"
+                titleColor="text-blue-500"
+              />
+              <DroppableColumn
+                id="done"
+                title="Done"
+                tasks={doneTasks}
+                onTaskClick={handleEditTask}
+                onCreateTask={() => handleCreateTask('done')}
+                emptyMessage="Nincs kész feladat"
+                titleColor="text-emerald-500"
+              />
             </div>
-            <div className="flex-1 bg-gray-100/50 rounded-2xl p-3 border border-gray-200/50 overflow-y-auto">
-              {todoTasks.length === 0 ? (
-                <div className="h-32 flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl text-xs text-gray-400">
-                  Nincs aktív feladat
+            <DragOverlay>
+              {activeTask ? (
+                <div className="opacity-80">
+                  <TaskCard task={activeTask} onClick={() => {}} />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {todoTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} onClick={handleEditTask} />
-                  ))}
-                </div>
-              )}
-            </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        ) : (
+          // Fallback without DndContext during SSR to prevent hydration mismatch
+          <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <DroppableColumn
+              id="todo"
+              title="To Do"
+              tasks={todoTasks}
+              onTaskClick={handleEditTask}
+              onCreateTask={() => handleCreateTask('todo')}
+              emptyMessage="Nincs aktív feladat"
+              titleColor="text-gray-500"
+              enableDragDrop={false}
+            />
+            <DroppableColumn
+              id="in_progress"
+              title="In Progress"
+              tasks={inProgressTasks}
+              onTaskClick={handleEditTask}
+              onCreateTask={() => handleCreateTask('in_progress')}
+              emptyMessage="Nincs aktív feladat"
+              titleColor="text-blue-500"
+              enableDragDrop={false}
+            />
+            <DroppableColumn
+              id="done"
+              title="Done"
+              tasks={doneTasks}
+              onTaskClick={handleEditTask}
+              onCreateTask={() => handleCreateTask('done')}
+              emptyMessage="Nincs kész feladat"
+              titleColor="text-emerald-500"
+              enableDragDrop={false}
+            />
           </div>
-
-          {/* In Progress Column */}
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-xs font-bold text-blue-500 uppercase tracking-wider">In Progress ({inProgressTasks.length})</h3>
-              <button 
-                className="text-gray-400 hover:text-gray-600"
-                onClick={() => handleCreateTask('in_progress')}
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 bg-gray-100/50 rounded-2xl p-3 border border-gray-200/50 overflow-y-auto">
-              {inProgressTasks.length === 0 ? (
-                <div className="h-32 flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl text-xs text-gray-400">
-                  Nincs aktív feladat
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {inProgressTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} onClick={handleEditTask} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Done Column */}
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Done ({doneTasks.length})</h3>
-              <button 
-                className="text-gray-400 hover:text-gray-600"
-                onClick={() => handleCreateTask('done')}
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 bg-gray-100/50 rounded-2xl p-3 border border-gray-200/50 overflow-y-auto">
-              {doneTasks.length === 0 ? (
-                <div className="h-32 flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl text-xs text-gray-400">
-                  Nincs kész feladat
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {doneTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} onClick={handleEditTask} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        )
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50">
           <p className="text-gray-500 mb-4">Hozz létre egy sprintet a kezdéshez</p>
