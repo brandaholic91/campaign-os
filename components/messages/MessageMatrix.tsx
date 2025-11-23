@@ -5,12 +5,17 @@ import { useRouter } from 'next/navigation'
 import { Database } from '@/lib/supabase/types'
 import { Loader2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { CheckboxList } from './CheckboxList'
 import { StrategyCell } from './StrategyCell'
 import { StrategyDetailModal } from './StrategyDetailModal'
 import { MessageStrategy } from '@/lib/ai/schemas'
 import { StrategyMatrixPreview } from '@/components/ai/StrategyMatrixPreview'
 import { StrategyForm } from './StrategyForm'
+import { MatrixConnectionModal } from './MatrixConnectionModal'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Plus } from 'lucide-react'
 
 type Segment = Database['campaign_os']['Tables']['segments']['Row']
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
@@ -62,6 +67,13 @@ export default function MessageMatrix({
   const [generatingCell, setGeneratingCell] = useState<{ segmentId: string; topicId: string } | null>(null)
   const [generatedStrategies, setGeneratedStrategies] = useState<any[]>([])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  
+  // Matrix connection modal state
+  const [isMatrixModalOpen, setIsMatrixModalOpen] = useState(false)
+  
+  // Dropdown selections for strategy generation
+  const [selectedSegmentForGeneration, setSelectedSegmentForGeneration] = useState<string>('')
+  const [selectedTopicForGeneration, setSelectedTopicForGeneration] = useState<string>('')
 
   const getStrategyForCell = (segmentId: string, topicId: string) => {
     const found = strategies.find(
@@ -165,7 +177,15 @@ export default function MessageMatrix({
   }
 
   const handleBatchGenerate = async () => {
-    if (selectedSegments.size === 0 || selectedTopics.size === 0) {
+    // Use dropdown selections if available, otherwise use checkbox selections
+    const segmentsToUse = selectedSegmentForGeneration 
+      ? [selectedSegmentForGeneration]
+      : Array.from(selectedSegments)
+    const topicsToUse = selectedTopicForGeneration
+      ? [selectedTopicForGeneration]
+      : Array.from(selectedTopics)
+
+    if (segmentsToUse.length === 0 || topicsToUse.length === 0) {
       toast.error('Válassz ki legalább egy célcsoportot és egy témát')
       return
     }
@@ -177,8 +197,8 @@ export default function MessageMatrix({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaign_id: campaignId,
-          segment_ids: Array.from(selectedSegments),
-          topic_ids: Array.from(selectedTopics)
+          segment_ids: segmentsToUse,
+          topic_ids: topicsToUse
         })
       })
 
@@ -374,6 +394,25 @@ export default function MessageMatrix({
     setSelectedTopics(newSet)
   }
 
+  // Handle dropdown selections for strategy generation
+  const handleSegmentSelect = (segmentId: string) => {
+    setSelectedSegmentForGeneration(segmentId)
+    const newSet = new Set(selectedSegments)
+    if (segmentId) {
+      newSet.add(segmentId)
+    }
+    setSelectedSegments(newSet)
+  }
+
+  const handleTopicSelect = (topicId: string) => {
+    setSelectedTopicForGeneration(topicId)
+    const newSet = new Set(selectedTopics)
+    if (topicId) {
+      newSet.add(topicId)
+    }
+    setSelectedTopics(newSet)
+  }
+
   // Convert segments and topics to checkbox list format
   const segmentsForList = segments.map(s => ({
     id: s.id,
@@ -391,7 +430,10 @@ export default function MessageMatrix({
 
   const selectedSegmentsArray = segments.filter(s => selectedSegments.has(s.id))
   const selectedTopicsArray = topics.filter(t => selectedTopics.has(t.id))
-  const cellCount = selectedSegmentsArray.length * selectedTopicsArray.length
+  // For dropdown mode, count based on selected dropdown values
+  const cellCount = selectedSegmentForGeneration && selectedTopicForGeneration 
+    ? 1 
+    : selectedSegmentsArray.length * selectedTopicsArray.length
   const hasAnyData = segments.length > 0 && topics.length > 0
 
   return (
@@ -399,24 +441,59 @@ export default function MessageMatrix({
       {/* Configuration Panel (Bento Grid Style) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Audience Selector */}
+          {/* New Matrix Connection Card */}
           <div className="lg:col-span-4 bg-white rounded-2xl shadow-soft border border-gray-100 p-6 flex flex-col">
-            <CheckboxList 
-              title="Célcsoportok" 
-              count={selectedSegments.size}
-              items={segmentsForList} 
-              onToggle={toggleSegment} 
-            />
+            <h3 className="text-lg font-display font-bold mb-2">Új Matrix Kapcsolat</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Hozz létre egy új kapcsolatot egy célcsoport és egy téma között.
+            </p>
+            <Button
+              onClick={() => setIsMatrixModalOpen(true)}
+              className="w-full bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Új Kapcsolat Létrehozása
+            </Button>
           </div>
 
-          {/* Topic Selector */}
+          {/* Strategy Generation Selector */}
           <div className="lg:col-span-4 bg-white rounded-2xl shadow-soft border border-gray-100 p-6 flex flex-col">
-             <CheckboxList 
-                title="Témák" 
-                count={selectedTopics.size}
-                items={topicsForList} 
-                onToggle={toggleTopic} 
-              />
+            <h3 className="text-lg font-display font-bold mb-2">Stratégia Generálás</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Válassz ki egy célcsoportot és egy témát a stratégia generálásához.
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="segment-select">Célcsoport</Label>
+                <Select value={selectedSegmentForGeneration} onValueChange={handleSegmentSelect}>
+                  <SelectTrigger id="segment-select">
+                    <SelectValue placeholder="Válassz célcsoportot..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {segments.map(segment => (
+                      <SelectItem key={segment.id} value={segment.id}>
+                        {segment.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="topic-select">Téma</Label>
+                <Select value={selectedTopicForGeneration} onValueChange={handleTopicSelect}>
+                  <SelectTrigger id="topic-select">
+                    <SelectValue placeholder="Válassz témát..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {topics.map(topic => (
+                      <SelectItem key={topic.id} value={topic.id}>
+                        {topic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           {/* Action & Stats Panel */}
@@ -600,6 +677,15 @@ export default function MessageMatrix({
         onClose={() => setIsPreviewOpen(false)}
         strategies={generatedStrategies}
         onSave={handleSaveStrategies}
+      />
+
+      <MatrixConnectionModal
+        isOpen={isMatrixModalOpen}
+        onClose={() => setIsMatrixModalOpen(false)}
+        segments={segments}
+        topics={topics}
+        campaignId={campaignId}
+        onSuccess={() => router.refresh()}
       />
     </div>
   )
