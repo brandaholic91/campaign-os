@@ -541,8 +541,12 @@ AI Generation Layer
 │   └── Strategy generator (refactor Story 2.3), prompt template, 16-field output
 │
 CRUD Operations Layer
-└── Story 3.0.4: Strategy Form + CRUD
-    └── Strategy form (4 sections), API endpoints, edit/create workflow
+├── Story 3.0.4: Strategy Form + CRUD
+│   └── Strategy form (4 sections), API endpoints, edit/create workflow
+│
+AI Infrastructure Layer
+└── Story 3.0.6: AI Provider Abstraction
+    └── Multi-provider support (Anthropic, OpenAI, Google, Ollama), unified interface
 ```
 
 ---
@@ -922,11 +926,53 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
 
 ---
 
+### Story 3.0.6: AI Provider Abstraction
+
+As a **developer**,
+I want **multiple AI provider support (Anthropic, OpenAI, Google Gemini, Ollama) with a unified abstraction layer**,
+So that **I can switch between providers and models via environment variables without code changes, enabling cost optimization and vendor independence**.
+
+**Acceptance Criteria:**
+
+**Given** I have the existing Anthropic client implementation
+**When** I implement the provider abstraction
+**Then** a unified `AIProvider` interface is created with `generateText()` and `generateStream()` methods
+
+**And** provider implementations are created for Anthropic, OpenAI, Google Gemini, and Ollama
+
+**And** factory function `getAIProvider()` selects provider based on `AI_PROVIDER` environment variable
+
+**And** all API routes use the unified provider interface
+
+**And** CopilotKit integration works with all providers
+
+**And** backward compatibility is maintained (`getAnthropicClient()` still works)
+
+**And** provider switching works via environment variables without code changes
+
+**Prerequisites:** Epic 2 complete (LLM infrastructure), Story 2.1 (LLM + CopilotKit Infrastructure), Story 3.0.3 (Strategy AI Generator)
+
+**Technical Notes:**
+- Create `lib/ai/types.ts` with unified type definitions
+- Create `lib/ai/providers/base.ts` with `BaseAIProvider` abstract class
+- Implement providers: `lib/ai/providers/anthropic.ts`, `openai.ts`, `google.ts`, `ollama.ts`
+- Refactor `lib/ai/client.ts` with factory pattern
+- Update all API routes: `campaign-brief`, `message-matrix`, `strategy-matrix`, `regenerate-strategy`
+- Update `lib/ai/copilotkit/server.ts` for multi-provider support
+- Environment variables: `AI_PROVIDER`, `AI_MODEL`, provider-specific API keys
+- Default provider: Anthropic (backward compatibility)
+- Default model: `gpt-5-mini-2025-08-07`
+- Error handling: unified `AIProviderError` class with provider-specific wrapping
+
+**Estimated Effort:** 13 points (8-11 hours)
+
+---
+
 ## Implementation Timeline - Epic 3.0
 
-**Total Story Points:** 36 points (increased from 23 due to schema enhancement)
+**Total Story Points:** 49 points (increased from 36 due to AI provider abstraction)
 
-**Estimated Timeline:** 20-25 days (approximately 4-5 weeks with buffer)
+**Estimated Timeline:** 25-30 days (approximately 5-6 weeks with buffer)
 
 **Story Sequence:**
 1. Story 3.0.1: Database Migration (must complete first - foundation)
@@ -934,18 +980,21 @@ So that **I can fine-tune AI-generated strategies or create custom strategies wi
 3. Story 3.0.2: UI Refactor (depends on 3.0.1 and 3.0.5 - benefits from enhanced segments/topics)
 4. Story 3.0.3: Strategy AI Generator (depends on 3.0.1 and 3.0.5, uses Epic 2 LLM infrastructure)
 5. Story 3.0.4: Strategy Form + CRUD (depends on 3.0.1, 3.0.2, and 3.0.5)
+6. Story 3.0.6: AI Provider Abstraction (depends on Epic 2 complete, Story 2.1, Story 3.0.3 - enables multi-provider support)
 
 **Notes:**
 - Story 3.0.1 is critical path - database foundation required for all other stories
 - Story 3.0.5 enhances segments/topics schema - should complete early to benefit other stories
 - Story 3.0.2 and 3.0.4 can work in parallel after 3.0.1 and 3.0.5 (UI components)
 - Story 3.0.3 requires careful prompt engineering for 16-field output, benefits from enhanced schema
+- Story 3.0.6 enables multi-provider support - can be implemented after Story 3.0.3 (uses AI endpoints)
 - Preview summary: AI-generated but editable (stored in database)
 - UNIQUE constraint ensures one strategy per cell (segment × topic)
 - Existing `messages` table remains for Content Calendar use (Epic 3.1)
 - Story 2.3 refactor: message generator → strategy generator (same endpoint pattern, different output)
 - Story 3.0.5 adds segment-topic matrix for explicit relationship mapping (importance, role)
 - Priority system (primary/secondary) enables better filtering and AI generation focus
+- Story 3.0.6: AI Provider Abstraction enables cost optimization and vendor independence via environment variables
 
 ---
 

@@ -99,3 +99,8 @@ development_status:
   # Story 3.0.4: Strategy Form + CRUD
   # Note: Story drafted 2025-11-22 - Manual strategy creation and editing with full CRUD operations
   3-0-4-strategy-form-crud: done
+  
+  # Story 3.0.5: Enhanced Segment & Topic Schema with Priority and Matrix
+  # Note: Story drafted 2025-01-XX - Enhanced schema for segments and topics with detailed profiles, priority system, and segment-topic matrix mapping
+  # Note: Status updated to done (2025-01-XX) - Migration, schemas, API endpoints, UI components, and matrix editor implemented
+  3-0-5-enhanced-segment-topic-schema: done

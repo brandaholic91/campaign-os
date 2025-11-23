@@ -1475,6 +1475,15 @@ ANTHROPIC_API_KEY=sk-ant-...
 **Agent Orchestration:**
 - `lib/ai/copilotkit/orchestrator.ts` - Campaign Orchestrator agent
 
+**AI Provider Abstraction (Story 3.0.6):**
+- `lib/ai/types.ts` - Unified type definitions (AIProvider, GenerateTextOptions, etc.)
+- `lib/ai/providers/base.ts` - BaseAIProvider abstract class
+- `lib/ai/providers/anthropic.ts` - AnthropicProvider implementation
+- `lib/ai/providers/openai.ts` - OpenAIProvider implementation
+- `lib/ai/providers/google.ts` - GoogleProvider implementation
+- `lib/ai/providers/ollama.ts` - OllamaProvider implementation
+- `lib/ai/client.ts` - Factory function (refactored for multi-provider support)
+
 ---
 
 ## Epic 3.0: Message Matrix Refactor - Communication Strategies
@@ -1890,6 +1899,176 @@ User can edit preview summary manually.
 
 1. Create `message_strategies` table
 2. Existing `messages` table remains unchanged
+
+---
+
+### Story 3.0.6: AI Provider Abstraction
+
+**Date:** 2025-11-24
+**Story:** Story 3.0.6 - AI Provider Abstraction
+**Change Type:** Infrastructure refactor - multi-provider support
+**Development Context:** Abstracting AI provider implementations to support multiple providers (Anthropic, OpenAI, Google Gemini, Ollama) with unified interface
+
+---
+
+#### Story 3.0.6 Context
+
+**Goal:**
+Enable multiple AI provider support with a unified abstraction layer, allowing provider switching via environment variables without code changes. This enables cost optimization, vendor independence, and flexibility in model selection.
+
+**Scope:**
+- Unified `AIProvider` interface with `generateText()` and `generateStream()` methods
+- Provider implementations: Anthropic, OpenAI, Google Gemini, Ollama
+- Factory pattern for provider selection based on environment variables
+- Backward compatibility with existing Anthropic client
+- CopilotKit integration support for all providers
+
+**Technical Architecture:**
+
+**File Structure:**
+```
+lib/ai/
+├── client.ts                    # Factory function (refactored)
+├── types.ts                     # Type definitions (new)
+├── providers/
+│   ├── base.ts                  # BaseAIProvider abstract class (new)
+│   ├── anthropic.ts             # AnthropicProvider (new)
+│   ├── openai.ts                # OpenAIProvider (new)
+│   ├── google.ts                # GoogleProvider (new)
+│   └── ollama.ts                # OllamaProvider (new)
+├── schemas.ts                   # Zod schemas (existing)
+├── errors.ts                    # Error classes (updated)
+└── copilotkit/
+    └── server.ts                # CopilotKit server (updated)
+```
+
+**Interface Design:**
+```typescript
+interface AIProvider {
+  generateText(options: GenerateTextOptions): Promise<GenerateTextResponse>
+  generateStream(options: GenerateTextOptions): AsyncIterable<StreamChunk>
+}
+
+interface GenerateTextOptions {
+  model: string
+  systemPrompt: string  // Separate field, NOT in messages array
+  messages: Array<{ role: 'user' | 'assistant', content: string }>
+  maxTokens?: number
+  temperature?: number
+}
+
+interface GenerateTextResponse {
+  content: string
+  model: string
+  usage?: {
+    promptTokens?: number
+    completionTokens?: number
+    totalTokens?: number
+  }
+}
+
+interface StreamChunk {
+  content: string
+  done: boolean
+}
+```
+
+**Important Design Decisions:**
+- `systemPrompt` is a separate field, NOT included in `messages` array
+- `messages` array only contains `'user' | 'assistant'` roles (no `'system'` role)
+- Each provider implementation converts `systemPrompt` to provider-specific format
+- Unified response format across all providers
+
+**Environment Variables:**
+```env
+# AI Provider selection (required)
+AI_PROVIDER=anthropic  # or: openai, google, ollama
+
+# Model selection (optional, provider-specific)
+AI_MODEL=gpt-5-mini-2025-08-07  # Default model
+# AI_MODEL=claude-haiku-4-5  # Anthropic
+# AI_MODEL=gpt-4-turbo-preview  # OpenAI
+# AI_MODEL=gemini-pro  # Google
+# AI_MODEL=llama2  # Ollama
+
+# Provider-specific API keys
+ANTHROPIC_API_KEY=sk-ant-...  # Required if AI_PROVIDER=anthropic
+OPENAI_API_KEY=sk-...  # Required if AI_PROVIDER=openai
+GOOGLE_API_KEY=...  # Required if AI_PROVIDER=google
+# Ollama doesn't require API key (local)
+
+# Ollama configuration (if AI_PROVIDER=ollama)
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+**Provider-Specific Implementation Details:**
+
+**Anthropic Provider:**
+- SDK: `@anthropic-ai/sdk` (already installed)
+- Conversion: `systemPrompt` → `system` parameter in `messages.create()`
+- Response: `response.content[0].text`
+- Streaming: `messages.create({ stream: true })` → `content_block_delta` chunks
+
+**OpenAI Provider:**
+- SDK: `openai@^4.50.0` (new dependency)
+- Conversion: `systemPrompt` → `system` parameter (separate from messages)
+- Response: `response.choices[0].message.content`
+- Streaming: `chat.completions.create({ stream: true })` → `delta.content` chunks
+- Mapping: `maxTokens` → `max_tokens`
+
+**Google Provider:**
+- SDK: `@google/generative-ai@^0.21.0` (new dependency)
+- Conversion: `systemPrompt` → system prompt configuration
+- Response: `response.response.text()`
+- Streaming: `model.generateContentStream()` → stream chunks
+
+**Ollama Provider:**
+- No SDK: HTTP API using `fetch()`
+- Endpoint: `http://localhost:11434/api/generate` (configurable via `OLLAMA_BASE_URL`)
+- Conversion: `systemPrompt` → Ollama format
+- Response: `response.response`
+- Streaming: `fetch()` with streaming enabled
+- Health check: Verify Ollama availability before use
+
+**Backward Compatibility:**
+- `getAnthropicClient()` function remains available (wrapper around factory)
+- Existing code using `getAnthropicClient()` continues to work
+- All API endpoints maintain same response format
+- CopilotKit integration maintains same behavior
+
+**Error Handling:**
+- Unified `AIProviderError` class with provider type information
+- `APIKeyMissingError` for missing API keys
+- Provider-specific errors wrapped in unified error classes
+- User-friendly error messages in API responses
+
+**Implementation Order:**
+1. Base abstraction (types, base provider) - 2-3 hours
+2. Anthropic provider (easiest, already have SDK) - 1 hour
+3. OpenAI provider - 1-2 hours
+4. Factory and client update - 1 hour
+5. API route migration (test with Anthropic) - 1-2 hours
+6. Google provider - 1-2 hours
+7. Ollama provider - 1-2 hours
+8. CopilotKit integration - 1 hour
+9. Testing all providers - 2-3 hours
+
+**Total Estimated Effort:** 13 points (8-11 hours)
+
+**Dependencies:**
+- Epic 2 complete (LLM infrastructure, existing Anthropic client)
+- Story 2.1 (LLM + CopilotKit Infrastructure) complete
+- Story 3.0.3 (Strategy AI Generator) complete (uses AI endpoints)
+
+**Success Criteria:**
+1. ✅ All API endpoints work with Anthropic provider (backward compatibility)
+2. ✅ All API endpoints work with OpenAI provider (if configured)
+3. ✅ All API endpoints work with Google provider (if configured)
+4. ✅ All API endpoints work with Ollama provider (if configured and running)
+5. ✅ Provider switching via environment variable works without code changes
+6. ✅ Streaming works correctly for all providers
+7. ✅ CopilotKit integration works with all providers
+8. ✅ Error handling provides clear, provider-specific error messages
 3. No data migration needed (strategies are new concept)
 4. Backward compatibility: `messages` table still used for Content Calendar (Epic 3.1)
 
@@ -1940,6 +2119,12 @@ User can edit preview summary manually.
 - E2E tests: Create → edit → delete strategy
 - Edge cases: UNIQUE constraint violation, invalid JSONB
 
+**Story 3.0.6 (AI Provider Abstraction):**
+- Unit tests: Provider implementations, factory function, error handling
+- Integration tests: All API endpoints with each provider (Anthropic, OpenAI, Google, Ollama)
+- E2E tests: Provider switching via environment variables, streaming for all providers
+- Edge cases: Missing API keys, invalid models, provider unavailability, streaming interruptions
+
 **Manual testing checklist:**
 - [ ] Strategy AI generates valid JSON per Zod schema (16 fields)
 - [ ] Preview card shows correct summary
@@ -1948,6 +2133,13 @@ User can edit preview summary manually.
 - [ ] UNIQUE constraint prevents duplicate strategies
 - [ ] Preview summary is editable
 - [ ] Existing messages table still functional
+- [ ] All API endpoints work with Anthropic provider (backward compatibility)
+- [ ] All API endpoints work with OpenAI provider (if configured)
+- [ ] All API endpoints work with Google provider (if configured)
+- [ ] All API endpoints work with Ollama provider (if configured and running)
+- [ ] Provider switching via environment variable works without code changes
+- [ ] Streaming works correctly for all providers
+- [ ] CopilotKit integration works with all providers
 
 ---
 
@@ -1974,6 +2166,16 @@ User can edit preview summary manually.
 16. ✅ All strategy data validated against Zod schemas
 17. ✅ Existing `messages` table remains functional for Content Calendar use
 18. ✅ Migration preserves backward compatibility
+
+**Story 3.0.6 (AI Provider Abstraction):**
+19. ✅ Multiple AI provider support (Anthropic, OpenAI, Google Gemini, Ollama) with unified interface
+20. ✅ Provider selection via `AI_PROVIDER` environment variable works without code changes
+21. ✅ Model selection via `AI_MODEL` environment variable works correctly
+22. ✅ All API endpoints work with all supported providers
+23. ✅ Streaming works correctly for all providers
+24. ✅ CopilotKit integration works with all providers
+25. ✅ Backward compatibility maintained (`getAnthropicClient()` still works)
+26. ✅ Error handling provides clear, provider-specific error messages
 
 ---
 

@@ -1,6 +1,6 @@
 # Story 3.0.5: Enhanced Segment & Topic Schema with Priority and Matrix
 
-**Status:** draft
+**Status:** done
 
 **Status note:** Story drafted 2025-01-XX - Enhanced schema for segments and topics with detailed profiles, priority system, and segment-topic matrix mapping
 
@@ -199,7 +199,7 @@ So that **the AI can generate more targeted and effective campaign messages base
 
 ### Tasks / Subtasks
 
-- [ ] Create migration file `supabase/migrations/YYYYMMDD_enhanced_segments_topics.sql` (AC: #1, #2, #3, #4)
+- [x] Create migration file `supabase/migrations/YYYYMMDD_enhanced_segments_topics.sql` (AC: #1, #2, #3, #4)
   - Enhance `segments` table:
     - Add `short_label` (TEXT, nullable)
     - Migrate `demographics` JSONB to structured `demographic_profile` JSONB
@@ -232,7 +232,7 @@ So that **the AI can generate more targeted and effective campaign messages base
     - Map priority INTEGER to TEXT enum
     - Handle NULL values gracefully
 
-- [ ] Update Zod schemas in `lib/ai/schemas.ts` (AC: #5)
+- [x] Update Zod schemas in `lib/ai/schemas.ts` (AC: #5)
   - Update `SegmentSchema`:
     - Add all new fields with proper validation
     - Define `DemographicProfileSchema` (nested object)
@@ -250,7 +250,7 @@ So that **the AI can generate more targeted and effective campaign messages base
     - summary (string, optional, max 500 characters) - Brief AI-generated summary for matrix display
   - Export TypeScript types for all new schemas
 
-- [ ] Update AI prompt in `lib/ai/prompts/strategy-designer.ts` (AC: #6)
+- [x] Update AI prompt in `lib/ai/prompts/strategy-designer.ts` (AC: #6)
   - Update system prompt to include new schema requirements
   - Add instructions for generating 3-5 primary segments (max 7 total)
   - Add instructions for generating 4-7 primary topics (max 9 total)
@@ -266,7 +266,7 @@ So that **the AI can generate more targeted and effective campaign messages base
   - Add examples for topic_type, content_angles, recommended_channels
   - Add examples for matrix summary generation (concise, relationship-focused)
 
-- [ ] Update API endpoints (AC: #7)
+- [x] Update API endpoints (AC: #7)
   - Update `/api/ai/campaign-brief/route.ts`:
     - Update `CampaignStructureSchema` validation
     - Handle segment-topic matrix in response
@@ -290,35 +290,35 @@ So that **the AI can generate more targeted and effective campaign messages base
     - Validate importance and role enums
     - Validate summary field (max 500 characters, optional)
 
-- [ ] Update UI components (AC: #8)
+- [x] Update UI components (AC: #8)
   - Update `components/campaigns/CampaignWizard.tsx`:
-    - Add form sections for new segment fields
-    - Add form sections for new topic fields
-    - Add priority selector (primary/secondary) for segments and topics
-    - Add segment-topic matrix editor (table/grid view)
+    - [x] Add form sections for new segment fields
+    - [x] Add form sections for new topic fields
+    - [x] Add priority selector (primary/secondary) for segments and topics
+    - [x] Add segment-topic matrix editor (table/grid view)
   - Update `components/segments/SegmentManager.tsx`:
-    - Display/edit all new segment fields
-    - Add demographic profile editor
-    - Add psychographic profile editor
-    - Add media habits editor
-    - Add example persona editor
+    - [x] Display/edit all new segment fields
+    - [x] Add demographic profile editor
+    - [x] Add psychographic profile editor
+    - [x] Add media habits editor
+    - [x] Add example persona editor
   - Update `components/topics/TopicManager.tsx`:
-    - Display/edit all new topic fields
-    - Add topic type selector
-    - Add content angles editor
-    - Add risk notes editor
+    - [x] Display/edit all new topic fields
+    - [x] Add topic type selector
+    - [x] Add content angles editor
+    - [x] Add risk notes editor
   - Update `components/messages/MessageMatrix.tsx`:
-    - Display priority badges for segments and topics
-    - Use segment-topic matrix for importance/role indicators
-    - **CRITICAL:** Display only the AI-generated `summary` field in matrix cells (not full segment/topic data)
-    - Matrix cells show brief summaries (2-3 sentences) for efficient UI rendering
-    - Full segment/topic details accessible via detail modal or tooltip on hover/click
-    - Show matrix connections visually with summary text
+    - [x] Display priority badges for segments and topics
+    - [x] Use segment-topic matrix for importance/role indicators
+    - [x] **CRITICAL:** Display only the AI-generated `summary` field in matrix cells (not full segment/topic data)
+    - [x] Matrix cells show brief summaries (2-3 sentences) for efficient UI rendering
+    - [x] Full segment/topic details accessible via detail modal or tooltip on hover/click
+    - [x] Show matrix connections visually with summary text
 
-- [ ] Generate TypeScript types from database (AC: #9)
-  - Run `supabase gen types typescript --project-id <project-id> > lib/supabase/types.ts`
-  - Verify new fields are generated correctly
-  - Check JSONB types match structure
+- [x] Generate TypeScript types from database (AC: #9)
+  - [x] Run `supabase gen types typescript --project-id <project-id> > lib/supabase/types.ts`
+  - [x] Verify new fields are generated correctly
+  - [x] Check JSONB types match structure
 
 - [ ] Test migration and backward compatibility (AC: #9)
   - Run migration on local Supabase instance

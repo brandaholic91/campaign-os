@@ -178,31 +178,65 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Create Segment-Topic Matrix
+    console.log('Matrix generation check:', {
+      hasMatrix: !!structure.segment_topic_matrix,
+      matrixLength: structure.segment_topic_matrix?.length || 0,
+      segmentCount: segmentIdMap.size,
+      topicCount: topicIdMap.size
+    })
+
     if (structure.segment_topic_matrix && structure.segment_topic_matrix.length > 0) {
+      console.log('Raw matrix entries:', JSON.stringify(structure.segment_topic_matrix, null, 2))
+      
       // Filter valid matrix entries where both segment and topic exist
       const validMatrixEntries = structure.segment_topic_matrix
         .filter((entry: any) => {
-          return segmentIdMap.has(entry.segment_index) && topicIdMap.has(entry.topic_index)
+          const hasSegment = segmentIdMap.has(entry.segment_index)
+          const hasTopic = topicIdMap.has(entry.topic_index)
+          
+          if (!hasSegment || !hasTopic) {
+            console.warn('Invalid matrix entry filtered out:', {
+              entry,
+              hasSegment,
+              hasTopic,
+              segmentIndex: entry.segment_index,
+              topicIndex: entry.topic_index,
+              availableSegmentIndices: Array.from(segmentIdMap.keys()),
+              availableTopicIndices: Array.from(topicIdMap.keys())
+            })
+          }
+          
+          return hasSegment && hasTopic
         })
         .map((entry: any) => ({
           segment_id: segmentIdMap.get(entry.segment_index)!, // Non-null assertion safe due to filter
           topic_id: topicIdMap.get(entry.topic_index)!, // Non-null assertion safe due to filter
           importance: entry.importance,
           role: entry.role,
-          summary: entry.summary
+          summary: entry.summary || null
         }))
 
+      console.log('Valid matrix entries to insert:', validMatrixEntries.length)
+
       if (validMatrixEntries.length > 0) {
-        const { error: matrixError } = await supabase
+        const { data: insertedData, error: matrixError } = await supabase
           .schema('campaign_os')
           .from('segment_topic_matrix')
           .insert(validMatrixEntries)
+          .select()
         
         if (matrixError) {
           console.error('Matrix creation failed:', matrixError)
+          console.error('Failed entries:', validMatrixEntries)
           // Don't throw here, as core campaign structure is saved
+        } else {
+          console.log('Matrix entries successfully inserted:', insertedData?.length || 0)
         }
+      } else {
+        console.warn('No valid matrix entries to insert after filtering')
       }
+    } else {
+      console.warn('No segment_topic_matrix provided in structure or matrix is empty')
     }
 
     return NextResponse.json({ success: true, campaignId })

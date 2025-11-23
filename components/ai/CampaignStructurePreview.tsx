@@ -9,14 +9,23 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Check, X, Edit2, Save } from 'lucide-react'
+import { SegmentTopicMatrixEditor } from './SegmentTopicMatrixEditor'
 
 interface StructureItem {
   id?: string
   title?: string
   name?: string
   description: string
-  priority?: number
+  priority?: number | string
   selected?: boolean
+}
+
+type MatrixEntry = {
+  segment_index: number
+  topic_index: number
+  importance: 'high' | 'medium' | 'low'
+  role: 'core_message' | 'support' | 'experimental'
+  summary?: string
 }
 
 interface CampaignStructure {
@@ -24,6 +33,7 @@ interface CampaignStructure {
   segments: StructureItem[]
   topics: StructureItem[]
   narratives: StructureItem[]
+  segment_topic_matrix?: MatrixEntry[]
 }
 
 interface CampaignStructurePreviewProps {
@@ -41,20 +51,31 @@ export function CampaignStructurePreview({ structure: initialStructure, onSave, 
     { key: 'goals', label: 'Célok' },
     { key: 'segments', label: 'Célcsoportok' },
     { key: 'topics', label: 'Témák' },
-    { key: 'narratives', label: 'Narratívák' }
+    { key: 'narratives', label: 'Narratívák' },
+    { key: 'segment_topic_matrix', label: 'Matrix' }
   ]
 
   const toggleSelection = (section: keyof CampaignStructure, index: number) => {
+    if (section === 'segment_topic_matrix') return // Matrix doesn't have selection
+    
     const newStructure = { ...structure }
-    // Initialize selected if undefined (default to true usually, but here we toggle)
-    const isSelected = newStructure[section][index].selected !== false
-    newStructure[section][index].selected = !isSelected
-    setStructure(newStructure)
+    const sectionData = newStructure[section]
+    if (Array.isArray(sectionData)) {
+      // Initialize selected if undefined (default to true usually, but here we toggle)
+      const isSelected = sectionData[index].selected !== false
+      sectionData[index].selected = !isSelected
+      setStructure(newStructure)
+    }
   }
 
   const startEditing = (section: keyof CampaignStructure, index: number) => {
-    setEditingItem({ section, index })
-    setEditValues({ ...structure[section][index] })
+    if (section === 'segment_topic_matrix') return // Matrix editing is handled separately
+    
+    const sectionData = structure[section]
+    if (Array.isArray(sectionData)) {
+      setEditingItem({ section, index })
+      setEditValues({ ...sectionData[index] })
+    }
   }
 
   const saveEdit = () => {
@@ -72,12 +93,17 @@ export function CampaignStructurePreview({ structure: initialStructure, onSave, 
     setEditValues(null)
   }
 
+  const handleMatrixChange = (newMatrix: MatrixEntry[]) => {
+    setStructure({ ...structure, segment_topic_matrix: newMatrix })
+  }
+
   const handleSaveSelected = () => {
     const selectedStructure = {
       goals: structure.goals.filter(i => i.selected !== false),
       segments: structure.segments.filter(i => i.selected !== false),
       topics: structure.topics.filter(i => i.selected !== false),
-      narratives: structure.narratives.filter(i => i.selected !== false)
+      narratives: structure.narratives.filter(i => i.selected !== false),
+      segment_topic_matrix: structure.segment_topic_matrix || []
     }
     onSave(selectedStructure)
   }
@@ -99,21 +125,40 @@ export function CampaignStructurePreview({ structure: initialStructure, onSave, 
       </div>
 
       <Tabs defaultValue="goals" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           {sections.map(section => (
             <TabsTrigger key={section.key} value={section.key}>
               {section.label}
               <Badge variant="secondary" className="ml-2">
-                {structure[section.key].length}
+                {section.key === 'segment_topic_matrix'
+                  ? structure.segment_topic_matrix?.length || 0
+                  : Array.isArray(structure[section.key])
+                    ? structure[section.key].length
+                    : 0}
               </Badge>
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {sections.map(section => (
-          <TabsContent key={section.key} value={section.key} className="mt-6">
-            <div className="grid gap-4">
-              {structure[section.key].map((item, index) => (
+        {sections.map(section => {
+          // Special handling for matrix tab
+          if (section.key === 'segment_topic_matrix') {
+            return (
+              <TabsContent key={section.key} value={section.key} className="mt-6">
+                <SegmentTopicMatrixEditor
+                  segments={structure.segments}
+                  topics={structure.topics}
+                  matrix={structure.segment_topic_matrix || []}
+                  onMatrixChange={handleMatrixChange}
+                />
+              </TabsContent>
+            )
+          }
+
+          return (
+            <TabsContent key={section.key} value={section.key} className="mt-6">
+              <div className="grid gap-4">
+                {Array.isArray(structure[section.key]) && structure[section.key].map((item, index) => (
                 <Card key={index} className={`relative transition-colors ${item.selected === false ? 'opacity-60 bg-muted' : 'border-primary/50'}`}>
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
@@ -172,7 +217,8 @@ export function CampaignStructurePreview({ structure: initialStructure, onSave, 
               ))}
             </div>
           </TabsContent>
-        ))}
+          )
+        })}
       </Tabs>
     </div>
   )
