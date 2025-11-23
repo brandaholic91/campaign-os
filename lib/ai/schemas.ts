@@ -25,7 +25,7 @@ export const GoalSchema = z.object({
 export const DemographicProfileSchema = z.object({
   age_range: z.string(),
   location_type: z.string(),
-  income_level: z.string(),
+  income_level: z.string().optional(),
   other_demographics: z.string().optional(),
 })
 

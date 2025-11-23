@@ -228,7 +228,10 @@ export async function POST(req: NextRequest) {
         if (matrixError) {
           console.error('Matrix creation failed:', matrixError)
           console.error('Failed entries:', validMatrixEntries)
-          // Don't throw here, as core campaign structure is saved
+          // Log the error but don't fail the entire operation
+          // The campaign structure is saved, but matrix entries are not
+          // This allows the user to manually add matrix entries later if needed
+          console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually or permissions need to be fixed.')
         } else {
           console.log('Matrix entries successfully inserted:', insertedData?.length || 0)
         }
