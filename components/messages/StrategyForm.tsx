@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { MessageStrategySchema } from '@/lib/ai/schemas'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -17,12 +16,38 @@ import { CTAFunnelSection } from './StrategyFormSections/CTAFunnelSection'
 import { ExtraFieldsSection } from './StrategyFormSections/ExtraFieldsSection'
 import { z } from 'zod'
 
-// Form schema that includes metadata fields
+// Form schema with explicit types (not using flexibleStringArray to avoid TypeScript issues)
 const StrategyFormSchema = z.object({
-  strategy_core: MessageStrategySchema.shape.strategy_core,
-  style_tone: MessageStrategySchema.shape.style_tone,
-  cta_funnel: MessageStrategySchema.shape.cta_funnel,
-  extra_fields: MessageStrategySchema.shape.extra_fields.optional(),
+  strategy_core: z.object({
+    positioning_statement: z.string().min(10),
+    core_message: z.string().min(5),
+    supporting_messages: z.array(z.string()).min(3).max(5),
+    proof_points: z.array(z.string()).min(2).max(3),
+    objections_reframes: z.array(z.string()).optional(),
+  }),
+  style_tone: z.object({
+    tone_profile: z.object({
+      description: z.string(),
+      keywords: z.array(z.string()).min(3).max(5),
+    }),
+    language_style: z.string(),
+    communication_guidelines: z.object({
+      do: z.array(z.string()),
+      dont: z.array(z.string()),
+    }),
+    emotional_temperature: z.string(),
+  }),
+  cta_funnel: z.object({
+    funnel_stage: z.enum(['awareness', 'consideration', 'conversion', 'mobilization']),
+    cta_objectives: z.array(z.string()),
+    cta_patterns: z.array(z.string()).min(2).max(3),
+    friction_reducers: z.array(z.string()).optional(),
+  }),
+  extra_fields: z.object({
+    framing_type: z.string().optional(),
+    key_phrases: z.array(z.string()).optional(),
+    risk_notes: z.string().optional(),
+  }).optional(),
   preview_summary: z.string().optional(),
 })
 
