@@ -1,6 +1,6 @@
 # Story 4.0.4: UI Validation Status & Checklist
 
-**Status:** drafted
+**Status:** approved
 
 **Status note:** Story drafted 2025-11-23 - Validation indicators, "Ready for Execution" checklist UI
 
@@ -105,7 +105,7 @@ So that **I can easily identify what needs to be completed before sprint plannin
   - [ ] Add validation status column to Goals table
   - [ ] Add validation status column to Segments table
   - [ ] Add validation status column to Topics table
-  - [ ] Add validation status column to Narratives table
+  - [ ] Add validation status display for Narratives (table-based with junction tables)
   - [ ] Add matrix validation warnings display
   - [ ] Fetch validation status from API
   - [ ] Display status icons in each row

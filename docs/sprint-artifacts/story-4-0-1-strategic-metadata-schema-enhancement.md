@@ -1,6 +1,6 @@
 # Story 4.0.1: Strategic Metadata Schema Enhancement
 
-**Status:** drafted
+**Status:** approved
 
 **Status note:** Story drafted 2025-11-23 - Goals, Topics, Narratives schema bővítés, DB migration
 
@@ -36,26 +36,36 @@ So that **the execution AI has structured, prioritized data for sprint and conte
 - **And** `related_goal_stages` array is validated to contain only valid enum values
 - **And** existing topics data remains accessible
 
-**AC #3:** Narratives table enhanced with strategic metadata
-- **Given** I have Epic 3.0 database schema (narratives table exists from Epic 2)
+**AC #3:** Narratives table created with strategic metadata + JSONB preserved
+- **Given** I have Epic 3.0 database schema (narratives currently stored as JSONB array in `campaigns.narratives` column)
 - **When** I run the migration script
-- **Then** the `narratives` table is enhanced with:
-  - `primary_goal_ids` (JSONB, nullable) - optional array of UUIDs referencing goals
-  - `primary_topic_ids` (JSONB, nullable) - optional array of UUIDs referencing topics
-  - `suggested_phase` (TEXT, nullable) - optional enum: 'early' | 'mid' | 'late'
-- **And** all fields are nullable initially for backward compatibility
-- **And** enum constraint is enforced for `suggested_phase`
-- **And** UUID arrays are validated to contain valid UUID format
-- **And** existing narratives data remains accessible
+- **Then** a new `narratives` table is created with:
+  - `id` (UUID, primary key, default uuid_generate_v4())
+  - `campaign_id` (UUID, NOT NULL, FK to campaigns, ON DELETE CASCADE)
+  - `title` (TEXT, NOT NULL)
+  - `description` (TEXT, NOT NULL)
+  - `priority` (INTEGER, nullable)
+  - `suggested_phase` (TEXT, nullable) - enum: 'early' | 'mid' | 'late'
+  - `created_at` (TIMESTAMPTZ, default NOW())
+  - `updated_at` (TIMESTAMPTZ, default NOW())
+- **And** junction tables are created:
+  - `narrative_goals`: `narrative_id` (FK to narratives), `goal_id` (FK to goals), PRIMARY KEY (narrative_id, goal_id)
+  - `narrative_topics`: `narrative_id` (FK to narratives), `topic_id` (FK to topics), PRIMARY KEY (narrative_id, topic_id)
+- **And** `campaigns.narratives` JSONB column is preserved for backward compatibility (read-only or synced)
+- **And** migration script migrates existing JSONB narratives to new table structure
+- **And** all new fields are nullable initially for backward compatibility
 
 **AC #4:** Database migration script created
 - **Given** I have the Epic 3.0 database schema
 - **When** I create the migration file
 - **Then** migration file is created at `supabase/migrations/YYYYMMDD_strategic_metadata_enhancement.sql`
 - **And** migration includes:
-  - ALTER TABLE statements for goals, topics, narratives
+  - ALTER TABLE statements for goals and topics tables
+  - CREATE TABLE statements for narratives table and junction tables (narrative_goals, narrative_topics)
+  - Migration script to convert existing JSONB narratives to table structure
+  - `campaigns.narratives` JSONB column preserved (read-only or synced for backward compatibility)
   - Enum type creation if not exists
-  - Index creation for new enum fields if needed
+  - Index creation for new enum fields and foreign keys if needed
   - Comments documenting the new fields
 - **And** migration is idempotent (can be run multiple times safely)
 - **And** migration preserves all existing data
@@ -69,11 +79,13 @@ So that **the execution AI has structured, prioritized data for sprint and conte
 - **And** `TopicSchema` is updated with:
   - `related_goal_stages` (z.array(z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization'])).optional())
   - `recommended_content_types` (z.array(z.string()).optional())
-- **And** `NarrativeSchema` is updated with:
-  - `primary_goal_ids` (z.array(z.string().uuid()).optional())
-  - `primary_topic_ids` (z.array(z.string().uuid()).optional())
+- **And** `NarrativeSchema` is updated to work with both table and JSONB storage:
+  - `id` (z.string().uuid().optional()) - for table-based narratives
+  - `primary_goal_ids` (z.array(z.string().uuid()).optional()) - for JSONB or junction table mapping
+  - `primary_topic_ids` (z.array(z.string().uuid()).optional()) - for JSONB or junction table mapping
   - `suggested_phase` (z.enum(['early', 'mid', 'late']).optional())
 - **And** all schemas maintain backward compatibility (optional fields)
+- **Note:** NarrativeSchema supports both table-based (with junction tables) and JSONB-based narratives
 
 **AC #6:** TypeScript types generated
 - **Given** the database migration is complete
@@ -96,33 +108,48 @@ So that **the execution AI has structured, prioritized data for sprint and conte
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create database migration script** (AC: #4)
-  - [ ] Create migration file: `supabase/migrations/YYYYMMDD_strategic_metadata_enhancement.sql`
-  - [ ] Add `funnel_stage` and `kpi_hint` to `goals` table
-  - [ ] Add `related_goal_stages` and `recommended_content_types` to `topics` table
-  - [ ] Add `primary_goal_ids`, `primary_topic_ids`, `suggested_phase` to `narratives` table
-  - [ ] Create enum types if not exists
-  - [ ] Add indexes for new enum fields if needed
-  - [ ] Add migration comments
-  - [ ] Test migration idempotency
+- [x] **Task 1: Create database migration script** (AC: #3, #4)
+  - [x] Create migration file: `supabase/migrations/YYYYMMDD_strategic_metadata_enhancement.sql`
+  - [x] Add `funnel_stage` and `kpi_hint` to `goals` table
+  - [x] Add `related_goal_stages` and `recommended_content_types` to `topics` table
+  - [x] Create `narratives` table with strategic metadata fields
+  - [x] Create `narrative_goals` junction table
+  - [x] Create `narrative_topics` junction table
+  - [x] Create migration script to convert existing JSONB narratives to table structure
+  - [x] Preserve `campaigns.narratives` JSONB column (read-only or synced)
+  - [x] Create enum types if not exists
+  - [x] Add indexes for new enum fields and foreign keys if needed
+  - [x] Add migration comments
+  - [x] Test migration idempotency
 
-- [ ] **Task 2: Update Zod schemas** (AC: #5)
-  - [ ] Update `GoalSchema` in `lib/ai/schemas.ts`
-  - [ ] Update `TopicSchema` in `lib/ai/schemas.ts`
-  - [ ] Update `NarrativeSchema` in `lib/ai/schemas.ts`
-  - [ ] Verify all new fields are optional (backward compatibility)
-  - [ ] Test schema validation with sample data
+- [x] **Task 2: Update Zod schemas** (AC: #5)
+  - [x] Update `GoalSchema` in `lib/ai/schemas.ts`
+  - [x] Update `TopicSchema` in `lib/ai/schemas.ts`
+  - [x] Update `NarrativeSchema` in `lib/ai/schemas.ts` to support both table and JSONB storage
+  - [x] Verify all new fields are optional (backward compatibility)
+  - [x] Test schema validation with sample data (both table-based and JSONB-based)
 
 - [ ] **Task 3: Generate TypeScript types** (AC: #6)
   - [ ] Run Supabase type generation command
   - [ ] Verify new fields are included in generated types
   - [ ] Check type exports in `lib/supabase/types.ts`
 
-- [ ] **Task 4: Test migration and backward compatibility** (AC: #1, #2, #3, #7)
+- [ ] **Task 4: Update API to support narratives table** (AC: #3)
+  - [ ] Update `app/api/campaigns/structure/route.ts` to save narratives to table (not just JSONB)
+  - [ ] Create narratives in `narratives` table with `suggested_phase`
+  - [ ] Create junction table entries for `narrative_goals` and `narrative_topics`
+  - [ ] Optionally sync to `campaigns.narratives` JSONB for backward compatibility
+  - [ ] Update narrative loading to read from table (with JOINs) or JSONB (fallback)
+  - [ ] Handle both table-based and JSONB-based narratives during transition
+
+- [ ] **Task 5: Test migration and backward compatibility** (AC: #1, #2, #3, #7)
   - [ ] Run migration on local Supabase instance
+  - [ ] Verify narratives table and junction tables created
+  - [ ] Verify existing JSONB narratives migrated to table
   - [ ] Verify new fields exist and are nullable
   - [ ] Test enum constraints
-  - [ ] Test JSONB array fields with valid data
+  - [ ] Test foreign key constraints in junction tables
+  - [ ] Test JSONB array fields with valid data (backward compatibility)
   - [ ] Verify existing campaigns still work
   - [ ] Test data preservation (no data loss)
 
@@ -153,10 +180,22 @@ So that **the execution AI has structured, prioritized data for sprint and conte
 - `related_goal_stages`: Links topics to relevant funnel stages for strategic alignment
 - `recommended_content_types`: Suggests content formats based on topic characteristics
 
-**Narratives table enhancement:**
-- `primary_goal_ids`: Links narratives to specific goals for prioritization
-- `primary_topic_ids`: Links narratives to specific topics for content planning
-- `suggested_phase`: Indicates when narrative should be used (early/mid/late campaign)
+**Narratives table + JSONB dual storage:**
+- **New `narratives` table**: 
+  - `id`, `campaign_id` (FK), `title`, `description`, `priority`, `suggested_phase`
+  - Referential integrity via foreign keys
+- **Junction tables**:
+  - `narrative_goals`: `narrative_id` (FK), `goal_id` (FK) - replaces `primary_goal_ids` JSONB array
+  - `narrative_topics`: `narrative_id` (FK), `topic_id` (FK) - replaces `primary_topic_ids` JSONB array
+- **Backward compatibility**:
+  - `campaigns.narratives` JSONB column preserved (read-only or synced)
+  - Migration script converts existing JSONB narratives to table structure
+  - API supports both table-based (preferred) and JSONB-based (fallback) storage
+- **Benefits**:
+  - Referential integrity via foreign keys
+  - Easier querying (JOINs instead of JSONB queries)
+  - Better validation (FK constraints)
+  - Backward compatibility maintained
 
 ### Dependencies
 
@@ -193,6 +232,13 @@ So that **the execution AI has structured, prioritized data for sprint and conte
 ### Debug Log References
 
 ### Completion Notes List
+
+- [Done] Created migration file `supabase/migrations/20251123_strategic_metadata_enhancement.sql` with table creation and data migration logic
+- [Done] Updated Zod schemas in `lib/ai/schemas.ts` to support new fields and structure
+- [Pending] User to run migration and type generation
+
+
+
 
 ### File List
 

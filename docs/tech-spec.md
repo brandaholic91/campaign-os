@@ -2318,11 +2318,32 @@ ALTER TABLE topics
   ADD COLUMN related_goal_stages JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN recommended_content_types JSONB;
 
--- Narratives table (already exists, add new columns)
-ALTER TABLE narratives
-  ADD COLUMN IF NOT EXISTS primary_goal_ids JSONB DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS primary_topic_ids JSONB DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS suggested_phase TEXT CHECK (suggested_phase IN ('early', 'mid', 'late'));
+-- Narratives: create new table + junction tables for referential integrity
+CREATE TABLE IF NOT EXISTS narratives (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  priority INTEGER,
+  suggested_phase TEXT CHECK (suggested_phase IN ('early', 'mid', 'late')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS narrative_goals (
+  narrative_id UUID NOT NULL REFERENCES narratives(id) ON DELETE CASCADE,
+  goal_id UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+  PRIMARY KEY (narrative_id, goal_id)
+);
+
+CREATE TABLE IF NOT EXISTS narrative_topics (
+  narrative_id UUID NOT NULL REFERENCES narratives(id) ON DELETE CASCADE,
+  topic_id UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+  PRIMARY KEY (narrative_id, topic_id)
+);
+
+-- Preserve campaigns.narratives JSONB column for backward compatibility (read-only or synced)
+-- Migration script converts existing JSONB narratives to table structure
 ```
 
 **Zod Schema Updates:**
@@ -2505,7 +2526,8 @@ export function isReadyForExecution(structure: CampaignStructure): {
 **Database:**
 - Goals table: new `funnel_stage` and `kpi_hint` columns
 - Topics table: new `related_goal_stages` and `recommended_content_types` columns
-- Narratives table: new `primary_goal_ids`, `primary_topic_ids`, `suggested_phase` columns
+- Narratives table: new `narratives` table with `suggested_phase` field + junction tables (`narrative_goals`, `narrative_topics`) for referential integrity
+- `campaigns.narratives` JSONB column preserved for backward compatibility
 - All new fields nullable for backward compatibility
 
 **API Endpoints:**
@@ -2532,8 +2554,8 @@ export function isReadyForExecution(structure: CampaignStructure): {
 1. Create migration: `supabase/migrations/YYYYMMDD_strategic_metadata_enhancement.sql`
 2. Add `funnel_stage` and `kpi_hint` to goals table
 3. Add `related_goal_stages` and `recommended_content_types` to topics table
-4. Check/create narratives table, add new columns
-5. Update Zod schemas in `lib/ai/schemas.ts`
+4. Create narratives table and junction tables, migrate existing JSONB narratives to table structure, preserve JSONB column for backward compatibility
+5. Update Zod schemas in `lib/ai/schemas.ts` (GoalSchema, TopicSchema; verify NarrativeSchema)
 6. Generate TypeScript types: `supabase gen types`
 7. Test migration and backward compatibility
 

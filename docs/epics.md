@@ -1095,10 +1095,11 @@ So that **the execution AI has structured, prioritized data for sprint and conte
 - `related_goal_stages` JSONB array of enum values ('awareness' | 'engagement' | 'consideration' | 'conversion' | 'mobilization')
 - `recommended_content_types` JSONB array (optional, e.g., ["short_video", "story", "static_image", "carousel", "email"])
 
-**And** narratives table is enhanced with:
-- `primary_goal_ids` JSONB array of UUIDs (optional)
-- `primary_topic_ids` JSONB array of UUIDs (optional)
-- `suggested_phase` TEXT enum ('early' | 'mid' | 'late') (optional)
+**And** narratives table is created with strategic metadata:
+- New `narratives` table with `id`, `campaign_id` (FK), `title`, `description`, `priority`, `suggested_phase`
+- Junction tables: `narrative_goals` and `narrative_topics` for referential integrity
+- `campaigns.narratives` JSONB column preserved for backward compatibility
+- Migration script converts existing JSONB narratives to table structure
 
 **And** Zod schemas are updated for all new structures
 
@@ -1112,13 +1113,16 @@ So that **the execution AI has structured, prioritized data for sprint and conte
 - Create migration: `supabase/migrations/YYYYMMDD_strategic_metadata_enhancement.sql`
   - Add `funnel_stage` and `kpi_hint` to `goals` table
   - Add `related_goal_stages` and `recommended_content_types` to `topics` table
-  - Add `primary_goal_ids`, `primary_topic_ids`, `suggested_phase` to `narratives` table (table already exists from Epic 2)
+  - Create `narratives` table with strategic metadata fields
+  - Create `narrative_goals` and `narrative_topics` junction tables for referential integrity
+  - Migrate existing JSONB narratives to table structure
+  - Preserve `campaigns.narratives` JSONB column for backward compatibility
   - All new fields nullable initially (backward compatibility)
-  - Create indexes for new enum fields if needed
+  - Create indexes for new enum fields and foreign keys if needed
 - Update Zod schemas in `lib/ai/schemas.ts`:
   - Update `GoalSchema`: add `funnel_stage` (enum), `kpi_hint` (optional string)
   - Update `TopicSchema`: add `related_goal_stages` (array of enum), `recommended_content_types` (optional array)
-  - Update `NarrativeSchema`: add `primary_goal_ids` (optional UUID array), `primary_topic_ids` (optional UUID array), `suggested_phase` (optional enum)
+  - Update `NarrativeSchema`: support both table-based (with junction tables) and JSONB-based storage, include `suggested_phase` (optional enum)
 - Generate TypeScript types: `supabase gen types typescript --project-id <project-id> > lib/supabase/types.ts`
 - Test migration:
   - Run migration on local Supabase instance
