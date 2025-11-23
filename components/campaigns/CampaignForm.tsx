@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   Select,
   SelectContent,
@@ -105,12 +107,17 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
       
       const method = campaign ? 'PUT' : 'POST'
 
+      // Remove undefined values from formData
+      const cleanedFormData = Object.fromEntries(
+        Object.entries(formData).filter(([_, value]) => value !== undefined)
+      )
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(cleanedFormData),
       })
 
       if (!response.ok) {
@@ -121,6 +128,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
       if (onSuccess) {
         onSuccess()
       } else {
+        toast.success(campaign ? 'Kampány sikeresen frissítve!' : 'Kampány sikeresen létrehozva!')
         router.push('/campaigns')
         router.refresh()
       }
@@ -400,7 +408,14 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
 
       <div className="flex gap-4">
         <Button type="submit" disabled={loading}>
-          {loading ? 'Mentés...' : campaign ? 'Frissítés' : 'Létrehozás'}
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Mentés...
+            </>
+          ) : (
+            campaign ? 'Frissítés' : 'Létrehozás'
+          )}
         </Button>
         <Button
           type="button"

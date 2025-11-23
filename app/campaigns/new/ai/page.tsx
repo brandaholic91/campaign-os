@@ -171,7 +171,8 @@ export default function CampaignAIPage() {
             campaignType: formData.type,
             goalType: formData.goalType
           },
-          structure
+          structure,
+          wizardData: formData
         })
       })
 

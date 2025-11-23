@@ -13,13 +13,14 @@ const SaveStructureSchema = z.object({
     campaignType: z.string(),
     goalType: z.string(),
   }),
-  structure: CampaignStructureSchema
+  structure: CampaignStructureSchema,
+  wizardData: z.any().optional(), // Wizard form data to save
 })
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { campaignId: existingCampaignId, campaign, structure } = SaveStructureSchema.parse(body)
+    const { campaignId: existingCampaignId, campaign, structure, wizardData } = SaveStructureSchema.parse(body)
 
     const supabase = await createClient()
 
@@ -37,7 +38,8 @@ export async function POST(req: NextRequest) {
           end_date: campaign.endDate,
           campaign_type: campaign.campaignType as any,
           primary_goal_type: campaign.goalType as any,
-          narratives: structure.narratives || []
+          narratives: structure.narratives || [],
+          wizard_data: wizardData || null
         })
         .eq('id', existingCampaignId)
         .select()
@@ -83,7 +85,8 @@ export async function POST(req: NextRequest) {
           campaign_type: campaign.campaignType as any,
           primary_goal_type: campaign.goalType as any,
           status: 'planning',
-          narratives: structure.narratives || []
+          narratives: structure.narratives || [],
+          wizard_data: wizardData || null
         })
         .select()
         .single()
