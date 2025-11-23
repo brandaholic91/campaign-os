@@ -58,6 +58,18 @@ export async function POST(req: NextRequest) {
 
     const provider = getAIProvider()
     const model = process.env.AI_MODEL
+    
+    if (!model) {
+      return NextResponse.json({ 
+        error: 'AI_MODEL environment variable is not set',
+        details: 'Please set the AI_MODEL environment variable to use AI features'
+      }, { status: 500 })
+    }
+
+    // Reasoning modelleknél (gpt-5, o1) több token kell, mert a reasoning tokenek is beleszámítanak
+    const isReasoningModel = model.startsWith('gpt-5') || model.startsWith('o1');
+    const maxTokens = isReasoningModel ? 4096 : 1024; // Reasoning modelleknél több token, hogy legyen hely a válasznak
+
     const generatedMessages: Array<{ segment_id: string; topic_id: string; headline: string; body: string; proof_point?: string; cta?: string; message_type: 'core' | 'supporting' | 'contrast' }> = []
 
     // Parse narratives if available
@@ -105,7 +117,7 @@ export async function POST(req: NextRequest) {
         try {
           const response = await provider.generateText({
             model,
-            maxTokens: 1024,
+            maxTokens,
             systemPrompt: MESSAGE_GENERATOR_SYSTEM_PROMPT,
             messages: [
               { role: 'user', content: MESSAGE_GENERATOR_USER_PROMPT(context) }
