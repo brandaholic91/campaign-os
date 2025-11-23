@@ -7,6 +7,20 @@ export class RateLimitError extends Error {
   }
 }
 
+export class AIProviderError extends Error {
+  constructor(message: string, public provider?: string, public originalError?: unknown) {
+    super(message);
+    this.name = 'AIProviderError';
+  }
+}
+
+export class APIKeyMissingError extends AIProviderError {
+  constructor(provider: string, envVarName: string) {
+    super(`Missing API key for provider ${provider}: ${envVarName}`, provider);
+    this.name = 'APIKeyMissingError';
+  }
+}
+
 export class MissingApiKeyError extends Error {
   constructor(envVarName = 'ANTHROPIC_API_KEY') {
     super(`Missing required environment variable: ${envVarName}`)

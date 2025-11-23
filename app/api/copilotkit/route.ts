@@ -4,6 +4,8 @@ import { getCopilotRuntime, serviceAdapter } from '@/lib/ai/copilotkit/server'
 import { TokenBucket } from '@/lib/ai/rate-limit'
 import { formatApiError } from '@/lib/ai/errors'
 
+export const maxDuration = 60 // Increase timeout to 60 seconds for AI generation
+
 // Get CopilotRuntime instance from server configuration
 const runtime = getCopilotRuntime()
 

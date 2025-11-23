@@ -3,62 +3,355 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Database } from '@/lib/supabase/types'
-import { Button } from '@/components/ui/button'
-import { Sparkles, Loader2 } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import MessageForm from './MessageForm'
-import { MessageMatrixPreview } from '@/components/ai/MessageMatrixPreview'
-import { GeneratedMessage } from '@/lib/ai/schemas'
+import { Loader2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { CheckboxList } from './CheckboxList'
-import { MatrixCell } from './MatrixCell'
+import { StrategyCell } from './StrategyCell'
+import { StrategyDetailModal } from './StrategyDetailModal'
+import { MessageStrategy } from '@/lib/ai/schemas'
+import { StrategyMatrixPreview } from '@/components/ai/StrategyMatrixPreview'
+import { StrategyForm } from './StrategyForm'
 
-type Message = Database['campaign_os']['Tables']['messages']['Row']
 type Segment = Database['campaign_os']['Tables']['segments']['Row']
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
+
+// Temporary type definition until DB types are updated
+export interface StrategyRow {
+  id: string
+  campaign_id: string
+  segment_id: string
+  topic_id: string
+  content: MessageStrategy
+  created_at?: string
+  updated_at?: string
+}
 
 interface MessageMatrixProps {
   campaignId: string
   segments: Segment[]
   topics: Topic[]
-  messages: Message[]
+  strategies: StrategyRow[]
+  matrixEntries: any[] // TODO: Type this properly with Database types
 }
 
 export default function MessageMatrix({
   campaignId,
   segments,
   topics,
-  messages,
+  strategies,
+  matrixEntries = [],
 }: MessageMatrixProps) {
   const router = useRouter()
   const [selectedCell, setSelectedCell] = useState<{
     segmentId: string
     topicId: string
+    strategy?: StrategyRow
   } | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
   
-  // AI generation state
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
+  const [createFormContext, setCreateFormContext] = useState<{
+    segmentId: string
+    topicId: string
+  } | null>(null)
+  
+  // AI generation state (placeholders for Story 3.0.3)
   const [selectedSegments, setSelectedSegments] = useState<Set<string>>(new Set())
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set())
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedMessages, setGeneratedMessages] = useState<GeneratedMessage[] | null>(null)
+  const [generatingCell, setGeneratingCell] = useState<{ segmentId: string; topicId: string } | null>(null)
+  const [generatedStrategies, setGeneratedStrategies] = useState<any[]>([])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
 
-  const getMessageForCell = (segmentId: string, topicId: string) => {
-    return messages.find(
-      (m) => m.segment_id === segmentId && m.topic_id === topicId
+  const getStrategyForCell = (segmentId: string, topicId: string) => {
+    const found = strategies.find(
+      (s) => s.segment_id === segmentId && s.topic_id === topicId
     )
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[getStrategyForCell] Looking for segment ${segmentId}, topic ${topicId}`, {
+        found: !!found,
+        totalStrategies: strategies.length,
+        strategies: strategies.map(s => ({ segment: s.segment_id, topic: s.topic_id }))
+      })
+    }
+    return found
   }
 
   const handleCellClick = (segmentId: string, topicId: string) => {
-    setSelectedCell({ segmentId, topicId })
-    setIsDialogOpen(true)
+    const strategy = getStrategyForCell(segmentId, topicId)
+    if (strategy) {
+      setSelectedCell({ segmentId, topicId, strategy })
+      setIsDetailOpen(true)
+    } else {
+      // For empty cells, we might want to open create form directly
+      // But for now, the cell itself handles the "Create" click
+    }
+  }
+
+  const handleCreateStrategy = (segmentId: string, topicId: string) => {
+    setCreateFormContext({ segmentId, topicId })
+    setIsCreateFormOpen(true)
+  }
+
+  const handleCreateFormSave = () => {
+    setIsCreateFormOpen(false)
+    setCreateFormContext(null)
+    // Refresh the page to reload strategies
+    router.refresh()
+  }
+
+  const handleGenerateStrategy = async (segmentId: string, topicId: string) => {
+    setGeneratingCell({ segmentId, topicId })
+    try {
+      const response = await fetch('/api/ai/strategy-matrix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          segment_ids: [segmentId],
+          topic_ids: [topicId]
+        })
+      })
+
+      if (!response.ok) {
+        let errorMessage = 'Hiba történt a generálás során'
+        try {
+          const error = await response.json()
+          errorMessage = error.error || error.message || errorMessage
+          if (error.details) {
+            errorMessage += `: ${error.details}`
+          }
+        } catch (parseError) {
+          try {
+            const text = await response.text()
+            if (text) {
+              errorMessage = text
+            }
+          } catch (textError) {
+            errorMessage = `HTTP ${response.status}: ${response.statusText || 'Ismeretlen hiba'}`
+          }
+        }
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+      
+      if (!data.strategies || !Array.isArray(data.strategies) || data.strategies.length === 0) {
+        throw new Error('Nem sikerült stratégiát generálni. Kérlek, próbáld újra.')
+      }
+      
+      // Map response to format expected by preview
+      const strategiesWithNames = data.strategies.map((s: any) => {
+        const segment = segments.find(seg => seg.id === s.segment_id)
+        const topic = topics.find(t => t.id === s.topic_id)
+        return {
+          ...s,
+          segment_name: segment?.name || 'Ismeretlen',
+          topic_name: topic?.name || 'Ismeretlen'
+        }
+      })
+
+      setGeneratedStrategies(strategiesWithNames)
+      setIsPreviewOpen(true)
+    } catch (error) {
+      console.error('Generation error:', error)
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Hiba történt a generálás során'
+      toast.error(errorMessage)
+    } finally {
+      setGeneratingCell(null)
+    }
+  }
+
+  const handleBatchGenerate = async () => {
+    if (selectedSegments.size === 0 || selectedTopics.size === 0) {
+      toast.error('Válassz ki legalább egy célcsoportot és egy témát')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const response = await fetch('/api/ai/strategy-matrix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          segment_ids: Array.from(selectedSegments),
+          topic_ids: Array.from(selectedTopics)
+        })
+      })
+
+      if (!response.ok) {
+        let errorMessage = 'Hiba történt a generálás során'
+        let errorDetails: any = null
+        try {
+          const error = await response.json()
+          errorMessage = error.error || error.message || errorMessage
+          errorDetails = error
+          if (error.details) {
+            errorMessage += `: ${error.details}`
+          }
+          if (error.debug) {
+            console.error('[handleBatchGenerate] Error debug info:', error.debug)
+          }
+        } catch (parseError) {
+          // Ha nem JSON a válasz, próbáljuk meg szövegként olvasni
+          try {
+            const text = await response.text()
+            if (text) {
+              errorMessage = text
+            }
+          } catch (textError) {
+            // Ha ez sem sikerül, használjuk az alapértelmezett üzenetet
+            errorMessage = `HTTP ${response.status}: ${response.statusText || 'Ismeretlen hiba'}`
+          }
+        }
+        console.error('[handleBatchGenerate] Generation failed:', {
+          status: response.status,
+          errorMessage,
+          errorDetails
+        })
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+      
+      if (!data.strategies || !Array.isArray(data.strategies) || data.strategies.length === 0) {
+        throw new Error('Nem sikerült stratégiát generálni. Kérlek, próbáld újra.')
+      }
+      
+      // Map response to format expected by preview
+      const strategiesWithNames = data.strategies.map((s: any) => {
+        const segment = segments.find(seg => seg.id === s.segment_id)
+        const topic = topics.find(t => t.id === s.topic_id)
+        return {
+          ...s,
+          segment_name: segment?.name || 'Ismeretlen',
+          topic_name: topic?.name || 'Ismeretlen'
+        }
+      })
+
+      setGeneratedStrategies(strategiesWithNames)
+      setIsPreviewOpen(true)
+    } catch (error) {
+      console.error('Generation error:', error)
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Hiba történt a generálás során'
+      toast.error(errorMessage)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleSaveStrategies = async (approvedStrategies: any[]) => {
+    console.log('[handleSaveStrategies] Starting to save strategies:', approvedStrategies.length)
+    console.log('[handleSaveStrategies] Approved strategies data:', JSON.stringify(approvedStrategies, null, 2))
+    try {
+      let successCount = 0
+      let errorCount = 0
+      const errors: string[] = []
+
+      // Save each approved strategy
+      for (const item of approvedStrategies) {
+        try {
+          // Validate that we have the required data
+          if (!item.strategy) {
+            console.error('[handleSaveStrategies] Missing strategy in item:', item)
+            errors.push(`${item.segment_name || 'Unknown'} × ${item.topic_name || 'Unknown'}: hiányzó stratégia adatok`)
+            errorCount++
+            continue
+          }
+
+          if (!item.strategy.strategy_core || !item.strategy.style_tone || !item.strategy.cta_funnel) {
+            console.error('[handleSaveStrategies] Missing required strategy fields:', {
+              has_strategy_core: !!item.strategy.strategy_core,
+              has_style_tone: !!item.strategy.style_tone,
+              has_cta_funnel: !!item.strategy.cta_funnel,
+              item: item
+            })
+            errors.push(`${item.segment_name || 'Unknown'} × ${item.topic_name || 'Unknown'}: hiányzó kötelező mezők`)
+            errorCount++
+            continue
+          }
+
+          const payload = {
+            campaign_id: campaignId,
+            segment_id: item.segment_id,
+            topic_id: item.topic_id,
+            strategy_core: item.strategy.strategy_core,
+            style_tone: item.strategy.style_tone,
+            cta_funnel: item.strategy.cta_funnel,
+            extra_fields: item.strategy.extra_fields,
+            preview_summary: item.strategy.preview_summary,
+          }
+          console.log('[handleSaveStrategies] Saving strategy:', {
+            segment_id: item.segment_id,
+            topic_id: item.topic_id,
+            segment_name: item.segment_name,
+            topic_name: item.topic_name,
+            payload_keys: Object.keys(payload)
+          })
+          
+          const response = await fetch('/api/strategies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+
+          if (response.ok) {
+            const savedData = await response.json()
+            console.log('[handleSaveStrategies] Strategy saved successfully:', savedData.id)
+            successCount++
+          } else {
+            let errorData
+            try {
+              errorData = await response.json()
+            } catch (e) {
+              errorData = { error: `HTTP ${response.status}: ${response.statusText}` }
+            }
+            console.error('[handleSaveStrategies] Failed to save strategy:', {
+              status: response.status,
+              error: errorData,
+              payload: payload
+            })
+            if (response.status === 409) {
+              // UNIQUE constraint violation - strategy already exists
+              errors.push(`${item.segment_name} × ${item.topic_name}: már létezik`)
+            } else {
+              const errorMsg = errorData.error || errorData.details || 'Ismeretlen hiba'
+              errors.push(`${item.segment_name} × ${item.topic_name}: ${errorMsg}`)
+            }
+            errorCount++
+          }
+        } catch (err) {
+          console.error('Error saving strategy:', err)
+          errors.push(`${item.segment_name} × ${item.topic_name}: hálózati hiba`)
+          errorCount++
+        }
+      }
+
+      // Show appropriate notifications
+      if (successCount > 0) {
+        toast.success(`${successCount} stratégia sikeresen mentve`)
+      }
+      
+      if (errorCount > 0) {
+        toast.error(`${errorCount} stratégia mentése sikertelen${errors.length > 0 ? ': ' + errors.join(', ') : ''}`)
+      }
+
+      // Refresh the matrix to show new strategies
+      console.log('[handleSaveStrategies] Refreshing page after saving strategies')
+      // Force a hard refresh to ensure new data is loaded
+      // Using setTimeout to ensure the toast notifications are visible before reload
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
+    } catch (error) {
+      console.error('Unexpected error saving strategies:', error)
+      toast.error('Hiba történt a mentés során')
+    }
   }
 
   const toggleSegment = (segmentId: string) => {
@@ -79,86 +372,6 @@ export default function MessageMatrix({
       newSet.add(topicId)
     }
     setSelectedTopics(newSet)
-  }
-
-  const handleGenerateMessages = async () => {
-    if (selectedSegments.size === 0 || selectedTopics.size === 0) {
-      toast.error('Válassz ki legalább egy célcsoportot és egy témát')
-      return
-    }
-
-    setIsGenerating(true)
-    try {
-      const response = await fetch('/api/ai/message-matrix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaign_id: campaignId,
-          segment_ids: Array.from(selectedSegments),
-          topic_ids: Array.from(selectedTopics),
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to generate messages')
-      }
-
-      const data = await response.json()
-      setGeneratedMessages(data.messages)
-      setIsPreviewOpen(true)
-      toast.success(`${data.messages.length} üzenet generálva`)
-    } catch (error) {
-      console.error(error)
-      toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás során')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  const handleSaveMessages = async (messagesToSave: GeneratedMessage[]) => {
-    setIsSaving(true)
-    try {
-      // Save messages one by one using existing API
-      const savePromises = messagesToSave.map(message =>
-        fetch('/api/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaign_id: message.campaign_id,
-            segment_id: message.segment_id,
-            topic_id: message.topic_id,
-            headline: message.headline,
-            body: message.body,
-            proof_point: message.proof_point,
-            cta: message.cta,
-            message_type: message.message_type,
-            status: 'draft',
-          }),
-        })
-      )
-
-      const results = await Promise.allSettled(savePromises)
-      const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok))
-      
-      if (failed.length > 0) {
-        console.error('Some messages failed to save:', failed)
-        toast.warning(`${failed.length} üzenet mentése sikertelen volt`)
-      } else {
-        toast.success(`${messagesToSave.length} üzenet sikeresen mentve`)
-      }
-
-      setIsPreviewOpen(false)
-      setGeneratedMessages(null)
-      setSelectedSegments(new Set())
-      setSelectedTopics(new Set())
-      router.refresh()
-    } catch (error) {
-      console.error(error)
-      toast.error('Hiba történt a mentés során')
-    } finally {
-      setIsSaving(false)
-    }
   }
 
   // Convert segments and topics to checkbox list format
@@ -213,8 +426,8 @@ export default function MessageMatrix({
             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-blue-500 rounded-full blur-3xl opacity-20"></div>
 
             <div className="relative z-10">
-              <h3 className="text-lg font-display font-bold mb-1">AI Generátor</h3>
-              <p className="text-gray-400 text-sm mb-6">Válaszd ki a paramétereket a személyre szabott marketing üzenetek létrehozásához.</p>
+              <h3 className="text-lg font-display font-bold mb-1">Stratégia Generátor</h3>
+              <p className="text-gray-400 text-sm mb-6">Válaszd ki a paramétereket a kommunikációs stratégiák létrehozásához.</p>
               
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/5">
@@ -222,7 +435,7 @@ export default function MessageMatrix({
                   <span className="text-xs text-gray-400 uppercase tracking-wide">Kombináció</span>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/5">
-                  <span className="block text-2xl font-bold">{selectedTopicsArray.length * 2}s</span>
+                  <span className="block text-2xl font-bold">{selectedTopicsArray.length * 0.5}p</span>
                   <span className="text-xs text-gray-400 uppercase tracking-wide">Becsült idő</span>
                 </div>
               </div>
@@ -230,13 +443,14 @@ export default function MessageMatrix({
 
             <div className="relative z-10 space-y-3">
               <button
-                onClick={handleGenerateMessages}
+                onClick={handleBatchGenerate}
                 disabled={isGenerating || cellCount === 0}
                 className={`
                   w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all
+                  bg-primary-600 hover:bg-primary-500 text-white shadow-glow
                   ${isGenerating || cellCount === 0 
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
-                    : 'bg-primary-600 hover:bg-primary-500 text-white shadow-glow hover:scale-[1.02] active:scale-[0.98]'
+                    ? 'opacity-60 cursor-not-allowed' 
+                    : 'hover:scale-[1.02] active:scale-[0.98]'
                   }
                 `}
               >
@@ -247,8 +461,8 @@ export default function MessageMatrix({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
-                    Üzenetek Generálása
+                    <Zap className="w-4 h-4" />
+                    Stratégiák Generálása
                   </>
                 )}
               </button>
@@ -309,12 +523,28 @@ export default function MessageMatrix({
 
                         {/* Data Cells */}
                         {topics.map(topic => {
-                          const message = getMessageForCell(segment.id, topic.id)
+                          const strategy = getStrategyForCell(segment.id, topic.id)
+                          const matrixEntry = matrixEntries.find(
+                            (m) => m.segment_id === segment.id && m.topic_id === topic.id
+                          )
+                          
+                          if (process.env.NODE_ENV === 'development' && strategy) {
+                            console.log(`[MessageMatrix] Rendering cell for segment ${segment.id}, topic ${topic.id}`, {
+                              hasStrategy: !!strategy,
+                              hasContent: !!strategy.content,
+                              contentKeys: strategy.content ? Object.keys(strategy.content) : null
+                            })
+                          }
+                          const isCellGenerating = generatingCell?.segmentId === segment.id && generatingCell?.topicId === topic.id
                           return (
-                            <MatrixCell
+                            <StrategyCell
                               key={`${segment.id}-${topic.id}`}
-                              message={message}
+                              strategy={strategy?.content}
+                              matrixEntry={matrixEntry}
+                              isLoading={isCellGenerating}
                               onClick={() => handleCellClick(segment.id, topic.id)}
+                              onCreate={() => handleCreateStrategy(segment.id, topic.id)}
+                              onGenerate={() => handleGenerateStrategy(segment.id, topic.id)}
                             />
                           )
                         })}
@@ -338,59 +568,39 @@ export default function MessageMatrix({
             )}
         </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>
-              {getMessageForCell(selectedCell?.segmentId || '', selectedCell?.topicId || '')
-                ? 'Edit Message'
-                : 'Create Message'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            {selectedCell && (
-              <MessageForm
-                campaignId={campaignId}
-                segmentId={selectedCell.segmentId}
-                topicId={selectedCell.topicId}
-                initialData={getMessageForCell(
-                  selectedCell.segmentId,
-                  selectedCell.topicId
-                )}
-                onSuccess={() => setIsDialogOpen(false)}
-                onCancel={() => setIsDialogOpen(false)}
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Generated Messages Preview */}
-      {isPreviewOpen && generatedMessages && (
-        <MessageMatrixPreview
-          messages={generatedMessages}
-          segments={segments}
-          topics={topics}
+      {selectedCell && selectedCell.strategy && (
+        <StrategyDetailModal
+          strategy={selectedCell.strategy.content}
+          strategyId={selectedCell.strategy.id}
           campaignId={campaignId}
-          onSave={handleSaveMessages}
-          onCancel={() => {
-            setIsPreviewOpen(false)
-            setGeneratedMessages(null)
-          }}
-          onRegenerate={(regeneratedMessages) => {
-            // Update the generated messages with regenerated ones
-            setGeneratedMessages(prev => {
-              if (!prev) return regeneratedMessages
-              const updatedMap = new Map(regeneratedMessages.map(msg => [`${msg.segment_id}:${msg.topic_id}`, msg]))
-              return prev.map(msg => {
-                const key = `${msg.segment_id}:${msg.topic_id}`
-                return updatedMap.get(key) || msg
-              })
-            })
-          }}
-          isSaving={isSaving}
+          segmentId={selectedCell.segmentId}
+          topicId={selectedCell.topicId}
+          isOpen={isDetailOpen}
+          onClose={() => setIsDetailOpen(false)}
+          onRefresh={() => router.refresh()}
         />
       )}
+
+      {isCreateFormOpen && createFormContext && (
+        <StrategyForm
+          isOpen={isCreateFormOpen}
+          onClose={() => {
+            setIsCreateFormOpen(false)
+            setCreateFormContext(null)
+          }}
+          campaignId={campaignId}
+          segmentId={createFormContext.segmentId}
+          topicId={createFormContext.topicId}
+          onSave={handleCreateFormSave}
+        />
+      )}
+
+      <StrategyMatrixPreview
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        strategies={generatedStrategies}
+        onSave={handleSaveStrategies}
+      />
     </div>
   )
 }

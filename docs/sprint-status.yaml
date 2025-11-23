@@ -78,3 +78,33 @@ development_status:
   2-4-ag-ui-frontend-integration: done
   
   epic-2-retrospective: completed
+
+  # Epic 3.0: Message Matrix Refactor - Communication Strategies
+  # Note: Epic 3.0 context available in epics.md and tech-spec.md (2025-11-22)
+  epic-3-0: contexted
+  
+  # Story 3.0.1: Database Migration + Schema
+  # Note: Story drafted 2025-11-22 - Foundation for Epic 3.0 message matrix refactor
+  3-0-1-database-migration-schema: done
+  
+  # Story 3.0.2: Message Matrix Refactor (UI)
+  # Note: Story drafted 2025-11-22 - UI refactor to display communication strategies instead of concrete messages
+  3-0-2-message-matrix-refactor-ui: done
+  
+  # Story 3.0.3: Strategy AI Generator
+  # Note: Story drafted 2025-11-22 - AI-powered strategy generation for segment × topic combinations
+  # Note: Status updated to in-progress (2025-11-22) - Implemented strategy generation API, prompt, and preview UI
+  3-0-3-strategy-ai-generator: done
+  
+  # Story 3.0.4: Strategy Form + CRUD
+  # Note: Story drafted 2025-11-22 - Manual strategy creation and editing with full CRUD operations
+  3-0-4-strategy-form-crud: done
+  
+  # Story 3.0.5: Enhanced Segment & Topic Schema with Priority and Matrix
+  # Note: Story drafted 2025-01-XX - Enhanced schema for segments and topics with detailed profiles, priority system, and segment-topic matrix mapping
+  # Note: Status updated to done (2025-01-XX) - Migration, schemas, API endpoints, UI components, and matrix editor implemented
+  3-0-5-enhanced-segment-topic-schema: done
+
+  # Story 3.0.6: AI Provider Abstraction
+  # Note: Story drafted 2025-11-24 - Multi-provider AI support (Anthropic, OpenAI, Google Gemini, Ollama) with unified interface
+  3-0-6-ai-provider-abstraction: review

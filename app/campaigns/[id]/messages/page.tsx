@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import MessageMatrix from '@/components/messages/MessageMatrix'
+import MessageMatrix, { StrategyRow } from '@/components/messages/MessageMatrix'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -35,10 +35,43 @@ export default async function MessageMatrixPage({
     .eq('campaign_id', id)
     .order('name', { ascending: true })
 
-  const { data: messages } = await db
-    .from('messages')
+  // Fetch strategies instead of messages
+  // Note: We use 'any' here because the types might not be generated yet for the new table
+  // @ts-ignore
+  const { data: strategiesRaw } = await (db as any)
+    .from('message_strategies')
     .select('*')
     .eq('campaign_id', id)
+
+  // Transform database format to StrategyRow format
+  const strategies: StrategyRow[] = (strategiesRaw || []).map((s: any) => ({
+    id: s.id,
+    campaign_id: s.campaign_id,
+    segment_id: s.segment_id,
+    topic_id: s.topic_id,
+    content: {
+      strategy_core: s.strategy_core,
+      style_tone: s.style_tone,
+      cta_funnel: s.cta_funnel,
+      extra_fields: s.extra_fields || undefined,
+      preview_summary: s.preview_summary || undefined,
+    },
+    created_at: s.created_at,
+    updated_at: s.updated_at,
+  }))
+
+  // Debug: log strategies count (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[MessageMatrix] Loaded ${strategies.length} strategies for campaign ${id}`)
+  }
+
+  const { data: matrixRaw } = await db
+    .from('segment_topic_matrix')
+    .select('*')
+    // We can't filter by campaign_id directly on this table, but we can filter by the segments we already fetched
+    // However, Supabase join query is better. But since we already have segments, we can just filter in memory or use 'in' query
+    // Let's use 'in' query with segment IDs
+    .in('segment_id', segments?.map(s => s.id) || [])
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex flex-col font-sans text-gray-900">
@@ -57,7 +90,8 @@ export default async function MessageMatrixPage({
           campaignId={id}
           segments={segments || []}
           topics={topics || []}
-          messages={messages || []}
+          strategies={strategies}
+          matrixEntries={matrixRaw || []}
         />
       </div>
     </div>

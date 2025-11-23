@@ -5,15 +5,40 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CalendarIcon, User } from 'lucide-react'
 import { format } from 'date-fns'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 type Task = Database['campaign_os']['Tables']['tasks']['Row']
 
 interface TaskCardProps {
   task: Task
   onClick: (task: Task) => void
+  enableDragDrop?: boolean
 }
 
-export default function TaskCard({ task, onClick }: TaskCardProps) {
+export default function TaskCard({ task, onClick, enableDragDrop = true }: TaskCardProps) {
+  // Always call the hook (React rules), but disable it when drag and drop is not enabled
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    data: {
+      type: 'task',
+      task,
+    },
+    disabled: !enableDragDrop,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
   const getCategoryColor = (category: string | null) => {
     switch (category) {
       case 'creative':
@@ -35,8 +60,13 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow"
+      ref={setNodeRef}
+      style={enableDragDrop ? style : undefined}
+      className={`cursor-pointer hover:shadow-md transition-shadow ${
+        isDragging ? 'ring-2 ring-primary-500' : ''
+      }`}
       onClick={() => onClick(task)}
+      {...(enableDragDrop ? { ...attributes, ...listeners } : {})}
     >
       <CardHeader className="p-3 pb-0 space-y-1">
         <div className="flex justify-between items-start gap-2">

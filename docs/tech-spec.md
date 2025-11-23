@@ -469,9 +469,15 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 - campaign_id (uuid, fk → campaigns)
 - name (text, not null)
 - description (text)
-- demographics (jsonb)
-- psychographics (jsonb)
-- priority (int 1-5)
+- short_label (text, nullable) - UI display label (e.g., "20–35 városi")
+- demographics (jsonb) - Legacy field, migrated to demographic_profile
+- psychographics (jsonb) - Legacy field, migrated to psychographic_profile
+- demographic_profile (jsonb) - Structured: age_range, location_type, income_level, other_demographics
+- psychographic_profile (jsonb) - Structured: values[], attitudes_to_campaign_topic[], motivations[], pain_points[]
+- media_habits (jsonb) - Structured: primary_channels[], secondary_channels[], notes
+- funnel_stage_focus (text) - Enum: awareness, engagement, consideration, conversion, mobilization
+- example_persona (jsonb) - Structured: name, one_sentence_story
+- priority (text) - Enum: 'primary' | 'secondary' (migrated from INTEGER 1-5)
 - created_at, updated_at (timestamps)
 
 **topics tábla:**
@@ -479,8 +485,24 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 - campaign_id (uuid, fk → campaigns)
 - name (text, not null)
 - description (text)
-- category (text, nullable)
+- short_label (text, nullable) - UI display label (e.g., "Zöld = spórolás")
+- category (text, nullable) - Legacy field, kept for backward compatibility
+- topic_type (text) - Enum: benefit, problem, value, proof, story
+- related_goal_types (jsonb) - Array of strings (e.g., ["awareness", "engagement"])
+- core_narrative (text) - 1-2 sentence narrative description
+- content_angles (jsonb) - Array of strings (content approach ideas)
+- recommended_channels (jsonb) - Array of strings (e.g., ["instagram_reels", "tiktok"])
+- risk_notes (jsonb) - Array of strings (warnings/guidelines)
+- priority (text) - Enum: 'primary' | 'secondary'
 - created_at, updated_at (timestamps)
+
+**segment_topic_matrix tábla (NEW):**
+- segment_id (uuid, fk → segments, on delete cascade)
+- topic_id (uuid, fk → topics, on delete cascade)
+- importance (text) - Enum: 'high' | 'medium' | 'low'
+- role (text) - Enum: 'core_message' | 'support' | 'experimental'
+- Primary key: (segment_id, topic_id)
+- Indexes on segment_id and topic_id for query performance
 
 **messages tábla:**
 - id (uuid, pk)
@@ -1452,4 +1474,750 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 **Agent Orchestration:**
 - `lib/ai/copilotkit/orchestrator.ts` - Campaign Orchestrator agent
+
+**AI Provider Abstraction (Story 3.0.6):**
+- `lib/ai/types.ts` - Unified type definitions (AIProvider, GenerateTextOptions, etc.)
+- `lib/ai/providers/base.ts` - BaseAIProvider abstract class
+- `lib/ai/providers/anthropic.ts` - AnthropicProvider implementation
+- `lib/ai/providers/openai.ts` - OpenAIProvider implementation
+- `lib/ai/providers/google.ts` - GoogleProvider implementation
+- `lib/ai/providers/ollama.ts` - OllamaProvider implementation
+- `lib/ai/client.ts` - Factory function (refactored for multi-provider support)
+
+---
+
+## Epic 3.0: Message Matrix Refactor - Communication Strategies
+
+**Date:** 2025-11-21
+**Epic:** Epic 3.0 - Message Matrix Refactor
+**Change Type:** Database schema refactor + UI refactor + AI generator refactor
+**Development Context:** Refactoring Message Matrix from concrete messages to communication strategies
+
+---
+
+### Epic 3.0 Context
+
+**Epic 1-2 Foundation (Complete):**
+- ✅ Manual campaign management (CRUD)
+- ✅ Audience segments and topics management
+- ✅ Message matrix UI (concrete messages)
+- ✅ AI-powered message generator (Story 2.3)
+- ✅ CopilotKit infrastructure
+- ✅ Database schema with 8 core tables
+
+**Epic 3.0 Goal:**
+Refactor the Message Matrix from concrete messages to communication strategies. The matrix should define *how* to communicate each topic to each segment (tone, guidelines, key messages), not generate specific message content. Concrete messages will be generated later in the Content Calendar (Epic 3.1) based on these strategies, ensuring consistent messaging across all generated content.
+
+---
+
+### Epic 3.0 Scope
+
+**In Scope:**
+1. **Enhanced segments and topics schema** - Detailed profiles, priority system, segment-topic matrix (Story 3.0.5)
+2. **New `message_strategies` database table** - JSONB structure (4 main categories, 16 sub-fields)
+3. **Message Matrix UI refactor** - Display communication strategies instead of concrete messages
+4. **Strategy preview cards** - Short AI-generated summary (editable) in matrix cells
+5. **Strategy detail modal** - Full strategy view with all 16 sub-fields (4 sections)
+6. **Strategy AI Generator** - Generate complete communication strategies (refactor Story 2.3)
+7. **Strategy CRUD operations** - Create, edit, view, delete strategies
+8. **Strategy form** - 4 main sections (Strategy Core, Style & Tone, CTA & Funnel, Extra Fields)
+9. **Zod schema validation** - All strategy JSONB structures validated
+10. **Migration** - Existing `messages` table remains for Content Calendar use
+
+**Out of Scope (Epic 3.1+):**
+- Content Calendar AI generation (Epic 3.1)
+- Sprint/Task Planning AI (Epic 3.2)
+- Risk module AI
+- Strategy versioning/history
+
+---
+
+### Epic 3.0 Source Tree Changes
+
+**New files for Epic 3.0:**
+
+```
+campaign-os/
+├── supabase/
+│   └── migrations/
+│       ├── YYYYMMDD_enhanced_segments_topics.sql  # CREATE - Enhanced segments/topics schema + matrix table
+│       └── YYYYMMDD_message_strategies.sql       # CREATE - message_strategies table
+├── app/
+│   └── api/
+│       ├── strategies/
+│       │   ├── route.ts                          # CREATE - GET, POST strategies
+│       │   └── [id]/route.ts                    # CREATE - GET, PUT, DELETE strategy
+│       └── segment-topic-matrix/
+│           └── route.ts                          # CREATE - Matrix CRUD operations
+├── lib/
+│   └── ai/
+│       ├── schemas.ts                            # MODIFY - Add strategy Zod schemas + enhanced segment/topic schemas
+│       └── prompts/
+│           ├── strategy-designer.ts              # MODIFY - Update with new segment/topic schema
+│           └── strategy-generator.ts             # CREATE - Strategy generation prompt (refactor message-generator.ts)
+├── components/
+│   ├── campaigns/
+│   │   └── CampaignWizard.tsx                    # MODIFY - Add new segment/topic fields
+│   ├── segments/
+│   │   └── SegmentManager.tsx                   # MODIFY - Display/edit new structured fields
+│   ├── topics/
+│   │   └── TopicManager.tsx                     # MODIFY - Display/edit new fields
+│   └── messages/
+│       ├── MessageMatrix.tsx                    # MODIFY - Refactor to display strategies, use matrix
+│       ├── StrategyCell.tsx                      # CREATE - Cell component with preview
+│       ├── StrategyPreviewCard.tsx               # CREATE - Short summary card
+│       ├── StrategyDetailModal.tsx               # CREATE - Full strategy view modal
+│       ├── StrategyForm.tsx                      # CREATE - Strategy create/edit form
+│       └── StrategyFormSections/
+│           ├── StrategyCoreSection.tsx           # CREATE - Strategy Core form section
+│           ├── StyleToneSection.tsx              # CREATE - Style & Tone form section
+│           ├── CTAFunnelSection.tsx              # CREATE - CTA & Funnel form section
+│           └── ExtraFieldsSection.tsx            # CREATE - Extra Fields form section
+└── app/
+    └── api/
+        ├── ai/
+        │   ├── campaign-brief/
+        │   │   └── route.ts                      # MODIFY - Handle new segment/topic schema
+        │   └── strategy-matrix/
+        │       └── route.ts                      # CREATE - Strategy AI generator (refactor message-matrix)
+        └── campaigns/
+            └── structure/
+                └── route.ts                      # MODIFY - Save new fields and matrix
+```
+
+**Modified files:**
+- `components/messages/MessageMatrix.tsx` - Refactor to display strategies instead of messages, use segment-topic matrix
+- `app/campaigns/[id]/messages/page.tsx` - Fetch strategies instead of messages
+- `components/campaigns/CampaignWizard.tsx` - Add new segment/topic fields and matrix editor
+- `components/segments/SegmentManager.tsx` - Display/edit structured demographic/psychographic profiles, media habits, persona
+- `components/topics/TopicManager.tsx` - Display/edit topic_type, content_angles, recommended_channels, risk_notes
+- `lib/ai/schemas.ts` - Add strategy Zod schemas + enhanced segment/topic schemas + matrix schema
+- `lib/ai/prompts/strategy-designer.ts` - Update with new schema requirements (priority, matrix generation)
+- `app/api/ai/campaign-brief/route.ts` - Handle new segment/topic schema in response
+- `app/api/campaigns/structure/route.ts` - Save new fields and segment-topic matrix
+- `app/api/segments/route.ts` - CRUD with new structured fields
+- `app/api/topics/route.ts` - CRUD with new fields
+- `lib/ai/prompts/message-generator.ts` - Deprecated (replaced by strategy-generator.ts)
+
+**Unchanged files (for Content Calendar use):**
+- `app/api/messages/route.ts` - Remains for Content Calendar message generation
+- `messages` database table - Remains for Content Calendar use
+
+---
+
+### Epic 3.0 Technical Approach
+
+**Database Schema:**
+
+```sql
+CREATE TABLE message_strategies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  segment_id UUID NOT NULL REFERENCES segments(id) ON DELETE CASCADE,
+  topic_id UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+  
+  -- Strategy Core (JSONB) - 5 sub-fields
+  strategy_core JSONB NOT NULL,
+  -- {
+  --   "positioning_statement": "1-2 sentences about essence",
+  --   "core_message": "1 sentence, crystal clear statement",
+  --   "supporting_messages": ["bullet 1", "bullet 2", "bullet 3-5"],
+  --   "proof_points": ["proof 1", "proof 2", "proof 3"],
+  --   "objections_reframes": ["objection 1 + reframe", ...] (optional)
+  -- }
+  
+  -- Style & Tone (JSONB) - 4 sub-fields
+  style_tone JSONB NOT NULL,
+  -- {
+  --   "tone_profile": {
+  --     "description": "short description",
+  --     "keywords": ["keyword1", "keyword2", "keyword3-5"]
+  --   },
+  --   "language_style": "tegezés/magázás, szakzsargon level, sentence length",
+  --   "communication_guidelines": {
+  --     "do": ["guideline 1", "guideline 2", ...],
+  --     "dont": ["avoid 1", "avoid 2", ...]
+  --   },
+  --   "emotional_temperature": "nyugodt/motiváló/energikus"
+  -- }
+  
+  -- CTA & Funnel (JSONB) - 4 sub-fields
+  cta_funnel JSONB NOT NULL,
+  -- {
+  --   "funnel_stage": "awareness/consideration/conversion/mobilization",
+  --   "cta_objectives": ["objective 1", "objective 2", ...],
+  --   "cta_patterns": ["pattern 1", "pattern 2", "pattern 3"],
+  --   "friction_reducers": ["reducer 1", ...] (optional)
+  -- }
+  
+  -- Extra Fields (JSONB, optional) - 3 sub-fields
+  extra_fields JSONB,
+  -- {
+  --   "framing_type": "probléma-megoldás/összehasonlító/történet-mesélés/adat-alapú",
+  --   "key_phrases": ["phrase 1", "phrase 2", ...],
+  --   "risk_notes": "sensitive points, attack surfaces" (optional)
+  -- }
+  
+  -- Preview summary (AI-generated, editable)
+  preview_summary TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  UNIQUE(campaign_id, segment_id, topic_id)
+);
+
+CREATE INDEX idx_message_strategies_campaign ON message_strategies(campaign_id);
+```
+
+**Zod Schema Validation:**
+
+```typescript
+// Strategy Core Schema
+const StrategyCoreSchema = z.object({
+  positioning_statement: z.string().min(10, "Positioning statement must be at least 10 characters"),
+  core_message: z.string().min(5, "Core message must be at least 5 characters"),
+  supporting_messages: z.array(z.string()).min(3).max(5),
+  proof_points: z.array(z.string()).min(2).max(3),
+  objections_reframes: z.array(z.string()).optional()
+});
+
+// Style & Tone Schema
+const StyleToneSchema = z.object({
+  tone_profile: z.object({
+    description: z.string(),
+    keywords: z.array(z.string()).min(3).max(5)
+  }),
+  language_style: z.string(),
+  communication_guidelines: z.object({
+    do: z.array(z.string()),
+    dont: z.array(z.string())
+  }),
+  emotional_temperature: z.string()
+});
+
+// CTA & Funnel Schema
+const CTAFunnelSchema = z.object({
+  funnel_stage: z.enum(['awareness', 'consideration', 'conversion', 'mobilization']),
+  cta_objectives: z.array(z.string()),
+  cta_patterns: z.array(z.string()).min(2).max(3),
+  friction_reducers: z.array(z.string()).optional()
+});
+
+// Extra Fields Schema
+const ExtraFieldsSchema = z.object({
+  framing_type: z.string().optional(),
+  key_phrases: z.array(z.string()).optional(),
+  risk_notes: z.string().optional()
+});
+
+// Complete Strategy Schema
+const MessageStrategySchema = z.object({
+  strategy_core: StrategyCoreSchema,
+  style_tone: StyleToneSchema,
+  cta_funnel: CTAFunnelSchema,
+  extra_fields: ExtraFieldsSchema.optional(),
+  preview_summary: z.string().optional()
+});
+```
+
+**UI/UX Approach:**
+
+**Message Matrix Cell States:**
+- Empty: "Nincs stratégia" + "Generate Strategy" button
+- Has strategy: Preview card showing:
+  - Positioning statement (first 1-2 sentences, truncated)
+  - Core message (1 sentence, bold)
+  - Tone keywords (badges: "közvetlen", "őszinte")
+  - Funnel stage badge ("awareness", "consideration", etc.)
+
+**Strategy Detail Modal:**
+- Tabs or accordion: "Stratégiai mag", "Stílus/tónus", "CTA/funnel", "Extra"
+- All 16 sub-fields visible and readable
+- "Edit Strategy" button
+- Full strategy content organized by category
+
+**Strategy Form:**
+- 4 main sections (accordion or tabs):
+  1. Strategy Core (5 fields)
+  2. Style & Tone (4 fields)
+  3. CTA & Funnel (4 fields)
+  4. Extra Fields (3 fields, optional)
+- Multi-input fields (supporting_messages, proof_points) → add/remove rows
+- Do/Don't lists (communication_guidelines) → two-column layout
+- Preview summary editor (auto-generated from strategy_core, editable)
+
+**AI Generation Approach:**
+
+**Strategy Generator Prompt:**
+- Single LLM call with structured JSON output (16 fields)
+- Prompt includes:
+  - Campaign context (campaign_type, goal_type, narratives)
+  - Segment details (demographics, psychographics)
+  - Topic details (name, description, category)
+  - Instructions for all 16 sub-fields
+- Zod schema validation ensures consistent output
+- Preview summary auto-generated from strategy_core
+- CopilotKit event stream for real-time generation progress
+
+---
+
+### Epic 3.0 Integration Points
+
+**Database:**
+- New `message_strategies` table with JSONB structure
+- UNIQUE constraint: (campaign_id, segment_id, topic_id) - one strategy per cell
+- Existing `messages` table remains unchanged (for Content Calendar use)
+
+**API Endpoints:**
+- `/api/strategies` - GET (list), POST (create)
+- `/api/strategies/[id]` - GET (single), PUT (update), DELETE
+- `/api/ai/strategy-matrix` - POST (generate strategies, refactor from `/api/ai/message-matrix`)
+
+**Frontend Components:**
+- `MessageMatrix.tsx` - Refactored to display strategies
+- `StrategyCell.tsx` - Cell component with preview card
+- `StrategyDetailModal.tsx` - Full strategy view
+- `StrategyForm.tsx` - Create/edit form with 4 sections
+
+**AI Integration:**
+- Reuse Epic 2 LLM infrastructure (`lib/ai/client.ts`)
+- New prompt template: `lib/ai/prompts/strategy-generator.ts`
+- Zod schema validation: `MessageStrategySchema`
+- CopilotKit event streaming (reuse from Epic 2)
+
+---
+
+### Epic 3.0 Implementation Steps
+
+**Phase 1: Enhanced Segments & Topics Schema (Story 3.0.5) - 5-7 days**
+
+1. Create migration: `supabase/migrations/YYYYMMDD_enhanced_segments_topics.sql`
+2. Enhance segments table: add structured profiles, media_habits, funnel_stage_focus, example_persona
+3. Migrate priority from INTEGER to TEXT enum (primary/secondary)
+4. Enhance topics table: add topic_type, related_goal_types, core_narrative, content_angles, recommended_channels, risk_notes
+5. Create segment_topic_matrix table with importance and role fields
+6. Update Zod schemas for enhanced segment/topic structures
+7. Update AI prompt (strategy-designer.ts) with new schema requirements
+8. Update API endpoints to handle new fields and matrix
+9. Update UI components (CampaignWizard, SegmentManager, TopicManager) for new fields
+10. Test migration, backward compatibility, and new field validation
+
+**Phase 2: Database Migration (Story 3.0.1) - 2-3 days**
+
+11. Create migration: `supabase/migrations/YYYYMMDD_message_strategies.sql`
+12. Define JSONB structure for 4 main categories (16 sub-fields)
+13. Create Zod schemas in `lib/ai/schemas.ts`
+14. Generate TypeScript types: `supabase gen types`
+15. Test migration and schema validation
+
+**Phase 3: UI Refactor (Story 3.0.2) - 3-4 days**
+
+16. Refactor `MessageMatrix.tsx` to fetch and display strategies
+17. Create `StrategyCell.tsx` component
+18. Create `StrategyPreviewCard.tsx` component
+19. Create `StrategyDetailModal.tsx` component
+20. Update `/app/campaigns/[id]/messages/page.tsx` to fetch strategies
+21. Integrate segment-topic matrix display (importance/role indicators)
+22. Test UI components and cell states
+
+**Phase 4: Strategy AI Generator (Story 3.0.3) - 4-5 days**
+
+23. Create `lib/ai/prompts/strategy-generator.ts` prompt template
+24. Refactor `/api/ai/message-matrix` → `/api/ai/strategy-matrix`
+25. Implement 16-field JSON output generation
+26. Add preview summary generation (from strategy_core)
+27. Integrate CopilotKit event streaming
+28. Build preview modal with approve/reject per strategy
+29. Test AI generation and validation
+
+**Phase 5: Strategy Form + CRUD (Story 3.0.4) - 3-4 days**
+
+30. Create `/api/strategies` endpoints (GET, POST, PUT, DELETE)
+31. Create `StrategyForm.tsx` component with 4 sections
+32. Create form section components (StrategyCoreSection, StyleToneSection, etc.)
+33. Implement form validation (Zod schemas)
+34. Add preview summary editor (auto-generated, editable)
+35. Integrate with StrategyDetailModal (edit mode)
+36. Test CRUD operations and form validation
+
+**Total: 20-25 days (4-5 weeks)**
+
+---
+
+### Epic 3.0 Technical Details
+
+**Strategy JSONB Structure:**
+
+```typescript
+interface MessageStrategy {
+  strategy_core: {
+    positioning_statement: string;        // 1-2 sentences
+    core_message: string;                 // 1 sentence
+    supporting_messages: string[];        // 3-5 bullets
+    proof_points: string[];               // 2-3 proofs
+    objections_reframes?: string[];       // 2-3 objections + reframes (optional)
+  };
+  style_tone: {
+    tone_profile: {
+      description: string;
+      keywords: string[];                 // 3-5 keywords
+    };
+    language_style: string;               // tegezés/magázás, szakzsargon, sentence length
+    communication_guidelines: {
+      do: string[];
+      dont: string[];
+    };
+    emotional_temperature: string;        // nyugodt/motiváló/energikus
+  };
+  cta_funnel: {
+    funnel_stage: 'awareness' | 'consideration' | 'conversion' | 'mobilization';
+    cta_objectives: string[];
+    cta_patterns: string[];               // 2-3 patterns
+    friction_reducers?: string[];         // optional
+  };
+  extra_fields?: {
+    framing_type?: string;                // probléma-megoldás/összehasonlító/történet-mesélés/adat-alapú
+    key_phrases?: string[];               // 5-10 phrases
+    risk_notes?: string;                  // sensitive points (optional)
+  };
+  preview_summary?: string;               // AI-generated, editable
+}
+```
+
+**Preview Summary Generation:**
+
+AI generates preview summary from `strategy_core`:
+- Positioning statement (first 1-2 sentences)
+- Core message (1 sentence, bold)
+- Tone keywords (from `style_tone.tone_profile.keywords`)
+- Funnel stage (from `cta_funnel.funnel_stage`)
+
+User can edit preview summary manually.
+
+**Migration Strategy:**
+
+1. Create `message_strategies` table
+2. Existing `messages` table remains unchanged
+
+---
+
+### Story 3.0.6: AI Provider Abstraction
+
+**Date:** 2025-11-24
+**Story:** Story 3.0.6 - AI Provider Abstraction
+**Change Type:** Infrastructure refactor - multi-provider support
+**Development Context:** Abstracting AI provider implementations to support multiple providers (Anthropic, OpenAI, Google Gemini, Ollama) with unified interface
+
+---
+
+#### Story 3.0.6 Context
+
+**Goal:**
+Enable multiple AI provider support with a unified abstraction layer, allowing provider switching via environment variables without code changes. This enables cost optimization, vendor independence, and flexibility in model selection.
+
+**Scope:**
+- Unified `AIProvider` interface with `generateText()` and `generateStream()` methods
+- Provider implementations: Anthropic, OpenAI, Google Gemini, Ollama
+- Factory pattern for provider selection based on environment variables
+- Backward compatibility with existing Anthropic client
+- CopilotKit integration support for all providers
+
+**Technical Architecture:**
+
+**File Structure:**
+```
+lib/ai/
+├── client.ts                    # Factory function (refactored)
+├── types.ts                     # Type definitions (new)
+├── providers/
+│   ├── base.ts                  # BaseAIProvider abstract class (new)
+│   ├── anthropic.ts             # AnthropicProvider (new)
+│   ├── openai.ts                # OpenAIProvider (new)
+│   ├── google.ts                # GoogleProvider (new)
+│   └── ollama.ts                # OllamaProvider (new)
+├── schemas.ts                   # Zod schemas (existing)
+├── errors.ts                    # Error classes (updated)
+└── copilotkit/
+    └── server.ts                # CopilotKit server (updated)
+```
+
+**Interface Design:**
+```typescript
+interface AIProvider {
+  generateText(options: GenerateTextOptions): Promise<GenerateTextResponse>
+  generateStream(options: GenerateTextOptions): AsyncIterable<StreamChunk>
+}
+
+interface GenerateTextOptions {
+  model: string
+  systemPrompt: string  // Separate field, NOT in messages array
+  messages: Array<{ role: 'user' | 'assistant', content: string }>
+  maxTokens?: number
+  temperature?: number
+}
+
+interface GenerateTextResponse {
+  content: string
+  model: string
+  usage?: {
+    promptTokens?: number
+    completionTokens?: number
+    totalTokens?: number
+  }
+}
+
+interface StreamChunk {
+  content: string
+  done: boolean
+}
+```
+
+**Important Design Decisions:**
+- `systemPrompt` is a separate field, NOT included in `messages` array
+- `messages` array only contains `'user' | 'assistant'` roles (no `'system'` role)
+- Each provider implementation converts `systemPrompt` to provider-specific format
+- Unified response format across all providers
+
+**Environment Variables:**
+```env
+# AI Provider selection (required)
+AI_PROVIDER=anthropic  # or: openai, google, ollama
+
+# Model selection (optional, provider-specific)
+AI_MODEL=gpt-5-mini-2025-08-07  # Default model
+# AI_MODEL=claude-haiku-4-5  # Anthropic
+# AI_MODEL=gpt-4-turbo-preview  # OpenAI
+# AI_MODEL=gemini-pro  # Google
+# AI_MODEL=llama2  # Ollama
+
+# Provider-specific API keys
+ANTHROPIC_API_KEY=sk-ant-...  # Required if AI_PROVIDER=anthropic
+OPENAI_API_KEY=sk-...  # Required if AI_PROVIDER=openai
+GOOGLE_API_KEY=...  # Required if AI_PROVIDER=google
+# Ollama doesn't require API key (local)
+
+# Ollama configuration (if AI_PROVIDER=ollama)
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+**Provider-Specific Implementation Details:**
+
+**Anthropic Provider:**
+- SDK: `@anthropic-ai/sdk` (already installed)
+- Conversion: `systemPrompt` → `system` parameter in `messages.create()`
+- Response: `response.content[0].text`
+- Streaming: `messages.create({ stream: true })` → `content_block_delta` chunks
+
+**OpenAI Provider:**
+- SDK: `openai@^4.50.0` (new dependency)
+- Conversion: `systemPrompt` → `system` parameter (separate from messages)
+- Response: `response.choices[0].message.content`
+- Streaming: `chat.completions.create({ stream: true })` → `delta.content` chunks
+- Mapping: `maxTokens` → `max_tokens`
+
+**Google Provider:**
+- SDK: `@google/generative-ai@^0.21.0` (new dependency)
+- Conversion: `systemPrompt` → system prompt configuration
+- Response: `response.response.text()`
+- Streaming: `model.generateContentStream()` → stream chunks
+
+**Ollama Provider:**
+- No SDK: HTTP API using `fetch()`
+- Endpoint: `http://localhost:11434/api/generate` (configurable via `OLLAMA_BASE_URL`)
+- Conversion: `systemPrompt` → Ollama format
+- Response: `response.response`
+- Streaming: `fetch()` with streaming enabled
+- Health check: Verify Ollama availability before use
+
+**Backward Compatibility:**
+- `getAnthropicClient()` function remains available (wrapper around factory)
+- Existing code using `getAnthropicClient()` continues to work
+- All API endpoints maintain same response format
+- CopilotKit integration maintains same behavior
+
+**Error Handling:**
+- Unified `AIProviderError` class with provider type information
+- `APIKeyMissingError` for missing API keys
+- Provider-specific errors wrapped in unified error classes
+- User-friendly error messages in API responses
+
+**Implementation Order:**
+1. Base abstraction (types, base provider) - 2-3 hours
+2. Anthropic provider (easiest, already have SDK) - 1 hour
+3. OpenAI provider - 1-2 hours
+4. Factory and client update - 1 hour
+5. API route migration (test with Anthropic) - 1-2 hours
+6. Google provider - 1-2 hours
+7. Ollama provider - 1-2 hours
+8. CopilotKit integration - 1 hour
+9. Testing all providers - 2-3 hours
+
+**Total Estimated Effort:** 13 points (8-11 hours)
+
+**Dependencies:**
+- Epic 2 complete (LLM infrastructure, existing Anthropic client)
+- Story 2.1 (LLM + CopilotKit Infrastructure) complete
+- Story 3.0.3 (Strategy AI Generator) complete (uses AI endpoints)
+
+**Success Criteria:**
+1. ✅ All API endpoints work with Anthropic provider (backward compatibility)
+2. ✅ All API endpoints work with OpenAI provider (if configured)
+3. ✅ All API endpoints work with Google provider (if configured)
+4. ✅ All API endpoints work with Ollama provider (if configured and running)
+5. ✅ Provider switching via environment variable works without code changes
+6. ✅ Streaming works correctly for all providers
+7. ✅ CopilotKit integration works with all providers
+8. ✅ Error handling provides clear, provider-specific error messages
+3. No data migration needed (strategies are new concept)
+4. Backward compatibility: `messages` table still used for Content Calendar (Epic 3.1)
+
+---
+
+### Epic 3.0 Dependencies
+
+**External:**
+- Epic 2 complete (LLM infrastructure, CopilotKit)
+- Anthropic Claude API (reuse from Epic 2)
+- Existing Epic 1-2 functionality
+
+**Internal:**
+- Epic 2 complete (all stories done)
+- Database schema from Epic 1-2
+- Existing MessageMatrix component (to be refactored)
+- Story 2.3 AI Message Generator (to be refactored to Strategy Generator)
+
+---
+
+### Epic 3.0 Testing Strategy
+
+**Story 3.0.5 (Enhanced Segments & Topics Schema):**
+- Unit tests: Zod schema validation for new structured fields
+- Integration tests: Database migration script, priority migration, JSONB structure migration
+- Manual tests: Verify table structures, segment-topic matrix CRUD, backward compatibility
+- Edge cases: Priority migration (INTEGER → TEXT), existing data preservation, UNIQUE constraint
+
+**Story 3.0.1 (Database Migration):**
+- Unit tests: Zod schema validation
+- Integration tests: Database migration script
+- Manual tests: Verify table structure and constraints
+
+**Story 3.0.2 (UI Refactor):**
+- Unit tests: StrategyCell, StrategyPreviewCard components
+- Integration tests: MessageMatrix refactored display
+- E2E tests: View strategies in matrix, open detail modal
+
+**Story 3.0.3 (Strategy AI Generator):**
+- Unit tests: Prompt template, JSON parsing
+- Integration tests: `/api/ai/strategy-matrix` with mocked LLM
+- E2E tests: Generate strategies → preview → approve → save
+- Edge cases: Invalid input, API timeout, malformed JSON
+
+**Story 3.0.4 (Strategy Form + CRUD):**
+- Unit tests: Form validation, CRUD operations
+- Integration tests: `/api/strategies` endpoints
+- E2E tests: Create → edit → delete strategy
+- Edge cases: UNIQUE constraint violation, invalid JSONB
+
+**Story 3.0.6 (AI Provider Abstraction):**
+- Unit tests: Provider implementations, factory function, error handling
+- Integration tests: All API endpoints with each provider (Anthropic, OpenAI, Google, Ollama)
+- E2E tests: Provider switching via environment variables, streaming for all providers
+- Edge cases: Missing API keys, invalid models, provider unavailability, streaming interruptions
+
+**Manual testing checklist:**
+- [ ] Strategy AI generates valid JSON per Zod schema (16 fields)
+- [ ] Preview card shows correct summary
+- [ ] Detail modal displays all 16 sub-fields
+- [ ] Strategy form validates all required fields
+- [ ] UNIQUE constraint prevents duplicate strategies
+- [ ] Preview summary is editable
+- [ ] Existing messages table still functional
+- [ ] All API endpoints work with Anthropic provider (backward compatibility)
+- [ ] All API endpoints work with OpenAI provider (if configured)
+- [ ] All API endpoints work with Google provider (if configured)
+- [ ] All API endpoints work with Ollama provider (if configured and running)
+- [ ] Provider switching via environment variable works without code changes
+- [ ] Streaming works correctly for all providers
+- [ ] CopilotKit integration works with all providers
+
+---
+
+### Epic 3.0 Acceptance Criteria Summary
+
+**Story 3.0.5 (Enhanced Segments & Topics Schema):**
+1. ✅ Segments table enhanced with structured profiles (demographic_profile, psychographic_profile, media_habits, example_persona)
+2. ✅ Topics table enhanced with content pillar fields (topic_type, content_angles, recommended_channels, risk_notes)
+3. ✅ Priority system migrated from INTEGER to TEXT enum (primary/secondary)
+4. ✅ Segment-topic matrix table created with importance and role mapping
+5. ✅ AI prompt updated to generate 3-5 primary segments (max 7), 4-7 primary topics (max 9) with priority
+6. ✅ AI generates segment-topic matrix with importance (high/medium/low) and role (core_message/support/experimental)
+7. ✅ All new fields validated against Zod schemas
+8. ✅ Backward compatibility maintained (existing data preserved, old fields as fallback)
+
+**Story 3.0.1-3.0.4 (Message Strategies):**
+9. ✅ Users can create communication strategies for segment × topic combinations
+10. ✅ Strategy contains 4 main categories: Strategy Core, Style & Tone, CTA & Funnel, Extra Fields
+11. ✅ AI generates complete strategies (16 sub-fields) for selected segment × topic combinations
+12. ✅ Preview cards show short summary (AI-generated, editable) in matrix cells
+13. ✅ Detail modal displays full strategy with all 16 sub-fields
+14. ✅ Strategy form allows editing all strategy fields organized by category
+15. ✅ One strategy per cell (segment × topic) - UNIQUE constraint enforced
+16. ✅ All strategy data validated against Zod schemas
+17. ✅ Existing `messages` table remains functional for Content Calendar use
+18. ✅ Migration preserves backward compatibility
+
+**Story 3.0.6 (AI Provider Abstraction):**
+19. ✅ Multiple AI provider support (Anthropic, OpenAI, Google Gemini, Ollama) with unified interface
+20. ✅ Provider selection via `AI_PROVIDER` environment variable works without code changes
+21. ✅ Model selection via `AI_MODEL` environment variable works correctly
+22. ✅ All API endpoints work with all supported providers
+23. ✅ Streaming works correctly for all providers
+24. ✅ CopilotKit integration works with all providers
+25. ✅ Backward compatibility maintained (`getAnthropicClient()` still works)
+26. ✅ Error handling provides clear, provider-specific error messages
+
+---
+
+### Epic 3.0 Key Code Locations
+
+**Database (Story 3.0.5):**
+- `supabase/migrations/YYYYMMDD_enhanced_segments_topics.sql` - Enhanced segments/topics + matrix migration
+- `lib/supabase/types.ts` - Generated TypeScript types (includes new fields)
+
+**Database (Story 3.0.1):**
+- `supabase/migrations/YYYYMMDD_message_strategies.sql` - Message strategies migration script
+- `lib/supabase/types.ts` - Generated TypeScript types
+
+**API Endpoints (Story 3.0.5):**
+- `/api/segment-topic-matrix/route.ts` - Matrix CRUD operations
+- `/api/campaigns/structure/route.ts` - Save new fields and matrix
+- `/api/segments/route.ts` - CRUD with new structured fields
+- `/api/topics/route.ts` - CRUD with new fields
+- `/api/ai/campaign-brief/route.ts` - Handle new schema in response
+
+**API Endpoints (Story 3.0.1-3.0.4):**
+- `/api/strategies/route.ts` - Strategy CRUD
+- `/api/strategies/[id]/route.ts` - Single strategy operations
+- `/api/ai/strategy-matrix/route.ts` - Strategy AI generator
+
+**Frontend Components (Story 3.0.5):**
+- `components/campaigns/CampaignWizard.tsx` - Form fields for new schema and matrix editor
+- `components/segments/SegmentManager.tsx` - Display/edit structured fields
+- `components/topics/TopicManager.tsx` - Display/edit new fields
+
+**Frontend Components (Story 3.0.2-3.0.4):**
+- `components/messages/MessageMatrix.tsx` - Refactored matrix (uses segment-topic matrix)
+- `components/messages/StrategyCell.tsx` - Cell component
+- `components/messages/StrategyPreviewCard.tsx` - Preview card
+- `components/messages/StrategyDetailModal.tsx` - Detail modal
+- `components/messages/StrategyForm.tsx` - Create/edit form
+
+**AI Integration (Story 3.0.5):**
+- `lib/ai/schemas.ts` - Enhanced segment/topic Zod schemas + matrix schema
+- `lib/ai/prompts/strategy-designer.ts` - Updated prompt with new schema requirements
+
+**AI Integration (Story 3.0.3):**
+- `lib/ai/schemas.ts` - Strategy Zod schemas
+- `lib/ai/prompts/strategy-generator.ts` - Strategy generation prompt
 
