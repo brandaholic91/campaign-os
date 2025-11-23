@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/lib/supabase/types'
 import { format } from 'date-fns'
 import { DeleteCampaignButton } from '@/components/campaigns/DeleteCampaignButton'
+import { CampaignStatusCard } from '@/components/campaigns/CampaignStatusCard'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 
@@ -119,26 +120,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* Status Card */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft flex flex-col justify-between h-full min-h-[160px]">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Státusz</span>
-            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
-               <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-               </svg>
-            </div>
-          </div>
-          <div>
-            <span className={`text-2xl font-display font-bold block mb-1 ${
-              campaign.status === 'running' ? 'text-green-600' :
-              campaign.status === 'closed' ? 'text-gray-600' :
-              'text-blue-600'
-            }`}>
-              {campaign.status ? statusLabels[campaign.status] : 'Tervezés'}
-            </span>
-            <span className="text-xs text-gray-400">Utolsó módosítás: most</span>
-          </div>
-        </div>
+        <CampaignStatusCard campaignId={id} currentStatus={campaign.status} updatedAt={campaign.updated_at} />
 
         {/* Date Card */}
         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft flex flex-col justify-between h-full min-h-[160px]">

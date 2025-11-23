@@ -60,10 +60,12 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
       const response = await fetch(`/api/segments?campaign_id=${campaignId}`)
       if (!response.ok) throw new Error('Failed to fetch segments')
       const data = await response.json()
-      setSegments(data)
+      // Ensure data is always an array
+      setSegments(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Error fetching segments:', err)
       setError(err instanceof Error ? err.message : 'Failed to load segments')
+      setSegments([]) // Set empty array on error
     } finally {
       setLoading(false)
     }
@@ -365,7 +367,7 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
         </form>
       )}
 
-      {segments.length === 0 ? (
+      {!segments || segments.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           <p className="text-lg font-medium mb-2">Még nincsenek célcsoportok</p>
           <p className="text-sm">Kattints az "Új célcsoport" gombra a hozzáadáshoz</p>
@@ -382,7 +384,7 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {segments.map((segment) => {
+              {(segments || []).map((segment) => {
                 const isExpanded = expandedSegmentId === segment.id
                 return (
                   <React.Fragment key={segment.id}>

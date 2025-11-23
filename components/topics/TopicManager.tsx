@@ -60,10 +60,12 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
       const response = await fetch(`/api/topics?campaign_id=${campaignId}`)
       if (!response.ok) throw new Error('Failed to fetch topics')
       const data = await response.json()
-      setTopics(data)
+      // Ensure data is always an array
+      setTopics(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Error fetching topics:', err)
       setError(err instanceof Error ? err.message : 'Failed to load topics')
+      setTopics([]) // Set empty array on error
     } finally {
       setLoading(false)
     }
@@ -391,7 +393,7 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
         </form>
       )}
 
-      {topics.length === 0 ? (
+      {!topics || topics.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           <p className="text-lg font-medium mb-2">Még nincsenek témák</p>
           <p className="text-sm">Kattints az "Új téma" gombra a hozzáadáshoz</p>
@@ -408,7 +410,7 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {topics.map((topic) => {
+              {(topics || []).map((topic) => {
                 const isExpanded = expandedTopicId === topic.id
                 return (
                   <React.Fragment key={topic.id}>
