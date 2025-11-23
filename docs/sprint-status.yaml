@@ -115,18 +115,18 @@ development_status:
 
   # Story 4.0.1: Strategic Metadata Schema Enhancement
   # Note: Story drafted 2025-11-23 - Goals, Topics, Narratives schema bővítés, DB migration
-  4-0-1-strategic-metadata-schema-enhancement: drafted
+  4-0-1-strategic-metadata-schema-enhancement: in-progress
 
   # Story 4.0.2: AI Prompt Enhancement for Strategic Data
   # Note: Story drafted 2025-11-23 - Strategy Designer prompt frissítés, új mezők generálása
-  4-0-2-ai-prompt-enhancement-strategic-data: drafted
+  4-0-2-ai-prompt-enhancement-strategic-data: approved
 
   # Story 4.0.3: Validation Logic & Matrix Rules
   # Note: Story drafted 2025-11-23 - Helper functions, matrix validation, completeness checks
-  4-0-3-validation-logic-matrix-rules: drafted
+  4-0-3-validation-logic-matrix-rules: approved
 
   # Story 4.0.4: UI Validation Status & Checklist
   # Note: Story drafted 2025-11-23 - Validation indicators, "Ready for Execution" checklist UI
-  4-0-4-ui-validation-status-checklist: drafted
+  4-0-4-ui-validation-status-checklist: approved
 
   epic-4-0-retrospective: optional

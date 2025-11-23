@@ -1,6 +1,6 @@
 # Story 4.0.1: Strategic Metadata Schema Enhancement
 
-**Status:** approved
+**Status:** in progress
 
 **Status note:** Story drafted 2025-11-23 - Goals, Topics, Narratives schema bővítés, DB migration
 
@@ -129,18 +129,18 @@ So that **the execution AI has structured, prioritized data for sprint and conte
   - [x] Verify all new fields are optional (backward compatibility)
   - [x] Test schema validation with sample data (both table-based and JSONB-based)
 
-- [ ] **Task 3: Generate TypeScript types** (AC: #6)
-  - [ ] Run Supabase type generation command
-  - [ ] Verify new fields are included in generated types
-  - [ ] Check type exports in `lib/supabase/types.ts`
+- [x] **Task 3: Generate TypeScript types** (AC: #6)
+  - [x] Run Supabase type generation command
+  - [x] Verify new fields are included in generated types
+  - [x] Check type exports in `lib/supabase/types.ts`
 
-- [ ] **Task 4: Update API to support narratives table** (AC: #3)
-  - [ ] Update `app/api/campaigns/structure/route.ts` to save narratives to table (not just JSONB)
-  - [ ] Create narratives in `narratives` table with `suggested_phase`
-  - [ ] Create junction table entries for `narrative_goals` and `narrative_topics`
-  - [ ] Optionally sync to `campaigns.narratives` JSONB for backward compatibility
-  - [ ] Update narrative loading to read from table (with JOINs) or JSONB (fallback)
-  - [ ] Handle both table-based and JSONB-based narratives during transition
+- [x] **Task 4: Update API to support narratives table** (AC: #3)
+  - [x] Update `app/api/campaigns/structure/route.ts` to save narratives to table (not just JSONB)
+  - [x] Create narratives in `narratives` table with `suggested_phase`
+  - [x] Create junction table entries for `narrative_goals` and `narrative_topics`
+  - [x] Optionally sync to `campaigns.narratives` JSONB for backward compatibility
+  - [x] Update narrative loading to read from table (with JOINs) or JSONB (fallback)
+  - [x] Handle both table-based and JSONB-based narratives during transition
 
 - [ ] **Task 5: Test migration and backward compatibility** (AC: #1, #2, #3, #7)
   - [ ] Run migration on local Supabase instance

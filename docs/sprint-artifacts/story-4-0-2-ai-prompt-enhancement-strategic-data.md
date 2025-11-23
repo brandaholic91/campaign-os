@@ -1,6 +1,6 @@
 # Story 4.0.2: AI Prompt Enhancement for Strategic Data
 
-**Status:** drafted
+**Status:** approved
 
 **Status note:** Story drafted 2025-11-23 - Strategy Designer prompt frissítés, új mezők generálása
 

@@ -20,6 +20,8 @@ export const GoalSchema = z.object({
   description: z.string().optional(),
   target_metric: z.record(z.string(), z.any()).optional(),
   priority: z.number().int().nonnegative(),
+  funnel_stage: z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization']).optional(),
+  kpi_hint: z.string().optional(),
 })
 
 export const DemographicProfileSchema = z.object({
@@ -81,6 +83,8 @@ export const TopicSchema = z.object({
   }),
   priority: z.enum(['primary', 'secondary']).default('secondary'),
   category: z.string().optional(), // Legacy field
+  related_goal_stages: z.array(z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization'])).optional(),
+  recommended_content_types: flexibleStringArray().optional(),
 })
 
 // Schema for segment-topic matrix with indices (from AI generation)
@@ -108,9 +112,15 @@ export const SegmentTopicMatrixEntrySchema = z.union([
 ])
 
 export const NarrativeSchema = z.object({
+  id: z.string().uuid().optional(), // Optional for new narratives before saving
   title: z.string(),
   description: z.string(),
   priority: z.number().int().nonnegative().optional(),
+  primary_goal_ids: z.array(z.string().uuid()).optional(),
+  primary_topic_ids: z.array(z.string().uuid()).optional(),
+  goal_indices: z.array(z.number().int().nonnegative()).optional(), // For AI generation to link to new goals
+  topic_indices: z.array(z.number().int().nonnegative()).optional(), // For AI generation to link to new topics
+  suggested_phase: z.enum(['early', 'mid', 'late']).optional(),
 })
 
 export const CampaignStructureSchema = z.object({

@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
       await supabase.schema('campaign_os').from('goals').delete().eq('campaign_id', campaignId)
       await supabase.schema('campaign_os').from('segments').delete().eq('campaign_id', campaignId)
       await supabase.schema('campaign_os').from('topics').delete().eq('campaign_id', campaignId)
+      await supabase.schema('campaign_os').from('narratives').delete().eq('campaign_id', campaignId)
     } else {
       // Create new campaign
       const { data: campaignData, error: campaignError } = await supabase
@@ -96,8 +97,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Create Goals
+    let goalIdMap = new Map<number, string>() // Map index in array to DB UUID
     if (structure.goals.length > 0) {
-      const { error: goalsError } = await supabase
+      const { data: createdGoals, error: goalsError } = await supabase
         .schema('campaign_os')
         .from('goals')
         .insert(
@@ -105,10 +107,19 @@ export async function POST(req: NextRequest) {
             campaign_id: campaignId,
             title: g.title,
             description: g.description,
-            priority: g.priority || 1
+            priority: g.priority || 1,
+            funnel_stage: g.funnel_stage,
+            kpi_hint: g.kpi_hint
           })) as any
         )
+        .select('id')
       if (goalsError) throw new Error(`Goals creation failed: ${goalsError.message}`)
+
+      if (createdGoals) {
+        createdGoals.forEach((goal, index) => {
+          goalIdMap.set(index, goal.id)
+        })
+      }
     }
 
     // 3. Create Segments
@@ -243,6 +254,77 @@ export async function POST(req: NextRequest) {
       }
     } else {
       console.warn('No segment_topic_matrix provided in structure or matrix is empty')
+    }
+
+    // 6. Create Narratives
+    if (structure.narratives && structure.narratives.length > 0) {
+      for (const narrative of structure.narratives) {
+        // Create narrative
+        const { data: createdNarrative, error: narrativeError } = await supabase
+          .schema('campaign_os')
+          .from('narratives')
+          .insert({
+            campaign_id: campaignId,
+            title: narrative.title,
+            description: narrative.description,
+            priority: narrative.priority || 1,
+            suggested_phase: narrative.suggested_phase
+          } as any)
+          .select('id')
+          .single()
+
+        if (narrativeError) {
+          console.error('Narrative creation failed:', narrativeError)
+          continue
+        }
+
+        const narrativeId = createdNarrative.id
+        const goalIds = new Set<string>()
+        const topicIds = new Set<string>()
+
+        // Collect Goal IDs from indices or direct IDs
+        if (narrative.goal_indices) {
+          narrative.goal_indices.forEach(idx => {
+            const id = goalIdMap.get(idx)
+            if (id) goalIds.add(id)
+          })
+        }
+        if (narrative.primary_goal_ids) {
+          narrative.primary_goal_ids.forEach(id => goalIds.add(id))
+        }
+
+        // Collect Topic IDs from indices or direct IDs
+        if (narrative.topic_indices) {
+          narrative.topic_indices.forEach(idx => {
+            const id = topicIdMap.get(idx)
+            if (id) topicIds.add(id)
+          })
+        }
+        if (narrative.primary_topic_ids) {
+          narrative.primary_topic_ids.forEach(id => topicIds.add(id))
+        }
+
+        // Insert Junctions
+        if (goalIds.size > 0) {
+          await supabase
+            .schema('campaign_os')
+            .from('narrative_goals')
+            .insert(Array.from(goalIds).map(goalId => ({
+              narrative_id: narrativeId,
+              goal_id: goalId
+            })))
+        }
+
+        if (topicIds.size > 0) {
+          await supabase
+            .schema('campaign_os')
+            .from('narrative_topics')
+            .insert(Array.from(topicIds).map(topicId => ({
+              narrative_id: narrativeId,
+              topic_id: topicId
+            })))
+        }
+      }
     }
 
     return NextResponse.json({ success: true, campaignId })
