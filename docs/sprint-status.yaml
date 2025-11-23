@@ -123,7 +123,7 @@ development_status:
 
   # Story 4.0.3: Validation Logic & Matrix Rules
   # Note: Story drafted 2025-11-23 - Helper functions, matrix validation, completeness checks
-  4-0-3-validation-logic-matrix-rules: approved
+  4-0-3-validation-logic-matrix-rules: review
 
   # Story 4.0.4: UI Validation Status & Checklist
   # Note: Story drafted 2025-11-23 - Validation indicators, "Ready for Execution" checklist UI
