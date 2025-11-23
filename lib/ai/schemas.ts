@@ -7,18 +7,68 @@ export const GoalSchema = z.object({
   priority: z.number().int().nonnegative(),
 })
 
-export const SegmentSchema = z.object({
+export const DemographicProfileSchema = z.object({
+  age_range: z.string(),
+  location_type: z.string(),
+  income_level: z.string(),
+  other_demographics: z.string().optional(),
+})
+
+export const PsychographicProfileSchema = z.object({
+  values: z.array(z.string()),
+  attitudes_to_campaign_topic: z.array(z.string()),
+  motivations: z.array(z.string()),
+  pain_points: z.array(z.string()),
+})
+
+export const MediaHabitsSchema = z.object({
+  primary_channels: z.array(z.string()),
+  secondary_channels: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+})
+
+export const ExamplePersonaSchema = z.object({
   name: z.string(),
+  one_sentence_story: z.string(),
+})
+
+export const SegmentSchema = z.object({
+  id: z.string().optional(), // Optional for new segments before saving
+  name: z.string(),
+  short_label: z.string().optional(),
   description: z.string().optional(),
+  demographic_profile: DemographicProfileSchema.optional(),
+  psychographic_profile: PsychographicProfileSchema.optional(),
+  media_habits: MediaHabitsSchema.optional(),
+  funnel_stage_focus: z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization']).optional(),
+  example_persona: ExamplePersonaSchema.optional(),
+  priority: z.enum(['primary', 'secondary']).default('secondary'),
+  // Legacy fields for backward compatibility
   demographics: z.record(z.string(), z.any()).optional(),
   psychographics: z.record(z.string(), z.any()).optional(),
-  priority: z.number().int().nonnegative(),
 })
 
 export const TopicSchema = z.object({
+  id: z.string().optional(), // Optional for new topics before saving
   name: z.string(),
+  short_label: z.string().optional(),
   description: z.string().optional(),
-  category: z.string().optional(),
+  topic_type: z.enum(['benefit', 'problem', 'value', 'proof', 'story']).optional(),
+  related_goal_types: z.array(z.string()).optional(),
+  core_narrative: z.string().optional(),
+  content_angles: z.array(z.string()).optional(),
+  recommended_channels: z.array(z.string()).optional(),
+  risk_notes: z.array(z.string()).optional(),
+  priority: z.enum(['primary', 'secondary']).default('secondary'),
+  category: z.string().optional(), // Legacy field
+})
+
+export const SegmentTopicMatrixSchema = z.object({
+  segment_id: z.string().uuid(),
+  topic_id: z.string().uuid(),
+  importance: z.enum(['high', 'medium', 'low']),
+  role: z.enum(['core_message', 'support', 'experimental']),
+  summary: z.string().max(500).optional(),
 })
 
 export const NarrativeSchema = z.object({
@@ -31,7 +81,8 @@ export const CampaignStructureSchema = z.object({
   goals: z.array(GoalSchema),
   segments: z.array(SegmentSchema),
   topics: z.array(TopicSchema),
-  narratives: z.array(NarrativeSchema),
+  narratives: z.array(NarrativeSchema).optional().default([]),
+  segment_topic_matrix: z.array(SegmentTopicMatrixSchema).optional(),
 })
 
 export const BriefNormalizerOutputSchema = z.object({

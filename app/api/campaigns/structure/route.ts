@@ -59,37 +59,100 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Create Segments
+    let segmentIdMap = new Map<number, string>() // Map index in array to DB UUID
     if (structure.segments.length > 0) {
-      const { error: segmentsError } = await supabase
+      const { data: createdSegments, error: segmentsError } = await supabase
         .schema('campaign_os')
         .from('segments')
         .insert(
           structure.segments.map(s => ({
             campaign_id: campaignId,
             name: s.name,
+            short_label: s.short_label,
             description: s.description,
-            priority: s.priority || 1,
-            demographics: s.demographics || {},
-            psychographics: s.psychographics || {}
+            priority: s.priority || 'secondary',
+            demographic_profile: s.demographic_profile || {},
+            psychographic_profile: s.psychographic_profile || {},
+            media_habits: s.media_habits || {},
+            funnel_stage_focus: s.funnel_stage_focus,
+            example_persona: s.example_persona || {},
+            // Legacy fields fallback
+            demographics: s.demographics || s.demographic_profile || {},
+            psychographics: s.psychographics || s.psychographic_profile || {}
           })) as any
         )
+        .select('id')
+      
       if (segmentsError) throw new Error(`Segments creation failed: ${segmentsError.message}`)
+      
+      // Store IDs for matrix creation
+      if (createdSegments) {
+        createdSegments.forEach((seg, index) => {
+          segmentIdMap.set(index, seg.id)
+        })
+      }
     }
 
     // 4. Create Topics
+    let topicIdMap = new Map<number, string>() // Map index in array to DB UUID
     if (structure.topics.length > 0) {
-      const { error: topicsError } = await supabase
+      const { data: createdTopics, error: topicsError } = await supabase
         .schema('campaign_os')
         .from('topics')
         .insert(
           structure.topics.map(t => ({
             campaign_id: campaignId,
             name: t.name,
+            short_label: t.short_label,
             description: t.description,
-            category: t.category
+            topic_type: t.topic_type,
+            related_goal_types: t.related_goal_types || [],
+            core_narrative: t.core_narrative,
+            content_angles: t.content_angles || [],
+            recommended_channels: t.recommended_channels || [],
+            risk_notes: t.risk_notes || [],
+            priority: t.priority || 'secondary',
+            category: t.category // Legacy
           })) as any
         )
+        .select('id')
+
       if (topicsError) throw new Error(`Topics creation failed: ${topicsError.message}`)
+
+      // Store IDs for matrix creation
+      if (createdTopics) {
+        createdTopics.forEach((topic, index) => {
+          topicIdMap.set(index, topic.id)
+        })
+      }
+    }
+
+    // 5. Create Segment-Topic Matrix
+    if (structure.segment_topic_matrix && structure.segment_topic_matrix.length > 0) {
+      // Filter valid matrix entries where both segment and topic exist
+      const validMatrixEntries = structure.segment_topic_matrix
+        .filter((entry: any) => {
+          return segmentIdMap.has(entry.segment_index) && topicIdMap.has(entry.topic_index)
+        })
+        .map((entry: any) => ({
+          segment_id: segmentIdMap.get(entry.segment_index)!, // Non-null assertion safe due to filter
+          topic_id: topicIdMap.get(entry.topic_index)!, // Non-null assertion safe due to filter
+          importance: entry.importance,
+          role: entry.role,
+          summary: entry.summary
+        }))
+
+      if (validMatrixEntries.length > 0) {
+        const { error: matrixError } = await supabase
+          .schema('campaign_os')
+          .from('segment_topic_matrix')
+          .insert(validMatrixEntries)
+        
+        if (matrixError) {
+          console.error('Matrix creation failed:', matrixError)
+          // Don't throw here, as core campaign structure is saved
+        }
+      }
     }
 
     return NextResponse.json({ success: true, campaignId })

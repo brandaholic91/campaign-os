@@ -200,14 +200,25 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="space-y-4 p-6 border border-gray-200 rounded-xl mb-8 bg-gray-50/50">
-          <div className="space-y-2">
-            <Label htmlFor="name">Név *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Név *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="short_label">Rövid címke (UI)</Label>
+              <Input
+                id="short_label"
+                value={formData.short_label || ''}
+                onChange={(e) => setFormData({ ...formData, short_label: e.target.value || null })}
+                placeholder="pl. 20-35 városi"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -220,46 +231,58 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="priority">Prioritás (1-5)</Label>
-            <Input
-              id="priority"
-              type="number"
-              min="1"
-              max="5"
-              value={formData.priority ?? ''}
-              onChange={(e) => setFormData({ ...formData, priority: e.target.value ? parseInt(e.target.value) : null })}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="priority">Prioritás</Label>
+              <select
+                id="priority"
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={formData.priority || 'secondary'}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'primary' | 'secondary' })}
+              >
+                <option value="primary">Elsődleges</option>
+                <option value="secondary">Másodlagos</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="funnel_stage_focus">Funnel Fókusz</Label>
+              <select
+                id="funnel_stage_focus"
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={formData.funnel_stage_focus || 'awareness'}
+                onChange={(e) => setFormData({ ...formData, funnel_stage_focus: e.target.value as any })}
+              >
+                <option value="awareness">Ismertség (Awareness)</option>
+                <option value="engagement">Elköteleződés (Engagement)</option>
+                <option value="consideration">Megfontolás (Consideration)</option>
+                <option value="conversion">Konverzió (Conversion)</option>
+                <option value="mobilization">Mobilizáció (Mobilization)</option>
+              </select>
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="demographics">Demográfiai adatok (JSON)</Label>
+            <Label htmlFor="demographics">Demográfiai Profil (JSON)</Label>
             <Textarea
               id="demographics"
               value={demographicsJson}
               onChange={(e) => setDemographicsJson(e.target.value)}
-              placeholder='{"age": "25-35", "location": "Budapest", "income": "middle"}'
+              placeholder='{"age_range": "20-35", "location_type": "városi", "income_level": "közepes"}'
               rows={4}
               className="font-mono text-sm"
             />
-            <p className="text-xs text-muted-foreground">
-              Opcionális JSON formátumú adatok (pl. életkor, hely, jövedelem)
-            </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="psychographics">Pszichográfiai adatok (JSON)</Label>
+            <Label htmlFor="psychographics">Pszichográfiai Profil (JSON)</Label>
             <Textarea
               id="psychographics"
               value={psychographicsJson}
               onChange={(e) => setPsychographicsJson(e.target.value)}
-              placeholder='{"values": ["sustainability", "quality"], "lifestyle": "urban"}'
+              placeholder='{"values": ["fenntarthatóság"], "pain_points": ["drágaság"]}'
               rows={4}
               className="font-mono text-sm"
             />
-            <p className="text-xs text-muted-foreground">
-              Opcionális JSON formátumú adatok (pl. értékek, életstílus, attitűdök)
-            </p>
           </div>
 
           <div className="flex gap-2">

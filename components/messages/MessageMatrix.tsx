@@ -31,6 +31,7 @@ interface MessageMatrixProps {
   segments: Segment[]
   topics: Topic[]
   strategies: StrategyRow[]
+  matrixEntries: any[] // TODO: Type this properly with Database types
 }
 
 export default function MessageMatrix({
@@ -38,6 +39,7 @@ export default function MessageMatrix({
   segments,
   topics,
   strategies,
+  matrixEntries = [],
 }: MessageMatrixProps) {
   const router = useRouter()
   const [selectedCell, setSelectedCell] = useState<{
@@ -522,6 +524,10 @@ export default function MessageMatrix({
                         {/* Data Cells */}
                         {topics.map(topic => {
                           const strategy = getStrategyForCell(segment.id, topic.id)
+                          const matrixEntry = matrixEntries.find(
+                            (m) => m.segment_id === segment.id && m.topic_id === topic.id
+                          )
+                          
                           if (process.env.NODE_ENV === 'development' && strategy) {
                             console.log(`[MessageMatrix] Rendering cell for segment ${segment.id}, topic ${topic.id}`, {
                               hasStrategy: !!strategy,
@@ -534,6 +540,7 @@ export default function MessageMatrix({
                             <StrategyCell
                               key={`${segment.id}-${topic.id}`}
                               strategy={strategy?.content}
+                              matrixEntry={matrixEntry}
                               isLoading={isCellGenerating}
                               onClick={() => handleCellClick(segment.id, topic.id)}
                               onCreate={() => handleCreateStrategy(segment.id, topic.id)}

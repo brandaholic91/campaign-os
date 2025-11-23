@@ -4,6 +4,8 @@ import { BRIEF_NORMALIZER_SYSTEM_PROMPT, BRIEF_NORMALIZER_USER_PROMPT } from '@/
 import { STRATEGY_DESIGNER_SYSTEM_PROMPT, STRATEGY_DESIGNER_USER_PROMPT } from '@/lib/ai/prompts/strategy-designer'
 import { BriefNormalizerOutputSchema, CampaignStructureSchema } from '@/lib/ai/schemas'
 
+export const maxDuration = 60 // Increase timeout for AI generation
+
 export async function POST(req: NextRequest) {
   try {
     const { brief, campaignType, goalType } = await req.json()
@@ -73,66 +75,43 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
-    // Step 2: Strategy Designer
-    const strategyResponse = await client.messages.create({
+    // Step 2: Strategy Designer (Streaming)
+    const stream = await client.messages.create({
       model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: STRATEGY_DESIGNER_SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(normalizedBrief) }
-      ]
+      ],
+      stream: true,
+    }, {
+      timeout: 120 * 1000 // 2 minutes timeout
     })
 
-    const strategyContent = strategyResponse.content[0].type === 'text'
-      ? strategyResponse.content[0].text
-      : ''
-
-    if (!strategyContent) {
-      console.error('Strategy Designer: Empty response')
-      throw new Error('Empty response from Strategy Designer')
-    }
-
-    // Extract JSON from response (handle markdown code blocks)
-    let strategyJsonContent = strategyContent.trim()
+    const encoder = new TextEncoder()
     
-    // Remove markdown code blocks if present
-    if (strategyJsonContent.startsWith('```')) {
-      const lines = strategyJsonContent.split('\n')
-      const firstLine = lines[0]
-      const lastLine = lines[lines.length - 1]
-      
-      // Remove first and last line if they are code block markers
-      if (firstLine.match(/^```(json)?$/) && lastLine.match(/^```$/)) {
-        strategyJsonContent = lines.slice(1, -1).join('\n')
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of stream) {
+            if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+              controller.enqueue(encoder.encode(chunk.delta.text))
+            }
+          }
+          controller.close()
+        } catch (error) {
+          console.error('Streaming error:', error)
+          controller.error(error)
+        }
       }
-    }
+    })
 
-    let campaignStructure
-    try {
-      campaignStructure = JSON.parse(strategyJsonContent)
-    } catch (parseError) {
-      console.error('Strategy Designer JSON Parse Error:', parseError)
-      console.error('Raw Output:', strategyContent)
-      console.error('Extracted JSON:', strategyJsonContent)
-      return NextResponse.json({ 
-        error: 'Failed to parse strategy designer response as JSON',
-        details: parseError instanceof Error ? parseError.message : 'Unknown parse error'
-      }, { status: 500 })
-    }
-
-    try {
-      campaignStructure = CampaignStructureSchema.parse(campaignStructure)
-    } catch (validationError) {
-      console.error('Strategy Designer Schema Validation Error:', validationError)
-      console.error('Parsed JSON:', campaignStructure)
-      console.error('Raw Output:', strategyContent)
-      return NextResponse.json({ 
-        error: 'Failed to validate strategy designer output',
-        details: validationError instanceof Error ? validationError.message : 'Schema validation failed'
-      }, { status: 500 })
-    }
-
-    return NextResponse.json(campaignStructure)
+    return new NextResponse(readable, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+      },
+    })
 
   } catch (error) {
     console.error('Campaign Generation Error:', error)

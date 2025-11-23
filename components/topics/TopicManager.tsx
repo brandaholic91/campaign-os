@@ -115,6 +115,10 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
       name: topic.name,
       description: topic.description || '',
       category: topic.category || '',
+      short_label: topic.short_label || '',
+      topic_type: topic.topic_type || 'benefit',
+      core_narrative: topic.core_narrative || '',
+      priority: topic.priority || 'secondary',
     })
     setShowForm(true)
   }
@@ -150,14 +154,25 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="space-y-4 p-6 border border-gray-200 rounded-xl mb-8 bg-gray-50/50">
-          <div className="space-y-2">
-            <Label htmlFor="name">Név *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Név *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="short_label">Rövid címke (UI)</Label>
+              <Input
+                id="short_label"
+                value={formData.short_label || ''}
+                onChange={(e) => setFormData({ ...formData, short_label: e.target.value || null })}
+                placeholder="pl. Zöld = spórolás"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -170,8 +185,49 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
             />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="priority">Prioritás</Label>
+              <select
+                id="priority"
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={formData.priority || 'secondary'}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'primary' | 'secondary' })}
+              >
+                <option value="primary">Elsődleges</option>
+                <option value="secondary">Másodlagos</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="topic_type">Téma Típusa</Label>
+              <select
+                id="topic_type"
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={formData.topic_type || 'benefit'}
+                onChange={(e) => setFormData({ ...formData, topic_type: e.target.value as any })}
+              >
+                <option value="benefit">Előny (Benefit)</option>
+                <option value="problem">Probléma (Problem)</option>
+                <option value="value">Érték (Value)</option>
+                <option value="proof">Bizonyíték (Proof)</option>
+                <option value="story">Történet (Story)</option>
+              </select>
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label htmlFor="category">Kategória</Label>
+            <Label htmlFor="core_narrative">Alapnarratíva</Label>
+            <Textarea
+              id="core_narrative"
+              value={formData.core_narrative || ''}
+              onChange={(e) => setFormData({ ...formData, core_narrative: e.target.value || null })}
+              rows={2}
+              placeholder="1-2 mondatos összefoglaló a témáról"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="category">Kategória (Legacy)</Label>
             <Input
               id="category"
               value={formData.category || ''}

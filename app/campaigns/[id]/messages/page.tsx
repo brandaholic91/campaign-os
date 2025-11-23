@@ -65,6 +65,14 @@ export default async function MessageMatrixPage({
     console.log(`[MessageMatrix] Loaded ${strategies.length} strategies for campaign ${id}`)
   }
 
+  const { data: matrixRaw } = await db
+    .from('segment_topic_matrix')
+    .select('*')
+    // We can't filter by campaign_id directly on this table, but we can filter by the segments we already fetched
+    // However, Supabase join query is better. But since we already have segments, we can just filter in memory or use 'in' query
+    // Let's use 'in' query with segment IDs
+    .in('segment_id', segments?.map(s => s.id) || [])
+
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex flex-col font-sans text-gray-900">
       <div className="max-w-[1800px] mx-auto w-full px-6 py-8 flex flex-col gap-8">
@@ -83,6 +91,7 @@ export default async function MessageMatrixPage({
           segments={segments || []}
           topics={topics || []}
           strategies={strategies}
+          matrixEntries={matrixRaw || []}
         />
       </div>
     </div>

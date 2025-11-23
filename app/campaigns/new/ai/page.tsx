@@ -12,6 +12,7 @@ import { CampaignStructurePreview } from '@/components/ai/CampaignStructurePrevi
 import { toast } from 'sonner'
 import { useCopilotAction, useCopilotReadable, useCopilotChat } from '@copilotkit/react-core'
 import { TextMessage, Role as MessageRole, ResultMessage, Message as DeprecatedGqlMessage } from '@copilotkit/runtime-client-gql'
+import { jsonrepair } from 'jsonrepair'
 import { highlightField, prefillField } from '@/lib/ai/copilotkit/tools'
 import { CampaignStructureSchema } from '@/lib/ai/schemas'
 
@@ -257,18 +258,27 @@ export default function CampaignAIPage() {
 
     const actionResults = visibleMessages.filter((msg: DeprecatedGqlMessage): msg is ResultMessage => 
       typeof msg.isResultMessage === 'function' && msg.isResultMessage() && 
-      msg.actionName === 'generateCampaignStructure'
+      msg.actionName === 'generateCampaignStrategy'
     )
     
     if (actionResults.length > 0) {
       const lastResult = actionResults[actionResults.length - 1]
       const decodedResult = ResultMessage.decodeResult(lastResult.result)
-      const resultKey = JSON.stringify(decodedResult)
+      let parsedResult = decodedResult
+      if (typeof decodedResult === 'string') {
+        try {
+          parsedResult = JSON.parse(decodedResult)
+        } catch (e) {
+          console.error('Failed to parse decoded result string:', e)
+        }
+      }
+      
+      const resultKey = JSON.stringify(parsedResult)
       const currentKey = generatedStructure ? JSON.stringify(generatedStructure) : null
       
       if (resultKey !== currentKey) {
         try {
-          const validated = CampaignStructureSchema.safeParse(decodedResult)
+          const validated = CampaignStructureSchema.safeParse(parsedResult)
           
           if (validated.success) {
             setGeneratedStructure(validated.data)
@@ -289,12 +299,17 @@ export default function CampaignAIPage() {
 
     const executionMessages = visibleMessages.filter((msg: DeprecatedGqlMessage) => 
       typeof msg.isActionExecutionMessage === 'function' && 
-      msg.isActionExecutionMessage() && 
-      (msg as any).name === 'generateCampaignStructure'
+      msg.isActionExecutionMessage()
     )
     
-    if (executionMessages.length > 0 && progressStage === 'brief-normalizer') {
-      setProgressStage('strategy-designer')
+    // Check for normalizeCampaignBrief execution
+    if (executionMessages.some((msg: any) => msg.name === 'normalizeCampaignBrief')) {
+       if (progressStage === 'idle') setProgressStage('brief-normalizer')
+    }
+
+    // Check for generateCampaignStrategy execution
+    if (executionMessages.some((msg: any) => msg.name === 'generateCampaignStrategy')) {
+       if (progressStage === 'brief-normalizer') setProgressStage('strategy-designer')
     }
   }, [visibleMessages, generatedStructure, progressStage])
 
@@ -327,22 +342,77 @@ export default function CampaignAIPage() {
     // Build brief from form data
     const brief = `${formData.description}\n\nKampány típusa: ${formData.type}\nCél: ${formData.goalType}\nElsődleges cél: ${formData.primaryGoal}`
 
-    const userMessage = new TextMessage({
-      role: MessageRole.User,
-      content: JSON.stringify({
-        command: 'generate_campaign_structure',
-        brief,
-        campaignType: formData.type || undefined,
-        goalType: formData.goalType || undefined,
-        formData: formData,
-      }),
-    })
-
     try {
-      await appendMessage(userMessage, { followUp: true })
+      const response = await fetch('/api/ai/campaign-brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brief,
+          campaignType: formData.type,
+          goalType: formData.goalType
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate campaign structure')
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('Response body is not readable')
+
+      const decoder = new TextDecoder()
+      let resultText = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        resultText += decoder.decode(value, { stream: true })
+      }
+      
+      // Clean up potential markdown code blocks
+      let jsonContent = resultText.trim()
+      if (jsonContent.startsWith('```')) {
+        const lines = jsonContent.split('\n')
+        if (lines[0].match(/^```(json)?$/) && lines[lines.length - 1].match(/^```$/)) {
+          jsonContent = lines.slice(1, -1).join('\n')
+        }
+      }
+
+      let structure
+      try {
+        // Try standard parse first
+        structure = JSON.parse(jsonContent)
+      } catch (e) {
+        console.log('Standard JSON parse failed, attempting repair...')
+        try {
+          // Attempt to repair truncated JSON
+          const repaired = jsonrepair(jsonContent)
+          structure = JSON.parse(repaired)
+          console.log('JSON repaired successfully')
+        } catch (repairError) {
+          console.error('JSON Repair Failed:', repairError)
+          console.error('Raw Output Length:', resultText.length)
+          throw new Error('A generálás megszakadt és nem sikerült helyreállítani. Kérlek próbáld újra.')
+        }
+      }
+      
+      // Validate structure
+      const validated = CampaignStructureSchema.safeParse(structure)
+      if (validated.success) {
+        setGeneratedStructure(validated.data)
+        setProgressStage('done')
+        toast.success('Kampány struktúra generálva!')
+      } else {
+        console.error('Validation Error:', validated.error)
+        toast.error('Hiba: Érvénytelen AI kimenet. Kérlek próbáld újra.')
+        setProgressStage('idle')
+      }
+
     } catch (error) {
-      console.error('Error sending message to CopilotKit:', error)
-      toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás indításakor')
+      console.error('Error generating campaign:', error)
+      toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás során')
       setProgressStage('idle')
     }
   }

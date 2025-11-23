@@ -286,38 +286,101 @@ export type Database = {
           },
         ]
       }
+      segment_topic_matrix: {
+        Row: {
+          created_at: string | null
+          importance: string
+          role: string
+          segment_id: string
+          summary: string | null
+          topic_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          importance: string
+          role: string
+          segment_id: string
+          summary?: string | null
+          topic_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          importance?: string
+          role?: string
+          segment_id?: string
+          summary?: string | null
+          topic_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "segment_topic_matrix_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "segments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segment_topic_matrix_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       segments: {
         Row: {
           campaign_id: string
           created_at: string | null
+          demographic_profile: Json | null
           demographics: Json | null
           description: string | null
+          example_persona: Json | null
+          funnel_stage_focus: string | null
           id: string
+          media_habits: Json | null
           name: string
-          priority: number | null
+          priority: string | null
+          psychographic_profile: Json | null
           psychographics: Json | null
+          short_label: string | null
           updated_at: string | null
         }
         Insert: {
           campaign_id: string
           created_at?: string | null
+          demographic_profile?: Json | null
           demographics?: Json | null
           description?: string | null
+          example_persona?: Json | null
+          funnel_stage_focus?: string | null
           id?: string
+          media_habits?: Json | null
           name: string
-          priority?: number | null
+          priority?: string | null
+          psychographic_profile?: Json | null
           psychographics?: Json | null
+          short_label?: string | null
           updated_at?: string | null
         }
         Update: {
           campaign_id?: string
           created_at?: string | null
+          demographic_profile?: Json | null
           demographics?: Json | null
           description?: string | null
+          example_persona?: Json | null
+          funnel_stage_focus?: string | null
           id?: string
+          media_habits?: Json | null
           name?: string
-          priority?: number | null
+          priority?: string | null
+          psychographic_profile?: Json | null
           psychographics?: Json | null
+          short_label?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -448,28 +511,52 @@ export type Database = {
         Row: {
           campaign_id: string
           category: string | null
+          content_angles: Json | null
+          core_narrative: string | null
           created_at: string | null
           description: string | null
           id: string
           name: string
+          priority: string | null
+          recommended_channels: Json | null
+          related_goal_types: Json | null
+          risk_notes: Json | null
+          short_label: string | null
+          topic_type: string | null
           updated_at: string | null
         }
         Insert: {
           campaign_id: string
           category?: string | null
+          content_angles?: Json | null
+          core_narrative?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name: string
+          priority?: string | null
+          recommended_channels?: Json | null
+          related_goal_types?: Json | null
+          risk_notes?: Json | null
+          short_label?: string | null
+          topic_type?: string | null
           updated_at?: string | null
         }
         Update: {
           campaign_id?: string
           category?: string | null
+          content_angles?: Json | null
+          core_narrative?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
+          priority?: string | null
+          recommended_channels?: Json | null
+          related_goal_types?: Json | null
+          risk_notes?: Json | null
+          short_label?: string | null
+          topic_type?: string | null
           updated_at?: string | null
         }
         Relationships: [

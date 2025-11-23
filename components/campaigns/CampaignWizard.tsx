@@ -118,6 +118,8 @@ export function CampaignWizard({ onBack, onComplete }: CampaignWizardProps) {
     targetTags: [] as string[],
     existingPersonas: '',
     attitudes: '',
+    demographics: '',
+    psychographics: '',
 
     // Step 5: Üzenetirányok
     messages: [] as string[],
@@ -316,9 +318,7 @@ export function CampaignWizard({ onBack, onComplete }: CampaignWizardProps) {
         </div>
 
         <div>
-          <Label htmlFor="goalType" className="text-sm font-semibold text-gray-700 mb-1">
-            Cél típusa
-          </Label>
+          <Label htmlFor="goalType" className="text-sm font-semibold text-gray-700 mb-1">Cél típusa *</Label>
           <Select
             value={formData.goalType}
             onValueChange={(value) => updateField('goalType', value)}
@@ -449,6 +449,36 @@ export function CampaignWizard({ onBack, onComplete }: CampaignWizardProps) {
           <p className="text-xs text-gray-500 mt-1">
             Milyen érzelmi, bizalmi viszonyban vannak a témával?
           </p>
+        </div>
+
+        {/* New Fields for Enhanced Schema */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+             <Label htmlFor="demographics" className="text-sm font-semibold text-gray-700 mb-1">
+              Demográfiai jellemzők (AI számára)
+            </Label>
+            <Textarea
+              id="demographics"
+              value={formData.demographics || ''}
+              onChange={(e) => updateField('demographics', e.target.value)}
+              rows={2}
+              className="mt-1"
+              placeholder="pl. 25-40 év, városi, felsőfokú végzettség..."
+            />
+          </div>
+           <div>
+             <Label htmlFor="psychographics" className="text-sm font-semibold text-gray-700 mb-1">
+              Pszichográfiai jellemzők (AI számára)
+            </Label>
+            <Textarea
+              id="psychographics"
+              value={formData.psychographics || ''}
+              onChange={(e) => updateField('psychographics', e.target.value)}
+              rows={2}
+              className="mt-1"
+              placeholder="pl. környezettudatos, családcentrikus..."
+            />
+          </div>
         </div>
       </div>
     </div>
