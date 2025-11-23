@@ -190,6 +190,74 @@ export default function CampaignAIPage() {
     }
   }
 
+  const handleSaveWizard = async () => {
+    if (!formData.name) {
+      toast.error('Kérlek adj meg egy kampány nevet')
+      return
+    }
+
+    if (!formData.type || !formData.startDate || !formData.endDate || !formData.goalType) {
+      toast.error('Kérlek töltsd ki az összes kötelező mezőt')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const requestBody = {
+        campaign: {
+          name: formData.name,
+          description: formData.description || '',
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          campaignType: formData.type,
+          goalType: formData.goalType,
+          budgetEstimate: formData.budget === 'low' ? 0 : formData.budget === 'medium' ? 1000 : 5000
+        },
+        wizardData: formData
+      }
+
+      console.log('Sending save request:', requestBody)
+
+      const response = await fetch('/api/campaigns/save-wizard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      })
+
+      console.log('Response status:', response.status, response.statusText)
+
+      let responseData
+      try {
+        const responseText = await response.text()
+        console.log('Response text:', responseText)
+        responseData = responseText ? JSON.parse(responseText) : null
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError)
+        throw new Error(`Hibás válasz a szervertől: ${response.status} ${response.statusText}`)
+      }
+
+      if (!response.ok) {
+        const errorMessage = responseData?.error || responseData?.message || `Hiba: ${response.status} ${response.statusText}`
+        console.error('Save error:', errorMessage, responseData)
+        throw new Error(errorMessage)
+      }
+
+      if (responseData?.campaignId) {
+        toast.success('Kampány sikeresen mentve!')
+        window.location.href = `/campaigns/${responseData.campaignId}`
+      } else {
+        console.error('No campaignId in response:', responseData)
+        throw new Error('Nem sikerült megkapni a kampány ID-t')
+      }
+    } catch (error) {
+      console.error('Save wizard error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Hiba történt a mentés során'
+      toast.error(errorMessage)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   // Expose form state to CopilotKit agent
   useCopilotReadable(
     {
@@ -977,6 +1045,26 @@ export default function CampaignAIPage() {
                 )
               })}
             </div>
+            
+            {/* Save Button - Always visible at bottom of sidebar */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <Button
+                onClick={handleSaveWizard}
+                disabled={isSaving || isGenerating || !formData.name || !formData.type || !formData.startDate || !formData.endDate || !formData.goalType}
+                className="w-full px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Mentés...
+                  </>
+                ) : (
+                  <>
+                    Mentés
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1065,56 +1153,62 @@ export default function CampaignAIPage() {
               >
                 Vissza
               </button>
-              <Button
-                onClick={handleNext}
-                disabled={isGenerating}
-                className="px-8 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold shadow-lg shadow-primary-600/20 hover:shadow-primary-600/30 transition-all flex items-center gap-2"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {progressStage === 'brief-normalizer' && 'Brief elemzése...'}
-                    {progressStage === 'strategy-designer' && 'Stratégia tervezése...'}
-                    {progressStage === 'done' && 'Kész!'}
-                    {progressStage === 'idle' && 'Generálás folyamatban...'}
-                  </>
-                ) : currentStep === totalSteps ? (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Kampány Struktúra Generálása
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M17 8l4 4m0 0l-4 4m4-4H3"
-                      />
-                    </svg>
-                  </>
-                ) : (
-                  <>
-                    Következő
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M17 8l4 4m0 0l-4 4m4-4H3"
-                      />
-                    </svg>
-                  </>
-                )}
-              </Button>
+              {currentStep === totalSteps ? (
+                <Button
+                  onClick={handleNext}
+                  disabled={isGenerating || isSaving}
+                  className="px-8 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold shadow-lg shadow-primary-600/20 hover:shadow-primary-600/30 transition-all flex items-center gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {progressStage === 'brief-normalizer' && 'Brief elemzése...'}
+                      {progressStage === 'strategy-designer' && 'Stratégia tervezése...'}
+                      {progressStage === 'done' && 'Kész!'}
+                      {progressStage === 'idle' && 'Generálás folyamatban...'}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Kampány Struktúra Generálása
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M17 8l4 4m0 0l-4 4m4-4H3"
+                        />
+                      </svg>
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleNext}
+                  disabled={isGenerating}
+                  className="px-8 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold shadow-lg shadow-primary-600/20 hover:shadow-primary-600/30 transition-all flex items-center gap-2"
+                >
+                  Következő
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M17 8l4 4m0 0l-4 4m4-4H3"
+                    />
+                  </svg>
+                </Button>
+              )}
             </div>
           </div>
         </div>

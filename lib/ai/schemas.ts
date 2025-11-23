@@ -63,6 +63,16 @@ export const TopicSchema = z.object({
   category: z.string().optional(), // Legacy field
 })
 
+// Schema for segment-topic matrix with indices (from AI generation)
+export const SegmentTopicMatrixEntryWithIndicesSchema = z.object({
+  segment_index: z.number().int().nonnegative(),
+  topic_index: z.number().int().nonnegative(),
+  importance: z.enum(['high', 'medium', 'low']),
+  role: z.enum(['core_message', 'support', 'experimental']),
+  summary: z.string().max(500).optional(),
+})
+
+// Schema for segment-topic matrix with IDs (for database)
 export const SegmentTopicMatrixSchema = z.object({
   segment_id: z.string().uuid(),
   topic_id: z.string().uuid(),
@@ -70,6 +80,12 @@ export const SegmentTopicMatrixSchema = z.object({
   role: z.enum(['core_message', 'support', 'experimental']),
   summary: z.string().max(500).optional(),
 })
+
+// Union schema that accepts both formats
+export const SegmentTopicMatrixEntrySchema = z.union([
+  SegmentTopicMatrixEntryWithIndicesSchema,
+  SegmentTopicMatrixSchema,
+])
 
 export const NarrativeSchema = z.object({
   title: z.string(),
@@ -82,7 +98,7 @@ export const CampaignStructureSchema = z.object({
   segments: z.array(SegmentSchema),
   topics: z.array(TopicSchema),
   narratives: z.array(NarrativeSchema).optional().default([]),
-  segment_topic_matrix: z.array(SegmentTopicMatrixSchema).optional(),
+  segment_topic_matrix: z.array(SegmentTopicMatrixEntrySchema).optional(),
 })
 
 export const BriefNormalizerOutputSchema = z.object({

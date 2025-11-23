@@ -4,6 +4,7 @@ import { CampaignStructureSchema } from '@/lib/ai/schemas'
 import { z } from 'zod'
 
 const SaveStructureSchema = z.object({
+  campaignId: z.string().optional(), // Optional: if provided, update existing campaign
   campaign: z.object({
     name: z.string(),
     description: z.string(),
@@ -18,29 +19,78 @@ const SaveStructureSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { campaign, structure } = SaveStructureSchema.parse(body)
+    const { campaignId: existingCampaignId, campaign, structure } = SaveStructureSchema.parse(body)
 
     const supabase = await createClient()
 
-    // 1. Create Campaign
-    const { data: campaignData, error: campaignError } = await supabase
-      .schema('campaign_os')
-      .from('campaigns')
-      .insert({
-        name: campaign.name,
-        description: campaign.description,
-        start_date: campaign.startDate,
-        end_date: campaign.endDate,
-        campaign_type: campaign.campaignType as any,
-        primary_goal_type: campaign.goalType as any,
-        status: 'planning',
-        narratives: structure.narratives || []
-      })
-      .select()
-      .single()
+    let campaignId: string
 
-    if (campaignError) throw new Error(`Campaign creation failed: ${campaignError.message}`)
-    const campaignId = campaignData.id
+    if (existingCampaignId) {
+      // Update existing campaign
+      const { data: campaignData, error: campaignError } = await supabase
+        .schema('campaign_os')
+        .from('campaigns')
+        .update({
+          name: campaign.name,
+          description: campaign.description,
+          start_date: campaign.startDate,
+          end_date: campaign.endDate,
+          campaign_type: campaign.campaignType as any,
+          primary_goal_type: campaign.goalType as any,
+          narratives: structure.narratives || []
+        })
+        .eq('id', existingCampaignId)
+        .select()
+        .single()
+
+      if (campaignError) throw new Error(`Campaign update failed: ${campaignError.message}`)
+      if (!campaignData) throw new Error('Campaign not found')
+      campaignId = campaignData.id
+
+      // Delete existing related data
+      // First get segment IDs before deleting
+      const { data: existingSegments } = await supabase
+        .schema('campaign_os')
+        .from('segments')
+        .select('id')
+        .eq('campaign_id', campaignId)
+      
+      const segmentIds = existingSegments?.map(s => s.id) || []
+      
+      // Delete matrix entries first (they reference segments)
+      if (segmentIds.length > 0) {
+        await supabase
+          .schema('campaign_os')
+          .from('segment_topic_matrix')
+          .delete()
+          .in('segment_id', segmentIds)
+      }
+      
+      // Then delete the related entities
+      await supabase.schema('campaign_os').from('goals').delete().eq('campaign_id', campaignId)
+      await supabase.schema('campaign_os').from('segments').delete().eq('campaign_id', campaignId)
+      await supabase.schema('campaign_os').from('topics').delete().eq('campaign_id', campaignId)
+    } else {
+      // Create new campaign
+      const { data: campaignData, error: campaignError } = await supabase
+        .schema('campaign_os')
+        .from('campaigns')
+        .insert({
+          name: campaign.name,
+          description: campaign.description,
+          start_date: campaign.startDate,
+          end_date: campaign.endDate,
+          campaign_type: campaign.campaignType as any,
+          primary_goal_type: campaign.goalType as any,
+          status: 'planning',
+          narratives: structure.narratives || []
+        })
+        .select()
+        .single()
+
+      if (campaignError) throw new Error(`Campaign creation failed: ${campaignError.message}`)
+      campaignId = campaignData.id
+    }
 
     // 2. Create Goals
     if (structure.goals.length > 0) {
