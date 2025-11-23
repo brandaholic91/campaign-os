@@ -17,21 +17,52 @@ export async function POST(req: NextRequest) {
     const provider = getAIProvider()
     const model = process.env.AI_MODEL
 
+    if (!model) {
+      console.error('Brief Normalizer: AI_MODEL environment variable is not set')
+      return NextResponse.json({ 
+        error: 'AI_MODEL environment variable is not set',
+        details: 'Please set the AI_MODEL environment variable to use AI features'
+      }, { status: 500 })
+    }
+
+    console.log('[Brief Normalizer] Starting with model:', model)
+
+    // Reasoning modelleknél (gpt-5, o1) több token kell, mert a reasoning tokenek is beleszámítanak
+    // A max_completion_tokens tartalmazza a reasoning tokeneket ÉS a válasz tokeneket is
+    const isReasoningModel = model.startsWith('gpt-5') || model.startsWith('o1');
+    const maxTokens = isReasoningModel ? 4096 : 1024; // Reasoning modelleknél több token, hogy legyen hely a válasznak
+
     // Step 1: Brief Normalizer
     const normalizerResponse = await provider.generateText({
       model,
-      maxTokens: 1024,
+      maxTokens,
       systemPrompt: BRIEF_NORMALIZER_SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: BRIEF_NORMALIZER_USER_PROMPT(brief, campaignType, goalType) }
       ]
     })
 
+    console.log('[Brief Normalizer] Response received:', {
+      hasContent: !!normalizerResponse.content,
+      contentLength: normalizerResponse.content?.length || 0,
+      model: normalizerResponse.model,
+      usage: normalizerResponse.usage,
+    })
+
     const normalizerContent = normalizerResponse.content
     
     if (!normalizerContent) {
-      console.error('Brief Normalizer: Empty response')
-      throw new Error('Empty response from Brief Normalizer')
+      console.error('Brief Normalizer: Empty response', {
+        model,
+        responseModel: normalizerResponse.model,
+        usage: normalizerResponse.usage,
+      })
+      return NextResponse.json({ 
+        error: 'Empty response from Brief Normalizer',
+        details: `The AI model (${model}) returned an empty response. This might be due to model limitations or configuration issues.`,
+        model: model,
+        usage: normalizerResponse.usage,
+      }, { status: 500 })
     }
 
     // Extract JSON from response (handle markdown code blocks)
@@ -75,9 +106,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 2: Strategy Designer (Streaming)
+    // Reasoning modelleknél több token kell
+    const strategyMaxTokens = isReasoningModel ? 16384 : 8192;
     const stream = provider.generateStream({
       model,
-      maxTokens: 8192,
+      maxTokens: strategyMaxTokens,
       systemPrompt: STRATEGY_DESIGNER_SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: STRATEGY_DESIGNER_USER_PROMPT(normalizedBrief) }
