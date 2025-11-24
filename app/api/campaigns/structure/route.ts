@@ -274,8 +274,20 @@ export async function POST(req: NextRequest) {
           .single()
 
         if (narrativeError) {
-          console.error('Narrative creation failed:', narrativeError)
-          continue
+          console.error('Narrative creation failed:', {
+            error: narrativeError,
+            narrative: narrative,
+            campaignId: campaignId
+          })
+          throw new Error(`Failed to create narrative "${narrative.title}": ${narrativeError.message}`)
+        }
+
+        if (!createdNarrative || !createdNarrative.id) {
+          console.error('Narrative creation returned no data:', {
+            narrative: narrative,
+            campaignId: campaignId
+          })
+          throw new Error(`Failed to create narrative "${narrative.title}": No ID returned`)
         }
 
         const narrativeId = createdNarrative.id
@@ -306,23 +318,41 @@ export async function POST(req: NextRequest) {
 
         // Insert Junctions
         if (goalIds.size > 0) {
-          await supabase
+          const { error: goalsJunctionError } = await supabase
             .schema('campaign_os')
             .from('narrative_goals')
             .insert(Array.from(goalIds).map(goalId => ({
               narrative_id: narrativeId,
               goal_id: goalId
             })))
+          
+          if (goalsJunctionError) {
+            console.error('Narrative-goals junction creation failed:', {
+              error: goalsJunctionError,
+              narrativeId: narrativeId,
+              goalIds: Array.from(goalIds)
+            })
+            // Don't throw - narrative is created, just junction failed
+          }
         }
 
         if (topicIds.size > 0) {
-          await supabase
+          const { error: topicsJunctionError } = await supabase
             .schema('campaign_os')
             .from('narrative_topics')
             .insert(Array.from(topicIds).map(topicId => ({
               narrative_id: narrativeId,
               topic_id: topicId
             })))
+          
+          if (topicsJunctionError) {
+            console.error('Narrative-topics junction creation failed:', {
+              error: topicsJunctionError,
+              narrativeId: narrativeId,
+              topicIds: Array.from(topicIds)
+            })
+            // Don't throw - narrative is created, just junction failed
+          }
         }
       }
     }

@@ -224,6 +224,9 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
         resultText += decoder.decode(value, { stream: true })
       }
       
+      console.log('[Campaign Generation] Raw response length:', resultText.length)
+      console.log('[Campaign Generation] Raw response preview (last 500 chars):', resultText.slice(-500))
+      
       // Clean up potential markdown code blocks
       let jsonContent = resultText.trim()
       if (jsonContent.startsWith('```')) {
@@ -233,17 +236,35 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
         }
       }
 
+      // Check if JSON seems complete (has closing braces)
+      const openBraces = (jsonContent.match(/{/g) || []).length
+      const closeBraces = (jsonContent.match(/}/g) || []).length
+      console.log('[Campaign Generation] JSON brace count - open:', openBraces, 'close:', closeBraces)
+      
+      // Check for required fields
+      const hasTopics = jsonContent.includes('"topics"') || jsonContent.includes("'topics'")
+      const hasMatrix = jsonContent.includes('"segment_topic_matrix"') || jsonContent.includes("'segment_topic_matrix'")
+      console.log('[Campaign Generation] Required fields check - topics:', hasTopics, 'matrix:', hasMatrix)
+
       let structure
       try {
         structure = JSON.parse(jsonContent)
+        console.log('[Campaign Generation] JSON parsed successfully')
+        console.log('[Campaign Generation] Structure keys:', Object.keys(structure))
+        console.log('[Campaign Generation] Topics present:', !!structure.topics, 'count:', structure.topics?.length)
+        console.log('[Campaign Generation] Matrix present:', !!structure.segment_topic_matrix, 'count:', structure.segment_topic_matrix?.length)
       } catch (e) {
         console.log('Standard JSON parse failed, attempting repair...')
+        console.log('Parse error:', e)
         try {
           const repaired = jsonrepair(jsonContent)
           structure = JSON.parse(repaired)
           console.log('JSON repaired successfully')
         } catch (repairError) {
           console.error('JSON Repair Failed:', repairError)
+          console.error('Original JSON content length:', jsonContent.length)
+          console.error('Original JSON content (first 1000 chars):', jsonContent.substring(0, 1000))
+          console.error('Original JSON content (last 1000 chars):', jsonContent.substring(Math.max(0, jsonContent.length - 1000)))
           throw new Error('A generálás megszakadt és nem sikerült helyreállítani. Kérlek próbáld újra.')
         }
       }
@@ -252,6 +273,8 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
       const validated = CampaignStructureSchema.safeParse(structure)
       if (!validated.success) {
         console.error('Validation Error:', validated.error)
+        console.error('Structure data:', JSON.stringify(structure, null, 2))
+        console.error('Segment-topic matrix:', structure.segment_topic_matrix)
         toast.error('Hiba: Érvénytelen AI kimenet. Kérlek próbáld újra.')
         return
       }

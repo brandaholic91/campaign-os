@@ -19,7 +19,7 @@ export const GoalSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   target_metric: z.record(z.string(), z.any()).optional(),
-  priority: z.number().int().nonnegative(),
+  priority: z.number().int().min(1).max(3), // Only 1, 2, or 3 allowed
   funnel_stage: z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization']).optional(),
   kpi_hint: z.string().optional(),
 })
@@ -105,11 +105,64 @@ export const SegmentTopicMatrixSchema = z.object({
   summary: z.string().max(500).optional(),
 })
 
-// Union schema that accepts both formats
-export const SegmentTopicMatrixEntrySchema = z.union([
-  SegmentTopicMatrixEntryWithIndicesSchema,
-  SegmentTopicMatrixSchema,
-])
+// Preprocess to normalize the data before validation
+const preprocessMatrixEntry = (data: unknown) => {
+  if (typeof data !== 'object' || data === null) return data
+  
+  const entry = data as Record<string, unknown>
+  
+  // Normalize importance to lowercase if it's a string
+  if (entry.importance && typeof entry.importance === 'string') {
+    const normalized = entry.importance.toLowerCase()
+    if (normalized === 'high' || normalized === 'medium' || normalized === 'low') {
+      entry.importance = normalized
+    }
+  }
+  
+  // Normalize role to lowercase if it's a string
+  if (entry.role && typeof entry.role === 'string') {
+    const normalized = entry.role.toLowerCase()
+    if (normalized === 'core_message' || normalized === 'support' || normalized === 'experimental') {
+      entry.role = normalized
+    }
+  }
+  
+  // If it has segment_index and topic_index, it's index-based format
+  if (('segment_index' in entry && typeof entry.segment_index === 'number') && 
+      ('topic_index' in entry && typeof entry.topic_index === 'number')) {
+    return {
+      segment_index: Number(entry.segment_index),
+      topic_index: Number(entry.topic_index),
+      importance: entry.importance,
+      role: entry.role,
+      summary: entry.summary,
+    }
+  }
+  
+  // If it has segment_id and topic_id, it's ID-based format
+  if (('segment_id' in entry && typeof entry.segment_id === 'string') && 
+      ('topic_id' in entry && typeof entry.topic_id === 'string')) {
+    return {
+      segment_id: entry.segment_id,
+      topic_id: entry.topic_id,
+      importance: entry.importance,
+      role: entry.role,
+      summary: entry.summary,
+    }
+  }
+  
+  // Return as-is if neither format matches (will fail validation)
+  return data
+}
+
+// Union schema that accepts both formats with preprocessing
+export const SegmentTopicMatrixEntrySchema = z.preprocess(
+  preprocessMatrixEntry,
+  z.union([
+    SegmentTopicMatrixEntryWithIndicesSchema,
+    SegmentTopicMatrixSchema,
+  ])
+)
 
 export const NarrativeSchema = z.object({
   id: z.string().uuid().optional(), // Optional for new narratives before saving
@@ -124,7 +177,7 @@ export const NarrativeSchema = z.object({
 })
 
 export const CampaignStructureSchema = z.object({
-  goals: z.array(GoalSchema),
+  goals: z.array(GoalSchema).min(3, 'At least 3 goals required').max(5, 'Maximum 5 goals allowed'),
   segments: z.array(SegmentSchema),
   topics: z.array(TopicSchema),
   narratives: z.array(NarrativeSchema).optional().default([]),
