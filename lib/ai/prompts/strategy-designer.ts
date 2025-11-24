@@ -77,10 +77,19 @@ CRITICAL: You must respond with ONLY valid JSON. No markdown, no explanations, n
   "segment_topic_matrix": [{
     "segment_index": number, // Index of the segment in the segments array (0-based)
     "topic_index": number, // Index of the topic in the topics array (0-based)
-    "importance": "high" | "medium" | "low",
-    "role": "core_message" | "support" | "experimental",
+    "importance": "high" | "medium" | "low", // CRITICAL: ONLY these three values allowed. "experimental" is NOT valid here.
+    "role": "core_message" | "support" | "experimental", // CRITICAL: "experimental" goes in ROLE field, NOT in importance
     "summary": "string (max 500 chars, 2-3 sentences summarizing the relationship)"
   }]
+  
+  EXAMPLE matrix entry:
+  {
+    "segment_index": 0,
+    "topic_index": 1,
+    "importance": "low",  // NOT "experimental" - use "high", "medium", or "low"
+    "role": "experimental",  // "experimental" goes here in the role field
+    "summary": "Experimental connection for testing new messaging approaches"
+  }
 }
 
 STRATEGIC METADATA INSTRUCTIONS:
@@ -114,9 +123,12 @@ STRATEGIC METADATA INSTRUCTIONS:
 
 4. MATRIX VALIDATION:
    - Generate 10-25 matrix entries total (connecting segments to topics) - REQUIRED
-   - Max 2-3 "high" importance + "core_message" topics per segment (FOCUS).
-   - 2-4 "medium" importance support topics per segment (BALANCE).
-   - 1-2 "experimental" topics per segment (INNOVATION).
+   - IMPORTANCE field: Use ONLY "high", "medium", or "low" (NOT "experimental")
+   - ROLE field: Use "core_message", "support", or "experimental" (experimental goes in ROLE, not importance)
+   - Max 2-3 "high" importance + "core_message" role topics per segment (FOCUS).
+   - 2-4 "medium" importance + "support" role topics per segment (BALANCE).
+   - 1-2 "low" importance + "experimental" role topics per segment (INNOVATION).
+   - CRITICAL: importance must be "high"|"medium"|"low", role can be "core_message"|"support"|"experimental"
    - Ensure most segments are connected to most topics (aim for comprehensive coverage with 10-25 total connections).
 `
 
@@ -140,6 +152,10 @@ MANDATORY REQUIREMENTS - ALL MUST BE INCLUDED:
 - Matrix should connect most segments to most topics (aim for 10-25 total connections)
 - Limit high-importance matrix connections to 5-6 total for focus
 - CRITICAL: For each matrix entry, generate a brief summary (2-3 sentences) capturing the key connection.
+- CRITICAL FOR MATRIX: 
+  * "importance" field MUST be "high", "medium", or "low" (NEVER "experimental")
+  * "role" field can be "core_message", "support", or "experimental"
+  * If you want to mark something as experimental, use importance="low" and role="experimental"
 - CRITICAL: Populate ALL strategic metadata fields (funnel_stage, kpi_hint, related_goal_stages, recommended_content_types, goal_indices, topic_indices, suggested_phase).
 - CRITICAL FOR TOPICS: Every topic MUST include:
   * "related_goal_stages": non-empty array of funnel stages (e.g., ["awareness", "consideration"])

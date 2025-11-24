@@ -83,11 +83,11 @@ try {
   console.log("Validated structure with new fields:");
   console.log("- goals[0].funnel_stage:", result.goals[0].funnel_stage);
   console.log("- goals[0].kpi_hint:", result.goals[0].kpi_hint);
-  console.log("- topics[0].related_goal_stages:", result.topics[0].related_goal_stages);
-  console.log("- topics[0].recommended_content_types:", result.topics[0].recommended_content_types);
-  console.log("- narratives[0].goal_indices:", result.narratives?.[0].goal_indices);
-  console.log("- narratives[0].topic_indices:", result.narratives?.[0].topic_indices);
-  console.log("- narratives[0].suggested_phase:", result.narratives?.[0].suggested_phase);
+  console.log("- topics[0].related_goal_stages:", result.topics?.[0]?.related_goal_stages);
+  console.log("- topics[0].recommended_content_types:", result.topics?.[0]?.recommended_content_types);
+  console.log("- narratives[0].goal_indices:", result.narratives?.[0]?.goal_indices);
+  console.log("- narratives[0].topic_indices:", result.narratives?.[0]?.topic_indices);
+  console.log("- narratives[0].suggested_phase:", result.narratives?.[0]?.suggested_phase);
 } catch (error) {
   console.error("❌ Schema validation failed:", error);
   process.exit(1);

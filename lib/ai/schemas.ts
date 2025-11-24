@@ -114,7 +114,14 @@ const preprocessMatrixEntry = (data: unknown) => {
   // Normalize importance to lowercase if it's a string
   if (entry.importance && typeof entry.importance === 'string') {
     const normalized = entry.importance.toLowerCase()
-    if (normalized === 'high' || normalized === 'medium' || normalized === 'low') {
+    // If AI mistakenly put "experimental" in importance, move it to role and set importance to "low"
+    if (normalized === 'experimental') {
+      entry.importance = 'low'
+      // Only set role to experimental if it's not already set
+      if (!entry.role || typeof entry.role !== 'string') {
+        entry.role = 'experimental'
+      }
+    } else if (normalized === 'high' || normalized === 'medium' || normalized === 'low') {
       entry.importance = normalized
     }
   }

@@ -36,7 +36,7 @@ export function ExecutionReadinessChecklist({
   const totalCriteria = 
     structure.goals.length +
     structure.segments.length +
-    structure.topics.length +
+    (structure.topics?.length || 0) +
     (structure.narratives?.length || 0) +
     (structure.segment_topic_matrix && structure.segment_topic_matrix.length > 0 ? 1 : 0)
 
@@ -196,7 +196,7 @@ export function ExecutionReadinessChecklist({
               )}
               <span className="font-medium">Témák</span>
               <Badge variant="outline" className="ml-2">
-                {structure.topics.length - issuesByType.topic.length}/{structure.topics.length}
+                {(structure.topics?.length || 0) - issuesByType.topic.length}/{structure.topics?.length || 0}
               </Badge>
             </div>
             {issuesByType.topic.length === 0 ? (

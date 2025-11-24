@@ -64,7 +64,8 @@ export async function fetchCampaignStructure(id: string): Promise<CampaignStruct
       ...t,
       priority: t.priority as any,
       topic_type: t.topic_type as any,
-      related_goal_stages: t.related_goal_stages as any,
+      related_goal_stages: Array.isArray(t.related_goal_stages) ? t.related_goal_stages : (t.related_goal_stages ? [t.related_goal_stages] : []),
+      recommended_content_types: Array.isArray(t.recommended_content_types) ? t.recommended_content_types : (t.recommended_content_types ? [t.recommended_content_types] : []),
       risk_notes: Array.isArray(t.risk_notes) ? t.risk_notes : (t.risk_notes ? [t.risk_notes] : [])
     })),
     narratives: (narrativesData || []).map(n => ({

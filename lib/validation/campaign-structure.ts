@@ -88,17 +88,26 @@ export function validateSegmentCompleteness(segment: Segment): ValidationResult 
 export function validateTopicCompleteness(topic: Topic): ValidationResult {
   const missing: string[] = []
 
-  if (!topic.related_goal_stages || topic.related_goal_stages.length === 0) {
+  // Normalize to array if null/undefined
+  const relatedGoalStages = Array.isArray(topic.related_goal_stages) 
+    ? topic.related_goal_stages 
+    : (topic.related_goal_stages ? [topic.related_goal_stages] : [])
+  
+  const recommendedContentTypes = Array.isArray(topic.recommended_content_types)
+    ? topic.recommended_content_types
+    : (topic.recommended_content_types ? [topic.recommended_content_types] : [])
+
+  if (relatedGoalStages.length === 0) {
     missing.push('related_goal_stages')
   }
 
-  if (!topic.recommended_content_types || topic.recommended_content_types.length === 0) {
+  if (recommendedContentTypes.length === 0) {
     missing.push('recommended_content_types (recommended)')
   }
 
   // related_goal_stages is required for validity
   return {
-    valid: !!(topic.related_goal_stages && topic.related_goal_stages.length > 0),
+    valid: relatedGoalStages.length > 0,
     missing: missing.length > 0 ? missing : undefined
   }
 }
@@ -276,18 +285,20 @@ export function isReadyForExecution(structure: CampaignStructure): ExecutionRead
   })
 
   // 3. Validate Topics
-  structure.topics.forEach((topic, index) => {
-    const res = validateTopicCompleteness(topic)
-    if (!res.valid || (res.missing && res.missing.length > 0)) {
-      res.missing?.forEach(field => {
-        issues.push({
-          type: 'topic',
-          element: topic.name || `Topic ${index + 1}`,
-          issue: `Missing ${field}`
+  if (structure.topics) {
+    structure.topics.forEach((topic, index) => {
+      const res = validateTopicCompleteness(topic)
+      if (!res.valid || (res.missing && res.missing.length > 0)) {
+        res.missing?.forEach(field => {
+          issues.push({
+            type: 'topic',
+            element: topic.name || `Topic ${index + 1}`,
+            issue: `Missing ${field}`
+          })
         })
-      })
-    }
-  })
+      }
+    })
+  }
 
   // 4. Validate Narratives (required: 2-4)
   if (!structure.narratives || structure.narratives.length === 0) {
