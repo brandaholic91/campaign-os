@@ -1,0 +1,425 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { ExecutionPlanSchema, ExecutionPlan } from '@/lib/ai/schemas'
+import { Database } from '@/lib/supabase/types'
+
+type SprintInsert = Database['campaign_os']['Tables']['sprints']['Insert']
+type ContentSlotInsert = Database['campaign_os']['Tables']['content_slots']['Insert']
+type SprintSegmentInsert = Database['campaign_os']['Tables']['sprint_segments']['Insert']
+type SprintTopicInsert = Database['campaign_os']['Tables']['sprint_topics']['Insert']
+type SprintChannelInsert = Database['campaign_os']['Tables']['sprint_channels']['Insert']
+
+interface SaveExecutionPlanRequest {
+  campaignId: string
+  executionPlan: ExecutionPlan
+}
+
+interface SaveExecutionPlanResponse {
+  success: boolean
+  sprints: Array<{ id: string; name: string }>
+  contentSlots: number
+  message?: string
+}
+
+/**
+ * Validates that all content slot dates are within their sprint date ranges
+ */
+function validateSlotDates(executionPlan: ExecutionPlan): { valid: boolean; error?: string } {
+  const sprintMap = new Map(executionPlan.sprints.map(s => [s.id, s]))
+  
+  for (const slot of executionPlan.content_calendar) {
+    const sprint = sprintMap.get(slot.sprint_id)
+    if (!sprint) {
+      return {
+        valid: false,
+        error: `Content slot ${slot.id} references non-existent sprint ${slot.sprint_id}`
+      }
+    }
+    
+    const slotDate = new Date(slot.date)
+    const sprintStart = new Date(sprint.start_date)
+    const sprintEnd = new Date(sprint.end_date)
+    
+    if (slotDate < sprintStart || slotDate > sprintEnd) {
+      return {
+        valid: false,
+        error: `Content slot date ${slot.date} is outside sprint date range ${sprint.start_date} to ${sprint.end_date} for sprint "${sprint.name}"`
+      }
+    }
+  }
+  
+  return { valid: true }
+}
+
+/**
+ * Validates that there are no duplicate slot_index values for the same (date, channel) combination
+ */
+function validateSlotIndices(executionPlan: ExecutionPlan): { valid: boolean; error?: string } {
+  const slotMap = new Map<string, Set<number>>()
+  
+  for (const slot of executionPlan.content_calendar) {
+    const key = `${slot.date}:${slot.channel}`
+    if (!slotMap.has(key)) {
+      slotMap.set(key, new Set())
+    }
+    
+    const indices = slotMap.get(key)!
+    if (indices.has(slot.slot_index)) {
+      return {
+        valid: false,
+        error: `Duplicate slot_index ${slot.slot_index} for date ${slot.date} and channel ${slot.channel}`
+      }
+    }
+    
+    indices.add(slot.slot_index)
+  }
+  
+  return { valid: true }
+}
+
+/**
+ * Checks if an execution plan already exists for the campaign
+ */
+async function checkExistingPlan(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  campaignId: string
+): Promise<{ exists: boolean; sprintIds?: string[] }> {
+  const db = supabase.schema('campaign_os')
+  
+  const { data: sprints, error } = await db
+    .from('sprints')
+    .select('id')
+    .eq('campaign_id', campaignId)
+  
+  if (error) {
+    throw new Error(`Failed to check existing plan: ${error.message}`)
+  }
+  
+  return {
+    exists: (sprints?.length ?? 0) > 0,
+    sprintIds: sprints?.map(s => s.id)
+  }
+}
+
+/**
+ * Deletes existing execution plan for a campaign (used for update scenario)
+ */
+async function deleteExistingPlan(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  campaignId: string
+): Promise<void> {
+  const db = supabase.schema('campaign_os')
+  
+  // Get all sprint IDs for this campaign
+  const { data: sprints, error: fetchError } = await db
+    .from('sprints')
+    .select('id')
+    .eq('campaign_id', campaignId)
+  
+  if (fetchError) {
+    throw new Error(`Failed to fetch existing sprints: ${fetchError.message}`)
+  }
+  
+  if (!sprints || sprints.length === 0) {
+    return // Nothing to delete
+  }
+  
+  const sprintIds = sprints.map(s => s.id)
+  
+  // Delete in order: content_slots, junction tables, then sprints
+  // CASCADE should handle most of this, but we'll be explicit
+  
+  // Delete content slots
+  const { error: slotsError } = await db
+    .from('content_slots')
+    .delete()
+    .in('sprint_id', sprintIds)
+  
+  if (slotsError) {
+    throw new Error(`Failed to delete content slots: ${slotsError.message}`)
+  }
+  
+  // Delete junction tables
+  const { error: segmentsError } = await db
+    .from('sprint_segments')
+    .delete()
+    .in('sprint_id', sprintIds)
+  
+  if (segmentsError) {
+    throw new Error(`Failed to delete sprint_segments: ${segmentsError.message}`)
+  }
+  
+  const { error: topicsError } = await db
+    .from('sprint_topics')
+    .delete()
+    .in('sprint_id', sprintIds)
+  
+  if (topicsError) {
+    throw new Error(`Failed to delete sprint_topics: ${topicsError.message}`)
+  }
+  
+  const { error: channelsError } = await db
+    .from('sprint_channels')
+    .delete()
+    .in('sprint_id', sprintIds)
+  
+  if (channelsError) {
+    throw new Error(`Failed to delete sprint_channels: ${channelsError.message}`)
+  }
+  
+  // Delete sprints (CASCADE should handle related records, but we've already deleted them)
+  const { error: sprintsError } = await db
+    .from('sprints')
+    .delete()
+    .eq('campaign_id', campaignId)
+  
+  if (sprintsError) {
+    throw new Error(`Failed to delete sprints: ${sprintsError.message}`)
+  }
+}
+
+/**
+ * Saves execution plan to database using Supabase batch operations
+ * Note: Supabase JS client doesn't support true transactions, so we use batch inserts
+ * and manual rollback on error. For true atomicity, consider using PostgreSQL functions.
+ */
+async function saveExecutionPlan(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  campaignId: string,
+  executionPlan: ExecutionPlan
+): Promise<SaveExecutionPlanResponse> {
+  const db = supabase.schema('campaign_os')
+  const savedSprintIds: string[] = []
+  const savedContentSlotIds: string[] = []
+  
+  try {
+    // Step 1: Insert sprints
+    const sprintInserts: SprintInsert[] = executionPlan.sprints.map(sprint => ({
+      campaign_id: campaignId,
+      name: sprint.name,
+      order: sprint.order,
+      start_date: sprint.start_date,
+      end_date: sprint.end_date,
+      focus_goal: sprint.focus_goal,
+      focus_description: sprint.focus_description,
+      focus_channels: sprint.focus_channels as any, // JSONB
+      success_indicators: sprint.success_indicators as any, // JSONB
+      status: 'planned' as const,
+    }))
+    
+    const { data: insertedSprints, error: sprintsError } = await db
+      .from('sprints')
+      .insert(sprintInserts)
+      .select('id, name')
+    
+    if (sprintsError) {
+      throw new Error(`Failed to insert sprints: ${sprintsError.message}`)
+    }
+    
+    if (!insertedSprints || insertedSprints.length !== executionPlan.sprints.length) {
+      throw new Error('Failed to insert all sprints')
+    }
+    
+    // Map original sprint IDs to new database IDs
+    const sprintIdMap = new Map<string, string>()
+    executionPlan.sprints.forEach((sprint, index) => {
+      sprintIdMap.set(sprint.id, insertedSprints[index].id)
+      savedSprintIds.push(insertedSprints[index].id)
+    })
+    
+    // Step 2: Insert junction tables (batch inserts)
+    const segmentInserts: SprintSegmentInsert[] = []
+    const topicInserts: SprintTopicInsert[] = []
+    const channelInserts: SprintChannelInsert[] = []
+    
+    executionPlan.sprints.forEach(sprint => {
+      const dbSprintId = sprintIdMap.get(sprint.id)!
+      
+      // Sprint-segment relationships
+      sprint.focus_segments.forEach(segmentId => {
+        segmentInserts.push({
+          sprint_id: dbSprintId,
+          segment_id: segmentId,
+        })
+      })
+      
+      // Sprint-topic relationships
+      sprint.focus_topics.forEach(topicId => {
+        topicInserts.push({
+          sprint_id: dbSprintId,
+          topic_id: topicId,
+        })
+      })
+      
+      // Sprint-channel relationships
+      sprint.focus_channels.forEach(channelKey => {
+        channelInserts.push({
+          sprint_id: dbSprintId,
+          channel_key: channelKey,
+        })
+      })
+    })
+    
+    // Insert junction tables
+    if (segmentInserts.length > 0) {
+      const { error: segmentsError } = await db
+        .from('sprint_segments')
+        .insert(segmentInserts)
+      
+      if (segmentsError) {
+        throw new Error(`Failed to insert sprint_segments: ${segmentsError.message}`)
+      }
+    }
+    
+    if (topicInserts.length > 0) {
+      const { error: topicsError } = await db
+        .from('sprint_topics')
+        .insert(topicInserts)
+      
+      if (topicsError) {
+        throw new Error(`Failed to insert sprint_topics: ${topicsError.message}`)
+      }
+    }
+    
+    if (channelInserts.length > 0) {
+      const { error: channelsError } = await db
+        .from('sprint_channels')
+        .insert(channelInserts)
+      
+      if (channelsError) {
+        throw new Error(`Failed to insert sprint_channels: ${channelsError.message}`)
+      }
+    }
+    
+    // Step 3: Insert content slots
+    const slotInserts: ContentSlotInsert[] = executionPlan.content_calendar.map(slot => ({
+      sprint_id: sprintIdMap.get(slot.sprint_id)!,
+      date: slot.date,
+      channel: slot.channel,
+      slot_index: slot.slot_index,
+      primary_segment_id: slot.primary_segment_id || null,
+      primary_topic_id: slot.primary_topic_id || null,
+      objective: slot.objective,
+      content_type: slot.content_type,
+      angle_hint: slot.angle_hint || null,
+      notes: slot.notes || null,
+      status: slot.status || 'planned',
+    }))
+    
+    const { data: insertedSlots, error: slotsError } = await db
+      .from('content_slots')
+      .insert(slotInserts)
+      .select('id')
+    
+    if (slotsError) {
+      throw new Error(`Failed to insert content slots: ${slotsError.message}`)
+    }
+    
+    if (!insertedSlots || insertedSlots.length !== executionPlan.content_calendar.length) {
+      throw new Error('Failed to insert all content slots')
+    }
+    
+    savedContentSlotIds.push(...insertedSlots.map(s => s.id))
+    
+    return {
+      success: true,
+      sprints: insertedSprints.map(s => ({ id: s.id, name: s.name })),
+      contentSlots: insertedSlots.length,
+    }
+  } catch (error) {
+    // Rollback: Delete any saved data
+    // Note: In a true transaction, this would be automatic, but Supabase JS client
+    // doesn't support transactions, so we manually clean up
+    
+    if (savedSprintIds.length > 0) {
+      // Delete in reverse order: content_slots, junction tables, sprints
+      const db = supabase.schema('campaign_os')
+      
+      await db.from('content_slots').delete().in('sprint_id', savedSprintIds).catch(() => {})
+      await db.from('sprint_segments').delete().in('sprint_id', savedSprintIds).catch(() => {})
+      await db.from('sprint_topics').delete().in('sprint_id', savedSprintIds).catch(() => {})
+      await db.from('sprint_channels').delete().in('sprint_id', savedSprintIds).catch(() => {})
+      await db.from('sprints').delete().in('id', savedSprintIds).catch(() => {})
+    }
+    
+    throw error
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: SaveExecutionPlanRequest = await request.json()
+    
+    // Validate request body
+    if (!body.campaignId || !body.executionPlan) {
+      return NextResponse.json(
+        { error: 'campaignId and executionPlan are required' },
+        { status: 400 }
+      )
+    }
+    
+    // Validate execution plan against schema
+    const validationResult = ExecutionPlanSchema.safeParse(body.executionPlan)
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: 'Invalid execution plan',
+          details: validationResult.error.errors.map(e => ({
+            path: e.path.join('.'),
+            message: e.message,
+          })),
+        },
+        { status: 400 }
+      )
+    }
+    
+    const executionPlan = validationResult.data
+    
+    // Validate slot dates are within sprint ranges
+    const dateValidation = validateSlotDates(executionPlan)
+    if (!dateValidation.valid) {
+      return NextResponse.json(
+        { error: dateValidation.error },
+        { status: 400 }
+      )
+    }
+    
+    // Validate no duplicate slot_index per (date, channel)
+    const indexValidation = validateSlotIndices(executionPlan)
+    if (!indexValidation.valid) {
+      return NextResponse.json(
+        { error: indexValidation.error },
+        { status: 400 }
+      )
+    }
+    
+    const supabase = await createClient()
+    
+    // Check for existing plan (AC 5.4.4: Duplicate save handling)
+    const existingPlan = await checkExistingPlan(supabase, body.campaignId)
+    
+    if (existingPlan.exists) {
+      // Option A: Update existing plan (delete old, insert new)
+      await deleteExistingPlan(supabase, body.campaignId)
+    }
+    
+    // Save execution plan
+    const result = await saveExecutionPlan(supabase, body.campaignId, executionPlan)
+    
+    return NextResponse.json({
+      ...result,
+      message: existingPlan.exists
+        ? 'Execution plan updated successfully'
+        : 'Execution plan saved successfully',
+    })
+  } catch (error) {
+    console.error('Error saving execution plan:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    )
+  }
+}
+

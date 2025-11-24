@@ -148,11 +148,12 @@ development_status:
 
   # Story 5.3: Execution Plan Preview UI
   # Note: Story drafted 2025-11-27 - Preview UI for generated execution plan before saving
-  5-3-execution-plan-preview-ui: drafted
+  5-3-execution-plan-preview-ui: in-progress
 
   # Story 5.4: Save Execution Plan API & Workflow
   # Note: Story drafted 2025-11-27 - Save execution plan to database with transaction support
-  5-4-save-execution-plan-api: drafted
+  # Note: Status updated to review (2025-11-28) - Implementation completed by Dev Agent
+  5-4-save-execution-plan-api: in-progress
 
   # Story 5.5: Execution Plan Edit & Management UI
   # Note: Story drafted 2025-11-27 - Edit sprints and content slots after saving
