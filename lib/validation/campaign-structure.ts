@@ -289,8 +289,26 @@ export function isReadyForExecution(structure: CampaignStructure): ExecutionRead
     }
   })
 
-  // 4. Validate Narratives
-  if (structure.narratives) {
+  // 4. Validate Narratives (required: 2-4)
+  if (!structure.narratives || structure.narratives.length === 0) {
+    issues.push({
+      type: 'narrative',
+      element: 'Narratives',
+      issue: 'Missing narratives array (required: 2-4 narratives)'
+    })
+  } else if (structure.narratives.length < 2) {
+    issues.push({
+      type: 'narrative',
+      element: 'Narratives',
+      issue: `Too few narratives: ${structure.narratives.length} (required: 2-4)`
+    })
+  } else if (structure.narratives.length > 4) {
+    issues.push({
+      type: 'narrative',
+      element: 'Narratives',
+      issue: `Too many narratives: ${structure.narratives.length} (required: 2-4)`
+    })
+  } else {
     structure.narratives.forEach((narrative, index) => {
       const res = validateNarrativeCompleteness(narrative)
       if (res.missing && res.missing.length > 0) {
@@ -305,8 +323,26 @@ export function isReadyForExecution(structure: CampaignStructure): ExecutionRead
     })
   }
 
-  // 5. Validate Matrix Rules
-  if (structure.segment_topic_matrix && structure.segment_topic_matrix.length > 0) {
+  // 5. Validate Matrix Rules (required: 10-25 entries)
+  if (!structure.segment_topic_matrix || structure.segment_topic_matrix.length === 0) {
+    issues.push({
+      type: 'matrix',
+      element: 'Segment-Topic Matrix',
+      issue: 'Missing segment_topic_matrix array (required: 10-25 entries)'
+    })
+  } else if (structure.segment_topic_matrix.length < 10) {
+    issues.push({
+      type: 'matrix',
+      element: 'Segment-Topic Matrix',
+      issue: `Too few matrix entries: ${structure.segment_topic_matrix.length} (required: 10-25)`
+    })
+  } else if (structure.segment_topic_matrix.length > 25) {
+    issues.push({
+      type: 'matrix',
+      element: 'Segment-Topic Matrix',
+      issue: `Too many matrix entries: ${structure.segment_topic_matrix.length} (required: 10-25)`
+    })
+  } else {
     const matrixRes = validateMatrixRules(structure.segment_topic_matrix, structure.segments)
     if (matrixRes.violations) {
       matrixRes.violations.forEach(v => {

@@ -96,13 +96,15 @@ STRATEGIC METADATA INSTRUCTIONS:
    - kpi_hint: Suggest specific, actionable KPIs (e.g., "Reach > 50k", "CTR > 2%", "Signups > 500").
 
 2. TOPICS:
-   - related_goal_stages: Link topics to relevant funnel stages. E.g., educational topics -> "awareness", "consideration".
-   - recommended_content_types: Suggest formats based on topic type and segment media habits.
-     * Visual topics -> "short_video", "static_image"
-     * Complex topics -> "carousel", "long_form_video"
-     * Urgency -> "story", "email"
+   - related_goal_stages: REQUIRED - MUST be included for every topic. Link topics to relevant funnel stages. E.g., educational topics -> ["awareness", "consideration"]. Must be a non-empty array.
+   - recommended_content_types: REQUIRED - MUST be included for every topic. Suggest formats based on topic type and segment media habits.
+     * Visual topics -> ["short_video", "static_image"]
+     * Complex topics -> ["carousel", "long_form_video"]
+     * Urgency -> ["story", "email"]
+   - CRITICAL: Every topic MUST have both related_goal_stages (array with at least 1 item) and recommended_content_types (array with at least 1 item). Do not omit these fields.
 
 3. NARRATIVES:
+   - Generate 2-4 narratives (no more, no less) - REQUIRED
    - goal_indices: Link narrative to 1-3 primary goals it supports.
    - topic_indices: Link narrative to 1-3 primary topics it weaves together.
    - suggested_phase:
@@ -111,9 +113,11 @@ STRATEGIC METADATA INSTRUCTIONS:
      * "late": Activation, conversion, mobilization
 
 4. MATRIX VALIDATION:
+   - Generate 10-25 matrix entries total (connecting segments to topics) - REQUIRED
    - Max 2-3 "high" importance + "core_message" topics per segment (FOCUS).
    - 2-4 "medium" importance support topics per segment (BALANCE).
    - 1-2 "experimental" topics per segment (INNOVATION).
+   - Ensure most segments are connected to most topics (aim for comprehensive coverage with 10-25 total connections).
 `
 
 export const STRATEGY_DESIGNER_USER_PROMPT = (brief: BriefNormalizerOutput) => `
@@ -131,16 +135,23 @@ MANDATORY REQUIREMENTS - ALL MUST BE INCLUDED:
 - EXACTLY 3-5 Goals (no more, no less) - prioritize with priority field using ONLY values 1, 2, or 3 (1 = highest priority, 2 = important, 3 = less critical)
 - 3-5 Primary Segments (max 7 total)
 - 4-7 Primary Topics (max 9 total) - THIS IS REQUIRED, DO NOT OMIT
-- 1-2 Narratives
-- A complete Segment-Topic Matrix connecting relevant segments and topics - THIS IS REQUIRED, DO NOT OMIT
+- 2-4 Narratives (no more, no less) - THIS IS REQUIRED, DO NOT OMIT
+- A complete Segment-Topic Matrix with 10-25 entries connecting relevant segments and topics - THIS IS REQUIRED, DO NOT OMIT
+- Matrix should connect most segments to most topics (aim for 10-25 total connections)
 - Limit high-importance matrix connections to 5-6 total for focus
 - CRITICAL: For each matrix entry, generate a brief summary (2-3 sentences) capturing the key connection.
 - CRITICAL: Populate ALL strategic metadata fields (funnel_stage, kpi_hint, related_goal_stages, recommended_content_types, goal_indices, topic_indices, suggested_phase).
+- CRITICAL FOR TOPICS: Every topic MUST include:
+  * "related_goal_stages": non-empty array of funnel stages (e.g., ["awareness", "consideration"])
+  * "recommended_content_types": non-empty array of content types (e.g., ["short_video", "static_image"])
+  These fields are REQUIRED for execution readiness validation.
 
 VALIDATION CHECKLIST - Before responding, verify your JSON includes:
-✓ "goals" array with 3-5 items
+✓ "goals" array with 3-5 items (each with funnel_stage and kpi_hint)
 ✓ "segments" array with 3-5 items  
 ✓ "topics" array with 4-7 items (REQUIRED - DO NOT SKIP)
-✓ "narratives" array with 1-2 items
-✓ "segment_topic_matrix" array with connections (REQUIRED - DO NOT SKIP)
+  ✓ Each topic MUST have "related_goal_stages" array (non-empty, REQUIRED)
+  ✓ Each topic MUST have "recommended_content_types" array (non-empty, REQUIRED)
+✓ "narratives" array with 2-4 items (REQUIRED - DO NOT SKIP)
+✓ "segment_topic_matrix" array with 10-25 entries (REQUIRED - DO NOT SKIP)
 `

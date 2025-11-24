@@ -179,9 +179,9 @@ export const NarrativeSchema = z.object({
 export const CampaignStructureSchema = z.object({
   goals: z.array(GoalSchema).min(3, 'At least 3 goals required').max(5, 'Maximum 5 goals allowed'),
   segments: z.array(SegmentSchema),
-  topics: z.array(TopicSchema),
-  narratives: z.array(NarrativeSchema).optional().default([]),
-  segment_topic_matrix: z.array(SegmentTopicMatrixEntrySchema).optional(),
+  topics: z.array(TopicSchema).optional(), // Optional in schema to handle AI generation issues, but validated separately
+  narratives: z.array(NarrativeSchema).min(2, 'At least 2 narratives required').max(4, 'Maximum 4 narratives allowed').optional(), // Optional in schema to handle AI generation issues, but validated separately
+  segment_topic_matrix: z.array(SegmentTopicMatrixEntrySchema).min(10, 'At least 10 matrix entries required').max(25, 'Maximum 25 matrix entries allowed').optional(), // Optional in schema to handle AI generation issues, but validated separately
 })
 
 export const BriefNormalizerOutputSchema = z.object({

@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Create Topics
     let topicIdMap = new Map<number, string>() // Map index in array to DB UUID
-    if (structure.topics.length > 0) {
+    if (structure.topics && structure.topics.length > 0) {
       const { data: createdTopics, error: topicsError } = await supabase
         .schema('campaign_os')
         .from('topics')
@@ -233,6 +233,19 @@ export async function POST(req: NextRequest) {
       console.log('Valid matrix entries to insert:', validMatrixEntries.length)
 
       if (validMatrixEntries.length > 0) {
+        // Delete existing matrix entries for this campaign first to avoid duplicates
+        // Get segment and topic IDs from the matrix entries
+        const segmentIdsFromMatrix = Array.from(new Set(validMatrixEntries.map(e => e.segment_id)))
+        const topicIdsFromMatrix = Array.from(new Set(validMatrixEntries.map(e => e.topic_id)))
+        if (segmentIdsFromMatrix.length > 0 && topicIdsFromMatrix.length > 0) {
+          await supabase
+            .schema('campaign_os')
+            .from('segment_topic_matrix')
+            .delete()
+            .in('segment_id', segmentIdsFromMatrix)
+            .in('topic_id', topicIdsFromMatrix)
+        }
+        
         const { data: insertedData, error: matrixError } = await supabase
           .schema('campaign_os')
           .from('segment_topic_matrix')
@@ -242,10 +255,26 @@ export async function POST(req: NextRequest) {
         if (matrixError) {
           console.error('Matrix creation failed:', matrixError)
           console.error('Failed entries:', validMatrixEntries)
-          // Log the error but don't fail the entire operation
-          // The campaign structure is saved, but matrix entries are not
-          // This allows the user to manually add matrix entries later if needed
-          console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually or permissions need to be fixed.')
+          // If duplicate key error, try to upsert instead
+          if (matrixError.code === '23505') {
+            console.log('Duplicate key detected, attempting upsert...')
+            // Use upsert to handle duplicates
+            const { data: upsertedData, error: upsertError } = await supabase
+              .schema('campaign_os')
+              .from('segment_topic_matrix')
+              .upsert(validMatrixEntries, { onConflict: 'segment_id,topic_id' })
+              .select()
+            
+            if (upsertError) {
+              console.error('Matrix upsert also failed:', upsertError)
+              console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually.')
+            } else {
+              console.log('Matrix entries successfully upserted:', upsertedData?.length || 0)
+            }
+          } else {
+            // Log the error but don't fail the entire operation
+            console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually or permissions need to be fixed.')
+          }
         } else {
           console.log('Matrix entries successfully inserted:', insertedData?.length || 0)
         }

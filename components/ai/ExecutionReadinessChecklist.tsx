@@ -226,7 +226,7 @@ export function ExecutionReadinessChecklist({
         </div>
 
         {/* Narratives Section */}
-        {(structure.narratives?.length || 0) > 0 && (
+        {(
           <div className="border rounded-lg">
             <button
               onClick={() => toggleSection('narratives')}
@@ -271,7 +271,7 @@ export function ExecutionReadinessChecklist({
         )}
 
         {/* Matrix Section */}
-        {structure.segment_topic_matrix && structure.segment_topic_matrix.length > 0 && (
+        {(
           <div className="border rounded-lg">
             <button
               onClick={() => toggleSection('matrix')}

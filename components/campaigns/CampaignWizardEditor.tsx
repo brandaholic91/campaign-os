@@ -29,7 +29,7 @@ function convertStructureForPreview(structure: CampaignStructureType): any {
       priority: segment.priority,
       selected: true
     })),
-    topics: structure.topics.map(topic => ({
+    topics: (structure.topics || []).map(topic => ({
       name: topic.name,
       description: topic.description || '',
       priority: topic.priority,
@@ -239,12 +239,25 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
       // Check if JSON seems complete (has closing braces)
       const openBraces = (jsonContent.match(/{/g) || []).length
       const closeBraces = (jsonContent.match(/}/g) || []).length
+      const openBrackets = (jsonContent.match(/\[/g) || []).length
+      const closeBrackets = (jsonContent.match(/\]/g) || []).length
       console.log('[Campaign Generation] JSON brace count - open:', openBraces, 'close:', closeBraces)
+      console.log('[Campaign Generation] JSON bracket count - open:', openBrackets, 'close:', closeBrackets)
+      
+      // Check if JSON is incomplete (unbalanced braces/brackets)
+      if (openBraces !== closeBraces || openBrackets !== closeBrackets) {
+        console.error('[Campaign Generation] JSON appears incomplete - unbalanced braces/brackets')
+        console.error('JSON content length:', jsonContent.length)
+        console.error('JSON content (last 500 chars):', jsonContent.slice(-500))
+        toast.error('Hiba: Az AI válasza csonka volt. A generálás megszakadt. Kérlek próbáld újra.')
+        return
+      }
       
       // Check for required fields
       const hasTopics = jsonContent.includes('"topics"') || jsonContent.includes("'topics'")
+      const hasNarratives = jsonContent.includes('"narratives"') || jsonContent.includes("'narratives'")
       const hasMatrix = jsonContent.includes('"segment_topic_matrix"') || jsonContent.includes("'segment_topic_matrix'")
-      console.log('[Campaign Generation] Required fields check - topics:', hasTopics, 'matrix:', hasMatrix)
+      console.log('[Campaign Generation] Required fields check - topics:', hasTopics, 'narratives:', hasNarratives, 'matrix:', hasMatrix)
 
       let structure
       try {
@@ -276,6 +289,25 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
         console.error('Structure data:', JSON.stringify(structure, null, 2))
         console.error('Segment-topic matrix:', structure.segment_topic_matrix)
         toast.error('Hiba: Érvénytelen AI kimenet. Kérlek próbáld újra.')
+        return
+      }
+
+      // Check for required fields that AI might have omitted
+      const missingFields: string[] = []
+      if (!validated.data.topics || validated.data.topics.length === 0) {
+        missingFields.push('topics')
+      }
+      if (!validated.data.narratives || validated.data.narratives.length === 0) {
+        missingFields.push('narratives')
+      }
+      if (!validated.data.segment_topic_matrix || validated.data.segment_topic_matrix.length === 0) {
+        missingFields.push('segment_topic_matrix')
+      }
+
+      if (missingFields.length > 0) {
+        console.error('Missing required fields:', missingFields)
+        console.error('Structure data:', JSON.stringify(structure, null, 2))
+        toast.error(`Hiba: Az AI nem generálta a következő mezőket: ${missingFields.join(', ')}. Kérlek próbáld újra.`)
         return
       }
 
