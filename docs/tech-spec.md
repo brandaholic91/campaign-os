@@ -55,7 +55,7 @@
 - Később: Hetzner / Vercel
 
 **Pontos verziók:**
-- Next.js 15.0.0 (App Router)
+- Next.js 16.0.3 (App Router)
 - React 19.0.0
 - TypeScript 5.3.0
 - Tailwind CSS 3.4.0
@@ -338,7 +338,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 **Epic 2 (AI/CopilotKit):**
 ```
 ANTHROPIC_API_KEY=your-anthropic-api-key
-# CopilotKit endpoint: /api/copilotkit (hardcoded, no environment variable needed)
+# CopilotKit endpoint: /api/ai/stream (hardcoded, no environment variable needed)
 ```
 
 **Next.js konfiguráció (next.config.js):**
@@ -612,7 +612,7 @@ npm install @copilotkit/react-core  # Optional - CopilotKit client
 # ANTHROPIC_API_KEY=sk-ant-...
 
 # 8. Epic 2 development
-# CopilotKit endpoint: /api/copilotkit
+# CopilotKit endpoint: /api/ai/stream
 # AI endpoints: /api/ai/campaign-brief, /api/ai/message-matrix
 ```
 
@@ -1140,7 +1140,7 @@ campaign-os/
 **CopilotKit Protocol Architecture:**
 
 **Frontend (Next.js/React):**
-- CopilotKit client connects to `/api/copilotkit` endpoint
+- CopilotKit client connects to `/api/ai/stream` endpoint
 - Real-time event streaming (WebSocket or Server-Sent Events)
 - Bi-directional state sync: agent sees form state, can suggest/prefill
 - Frontend tools: `highlightField()`, `prefillField()`, `navigateToStep()`, `openSuggestionModal()`
@@ -1184,7 +1184,7 @@ campaign-os/
 - Error handling: retry logic, rate limit handling
 
 **CopilotKit Protocol:**
-- Event stream endpoint: `/api/copilotkit`
+- Event stream endpoint: `/api/ai/stream`
 - Event types: `user_message`, `agent_message`, `tool_call`, `state_patch`, `error`
 - Bi-directional: UI → Agent (input, state) and Agent → UI (responses, suggestions)
 - Frontend integration: CopilotKit or custom CopilotKit client
@@ -1212,7 +1212,7 @@ campaign-os/
 2. Create `lib/ai/client.ts` - Anthropic client with error handling
 3. Create `lib/ai/schemas.ts` - Zod schemas for LLM outputs
 4. Create `lib/ai/copilotkit/server.ts` - CopilotKit runtime configuration (CopilotRuntime, AnthropicAdapter, actions)
-5. Create `app/api/copilotkit/route.ts` - CopilotKit endpoint (HTTP handler, imports getCopilotRuntime from server.ts)
+5. Create `app/api/ai/stream/route.ts` - CopilotKit event stream endpoint (HTTP handler, imports getCopilotRuntime from server.ts)
 6. Implement rate limiting and error handling
 7. Environment variables: `ANTHROPIC_API_KEY`
 8. Test CopilotKit event streaming
@@ -1379,14 +1379,14 @@ interface FrontendTools {
 {
   "@anthropic-ai/sdk": "^0.20.0",
   "zod": "^3.22.4",
-  "@copilotkit/react-core": "^1.0.0" // Optional - CopilotKit CopilotKit client
+  "@copilotkit/react-core": "^1.0.0" // Optional - CopilotKit client
 }
 ```
 
 **Environment variables:**
 ```
 ANTHROPIC_API_KEY=sk-ant-...
-# CopilotKit endpoint: /api/copilotkit (hardcoded, no environment variable needed)
+# CopilotKit endpoint: /api/ai/stream (hardcoded, no environment variable needed)
 ```
 
 **External services:**
@@ -1456,7 +1456,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 - `lib/ai/client.ts` - Anthropic Claude client
 - `lib/ai/schemas.ts` - Zod validation schemas
 - `lib/ai/copilotkit/server.ts` - CopilotKit runtime configuration (CopilotRuntime, AnthropicAdapter, actions)
-- `app/api/copilotkit/route.ts` - CopilotKit endpoint (HTTP handler, imports getCopilotRuntime from server.ts)
+- `app/api/ai/stream/route.ts` - CopilotKit event stream endpoint (HTTP handler, imports getCopilotRuntime from server.ts)
 
 **AI Endpoints:**
 - `/api/ai/campaign-brief/route.ts` - Campaign brief AI
@@ -2069,8 +2069,6 @@ OLLAMA_BASE_URL=http://localhost:11434
 6. ✅ Streaming works correctly for all providers
 7. ✅ CopilotKit integration works with all providers
 8. ✅ Error handling provides clear, provider-specific error messages
-3. No data migration needed (strategies are new concept)
-4. Backward compatibility: `messages` table still used for Content Calendar (Epic 3.1)
 
 ---
 
@@ -2220,4 +2218,514 @@ OLLAMA_BASE_URL=http://localhost:11434
 **AI Integration (Story 3.0.3):**
 - `lib/ai/schemas.ts` - Strategy Zod schemas
 - `lib/ai/prompts/strategy-generator.ts` - Strategy generation prompt
+
+---
+
+## Epic 4.0: Strategic Data Enhancement for Sprint & Content Calendar Planning
+
+**Date:** 2025-11-XX
+**Epic:** Epic 4.0 - Strategic Data Enhancement
+**Change Type:** Schema enhancement + validation + UI improvements
+**Development Context:** Enhancing campaign structure with strategic metadata for execution planning
+
+---
+
+### Epic 4.0 Context
+
+**Epic 1-3 Foundation (Complete):**
+- ✅ Manual campaign management (CRUD)
+- ✅ Audience segments and topics management with enhanced schema (Epic 3.0.5)
+- ✅ Communication strategies (Epic 3.0)
+- ✅ AI-powered campaign structure generation (Epic 2)
+- ✅ Segment-topic matrix with importance and role mapping (Epic 3.0.5)
+- ✅ Database schema with enhanced segments/topics
+
+**Epic 4.0 Goal:**
+Enhance the campaign structure data model with strategic metadata (funnel stages, priorities, goal relationships) to enable effective sprint planning and content calendar generation. The execution AI needs structured, prioritized strategic data rather than verbose text descriptions to make intelligent decisions about sprint sequencing and content scheduling.
+
+---
+
+### Epic 4.0 Scope
+
+**In Scope:**
+1. **Goals schema enhancement** - Add `funnel_stage` and `kpi_hint` fields
+2. **Topics schema enhancement** - Add `related_goal_stages` (enum array) and `recommended_content_types` fields
+3. **Narratives schema enhancement** - Add `primary_goal_ids`, `primary_topic_ids`, and `suggested_phase` fields
+4. **Segment-Topic Matrix validation rules** - Enforce max 2-3 high/core_message per segment
+5. **"Ready for Execution" validation checklist** - Comprehensive validation system
+6. **AI prompt updates** - Generate all new strategic metadata fields
+7. **Database migrations** - Add new fields with backward compatibility
+8. **Validation helper functions** - Completeness checking for all elements
+9. **UI enhancements** - Validation status indicators, checklist display
+
+**Out of Scope (Epic 4.1+):**
+- Actual sprint planner AI implementation (Epic 4.1)
+- Content calendar AI generation (Epic 4.2)
+- Advanced prioritization algorithms
+- Multi-campaign strategic analysis
+
+---
+
+### Epic 4.0 Source Tree Changes
+
+**New files for Epic 4.0:**
+
+```
+campaign-os/
+├── supabase/
+│   └── migrations/
+│       └── YYYYMMDD_strategic_metadata_enhancement.sql  # CREATE - Goals, Topics, Narratives schema enhancement
+├── lib/
+│   ├── validation/
+│   │   └── campaign-structure.ts                       # CREATE - Validation helper functions
+│   └── ai/
+│       ├── schemas.ts                                   # MODIFY - Add new strategic metadata fields to schemas
+│       └── prompts/
+│           └── strategy-designer.ts                    # MODIFY - Update prompt with new fields and matrix rules
+├── app/
+│   └── api/
+│       └── campaigns/
+│           └── [id]/
+│               └── validation/
+│                   └── route.ts                        # CREATE - Campaign validation endpoint
+└── components/
+    └── ai/
+        └── ExecutionReadinessChecklist.tsx             # CREATE - "Ready for Execution" checklist component
+```
+
+**Modified files:**
+- `lib/ai/schemas.ts` - Add funnel_stage, kpi_hint to GoalSchema; related_goal_stages, recommended_content_types to TopicSchema; primary_goal_ids, primary_topic_ids, suggested_phase to NarrativeSchema
+- `lib/ai/prompts/strategy-designer.ts` - Add instructions for new strategic metadata fields and matrix validation rules
+- `components/ai/CampaignStructurePreview.tsx` - Add validation status indicators
+- `app/campaigns/[id]/page.tsx` - Display ExecutionReadinessChecklist component
+- `app/api/campaigns/structure/route.ts` - Handle new fields in save operation
+- `app/api/ai/campaign-brief/route.ts` - Handle new fields in AI response
+
+---
+
+### Epic 4.0 Technical Approach
+
+**Database Schema Enhancements:**
+
+```sql
+-- Goals table enhancement
+ALTER TABLE goals
+  ADD COLUMN funnel_stage TEXT CHECK (funnel_stage IN ('awareness', 'engagement', 'consideration', 'conversion', 'mobilization')),
+  ADD COLUMN kpi_hint TEXT;
+
+-- Topics table enhancement
+ALTER TABLE topics
+  ADD COLUMN related_goal_stages JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN recommended_content_types JSONB;
+
+-- Narratives: create new table + junction tables for referential integrity
+CREATE TABLE IF NOT EXISTS narratives (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  priority INTEGER,
+  suggested_phase TEXT CHECK (suggested_phase IN ('early', 'mid', 'late')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS narrative_goals (
+  narrative_id UUID NOT NULL REFERENCES narratives(id) ON DELETE CASCADE,
+  goal_id UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+  PRIMARY KEY (narrative_id, goal_id)
+);
+
+CREATE TABLE IF NOT EXISTS narrative_topics (
+  narrative_id UUID NOT NULL REFERENCES narratives(id) ON DELETE CASCADE,
+  topic_id UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+  PRIMARY KEY (narrative_id, topic_id)
+);
+
+-- Preserve campaigns.narratives JSONB column for backward compatibility (read-only or synced)
+-- Migration script converts existing JSONB narratives to table structure
+```
+
+**Zod Schema Updates:**
+
+```typescript
+// Enhanced GoalSchema
+export const GoalSchema = z.object({
+  title: z.string(),
+  description: z.string().optional(),
+  target_metric: z.record(z.string(), z.any()).optional(),
+  priority: z.number().int().nonnegative(),
+  funnel_stage: z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization']).optional(),
+  kpi_hint: z.string().optional(), // e.g., "FB/IG reach", "newsletter signup", "event registration"
+});
+
+// Enhanced TopicSchema
+export const TopicSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  short_label: z.string().optional(),
+  description: z.string().optional(),
+  topic_type: z.enum(['benefit', 'problem', 'value', 'proof', 'story']).optional(),
+  related_goal_types: flexibleStringArray().optional(),
+  related_goal_stages: z.array(z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization'])).optional(),
+  recommended_content_types: z.array(z.enum(['short_video', 'story', 'static_image', 'carousel', 'email'])).optional(),
+  core_narrative: z.string().optional(),
+  content_angles: flexibleStringArray().optional(),
+  recommended_channels: flexibleStringArray().optional(),
+  risk_notes: z.union([z.string(), z.array(z.string())]).optional().transform((val) => {
+    if (typeof val === 'string') {
+      return val.trim() ? [val] : []
+    }
+    return val
+  }),
+  priority: z.enum(['primary', 'secondary']).default('secondary'),
+  category: z.string().optional(),
+});
+
+// Enhanced NarrativeSchema
+export const NarrativeSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  priority: z.number().int().nonnegative().optional(),
+  primary_goal_ids: z.array(z.string().uuid()).optional(),
+  primary_topic_ids: z.array(z.string().uuid()).optional(),
+  suggested_phase: z.enum(['early', 'mid', 'late']).optional(),
+});
+```
+
+**Validation Logic:**
+
+```typescript
+// lib/validation/campaign-structure.ts
+export function validateGoalCompleteness(goal: GoalSchema): { valid: boolean; missing: string[] } {
+  const missing: string[] = [];
+  if (!goal.funnel_stage) missing.push('funnel_stage');
+  if (!goal.kpi_hint) missing.push('kpi_hint');
+  return { valid: missing.length === 0, missing };
+}
+
+export function validateTopicCompleteness(topic: TopicSchema): { valid: boolean; missing: string[] } {
+  const missing: string[] = [];
+  if (!topic.related_goal_stages || topic.related_goal_stages.length === 0) missing.push('related_goal_stages');
+  if (!topic.recommended_content_types || topic.recommended_content_types.length === 0) missing.push('recommended_content_types');
+  return { valid: missing.length === 0, missing };
+}
+
+export function validateNarrativeCompleteness(narrative: NarrativeSchema): { valid: boolean; missing: string[] } {
+  const missing: string[] = [];
+  if (!narrative.primary_goal_ids || narrative.primary_goal_ids.length === 0) missing.push('primary_goal_ids');
+  if (!narrative.primary_topic_ids || narrative.primary_topic_ids.length === 0) missing.push('primary_topic_ids');
+  if (!narrative.suggested_phase) missing.push('suggested_phase');
+  return { valid: missing.length === 0, missing };
+}
+
+export function validateMatrixRules(
+  matrix: SegmentTopicMatrixEntry[],
+  segments: SegmentSchema[]
+): { valid: boolean; violations: Array<{ segment_id: string; issue: string }> } {
+  const violations: Array<{ segment_id: string; issue: string }> = [];
+  
+  // Group matrix entries by segment
+  const segmentMap = new Map<string, SegmentTopicMatrixEntry[]>();
+  matrix.forEach(entry => {
+    const segmentId = entry.segment_id || segments[entry.segment_index]?.id;
+    if (!segmentMap.has(segmentId)) {
+      segmentMap.set(segmentId, []);
+    }
+    segmentMap.get(segmentId)!.push(entry);
+  });
+  
+  // Check rules per segment
+  segmentMap.forEach((entries, segmentId) => {
+    const highCore = entries.filter(e => e.importance === 'high' && e.role === 'core_message');
+    const mediumSupport = entries.filter(e => e.importance === 'medium' && e.role === 'support');
+    const experimental = entries.filter(e => e.role === 'experimental');
+    
+    if (highCore.length > 3) {
+      violations.push({ segment_id: segmentId, issue: `Too many high/core_message topics (${highCore.length}, max 3)` });
+    }
+    if (mediumSupport.length > 4) {
+      violations.push({ segment_id: segmentId, issue: `Too many medium/support topics (${mediumSupport.length}, max 4)` });
+    }
+    if (experimental.length > 2) {
+      violations.push({ segment_id: segmentId, issue: `Too many experimental topics (${experimental.length}, max 2)` });
+    }
+  });
+  
+  return { valid: violations.length === 0, violations };
+}
+
+export function isReadyForExecution(structure: CampaignStructure): {
+  ready: boolean;
+  issues: Array<{ type: string; element: string; issue: string }>;
+} {
+  const issues: Array<{ type: string; element: string; issue: string }> = [];
+  
+  // Validate goals
+  structure.goals.forEach((goal, index) => {
+    const validation = validateGoalCompleteness(goal);
+    if (!validation.valid) {
+      validation.missing.forEach(field => {
+        issues.push({ type: 'goal', element: `Goal ${index + 1} (${goal.title})`, issue: `Missing ${field}` });
+      });
+    }
+  });
+  
+  // Validate topics
+  structure.topics.forEach((topic, index) => {
+    const validation = validateTopicCompleteness(topic);
+    if (!validation.valid) {
+      validation.missing.forEach(field => {
+        issues.push({ type: 'topic', element: `Topic ${index + 1} (${topic.name})`, issue: `Missing ${field}` });
+      });
+    }
+  });
+  
+  // Validate narratives
+  structure.narratives?.forEach((narrative, index) => {
+    const validation = validateNarrativeCompleteness(narrative);
+    if (!validation.valid) {
+      validation.missing.forEach(field => {
+        issues.push({ type: 'narrative', element: `Narrative ${index + 1} (${narrative.title})`, issue: `Missing ${field}` });
+      });
+    }
+  });
+  
+  // Validate matrix rules
+  if (structure.segment_topic_matrix) {
+    const matrixValidation = validateMatrixRules(structure.segment_topic_matrix, structure.segments);
+    if (!matrixValidation.valid) {
+      matrixValidation.violations.forEach(violation => {
+        issues.push({ type: 'matrix', element: `Segment ${violation.segment_id}`, issue: violation.issue });
+      });
+    }
+  }
+  
+  return { ready: issues.length === 0, issues };
+}
+```
+
+**UI/UX Approach:**
+
+**Validation Status Indicators:**
+- ✓ (green) - Complete: all required fields present
+- ⚠ (yellow) - Partial: some fields missing
+- ✗ (red) - Missing: critical fields missing
+
+**Execution Readiness Checklist:**
+- Overall status badge: "Ready for Execution" / "Not Ready"
+- Progress indicator: "8/10 criteria met"
+- Expandable sections per validation category
+- Click on issue → navigate to relevant element
+- Real-time updates when structure changes
+
+---
+
+### Epic 4.0 Integration Points
+
+**Database:**
+- Goals table: new `funnel_stage` and `kpi_hint` columns
+- Topics table: new `related_goal_stages` and `recommended_content_types` columns
+- Narratives table: new `narratives` table with `suggested_phase` field + junction tables (`narrative_goals`, `narrative_topics`) for referential integrity
+- `campaigns.narratives` JSONB column preserved for backward compatibility
+- All new fields nullable for backward compatibility
+
+**API Endpoints:**
+- `/api/campaigns/[id]/validation` - GET validation status for campaign
+- `/api/campaigns/structure` - MODIFY to handle new fields
+- `/api/ai/campaign-brief` - MODIFY to generate new fields
+
+**Frontend Components:**
+- `ExecutionReadinessChecklist.tsx` - New checklist component
+- `CampaignStructurePreview.tsx` - MODIFY to show validation status
+- `ValidationStatusIcon.tsx` - New status icon component
+
+**AI Integration:**
+- Reuse Epic 2-3 LLM infrastructure
+- Update `strategy-designer.ts` prompt with new field requirements
+- Add matrix validation rules to prompt
+
+---
+
+### Epic 4.0 Implementation Steps
+
+**Phase 1: Schema Enhancement (Story 4.0.1) - 2-3 days**
+
+1. Create migration: `supabase/migrations/YYYYMMDD_strategic_metadata_enhancement.sql`
+2. Add `funnel_stage` and `kpi_hint` to goals table
+3. Add `related_goal_stages` and `recommended_content_types` to topics table
+4. Create narratives table and junction tables, migrate existing JSONB narratives to table structure, preserve JSONB column for backward compatibility
+5. Update Zod schemas in `lib/ai/schemas.ts` (GoalSchema, TopicSchema; verify NarrativeSchema)
+6. Generate TypeScript types: `supabase gen types`
+7. Test migration and backward compatibility
+
+**Phase 2: AI Prompt Enhancement (Story 4.0.2) - 2-3 days**
+
+8. Update `lib/ai/prompts/strategy-designer.ts`:
+   - Add instructions for `funnel_stage` and `kpi_hint` in goals
+   - Add instructions for `related_goal_stages` and `recommended_content_types` in topics
+   - Add instructions for `primary_goal_ids`, `primary_topic_ids`, `suggested_phase` in narratives
+   - Add matrix validation rules to prompt
+9. Update output schema examples in prompt
+10. Test AI generation with new fields
+
+**Phase 3: Validation Logic (Story 4.0.3) - 3-4 days**
+
+11. Create `lib/validation/campaign-structure.ts` with helper functions
+12. Implement `validateGoalCompleteness()`
+13. Implement `validateTopicCompleteness()`
+14. Implement `validateNarrativeCompleteness()`
+15. Implement `validateMatrixRules()`
+16. Implement `isReadyForExecution()`
+17. Create `/api/campaigns/[id]/validation` endpoint
+18. Test validation logic with various campaign structures
+
+**Phase 4: UI Validation Status (Story 4.0.4) - 3-4 days**
+
+19. Create `components/ui/ValidationStatusIcon.tsx`
+20. Update `components/ai/CampaignStructurePreview.tsx` with validation status
+21. Create `components/ai/ExecutionReadinessChecklist.tsx`
+22. Update `app/campaigns/[id]/page.tsx` to display checklist
+23. Implement real-time validation updates
+24. Test UI components and validation display
+
+**Total: 13-16 days (2.5-3 weeks)**
+
+---
+
+### Epic 4.0 Technical Details
+
+**Strategic Metadata Fields:**
+
+```typescript
+// Goals enhancement
+interface EnhancedGoal {
+  title: string;
+  description?: string;
+  priority: number;
+  funnel_stage?: 'awareness' | 'engagement' | 'consideration' | 'conversion' | 'mobilization';
+  kpi_hint?: string; // e.g., "FB/IG reach", "newsletter signup", "event registration"
+}
+
+// Topics enhancement
+interface EnhancedTopic {
+  name: string;
+  description?: string;
+  related_goal_stages?: Array<'awareness' | 'engagement' | 'consideration' | 'conversion' | 'mobilization'>;
+  recommended_content_types?: Array<'short_video' | 'story' | 'static_image' | 'carousel' | 'email'>;
+  // ... existing fields
+}
+
+// Narratives enhancement
+interface EnhancedNarrative {
+  title: string;
+  description: string;
+  priority?: number;
+  primary_goal_ids?: string[]; // UUID array
+  primary_topic_ids?: string[]; // UUID array
+  suggested_phase?: 'early' | 'mid' | 'late';
+}
+```
+
+**Matrix Validation Rules:**
+- Max 2-3 high importance + core_message topics per segment
+- Max 2-4 medium importance + support topics per segment
+- Max 1-2 experimental topics per segment
+
+**"Ready for Execution" Checklist Criteria:**
+1. All goals have `funnel_stage` and `kpi_hint`
+2. All segments have required fields (from Epic 3.0.5)
+3. All topics have `related_goal_stages` and `recommended_content_types`
+4. All narratives have `primary_goal_ids`, `primary_topic_ids`, and `suggested_phase`
+5. Matrix follows validation rules (max limits per segment)
+
+---
+
+### Epic 4.0 Dependencies
+
+**External:**
+- Epic 3.0 complete (especially Story 3.0.5 - Enhanced Segment & Topic Schema)
+- Epic 2 complete (LLM infrastructure)
+- Anthropic Claude API (reuse from Epic 2)
+
+**Internal:**
+- Epic 3.0 complete (all stories done)
+- Database schema from Epic 1-3
+- Existing campaign structure generation (Story 2.2)
+- Segment-Topic Matrix implementation (Story 3.0.5)
+
+---
+
+### Epic 4.0 Testing Strategy
+
+**Story 4.0.1 (Schema Enhancement):**
+- Unit tests: Zod schema validation for new fields
+- Integration tests: Database migration script, backward compatibility
+- Manual tests: Verify new columns exist, nullable fields work, enum constraints
+
+**Story 4.0.2 (AI Prompt Enhancement):**
+- Unit tests: Prompt template includes new fields
+- Integration tests: AI generates new fields correctly
+- E2E tests: Generate campaign structure → verify all new fields populated
+
+**Story 4.0.3 (Validation Logic):**
+- Unit tests: Validation helper functions with various inputs
+- Integration tests: `/api/campaigns/[id]/validation` endpoint
+- E2E tests: Validation status updates correctly
+
+**Story 4.0.4 (UI Validation Status):**
+- Unit tests: ValidationStatusIcon, ExecutionReadinessChecklist components
+- Integration tests: Validation status display in CampaignStructurePreview
+- E2E tests: Checklist updates in real-time, navigation to issues works
+
+**Manual testing checklist:**
+- [ ] All new fields save correctly to database
+- [ ] AI generates all new strategic metadata fields
+- [ ] Validation detects missing fields correctly
+- [ ] Matrix validation rules enforced
+- [ ] "Ready for Execution" checklist shows correct status
+- [ ] Validation status icons display correctly
+- [ ] Real-time validation updates work
+- [ ] Backward compatibility maintained (existing campaigns work)
+
+---
+
+### Epic 4.0 Acceptance Criteria Summary
+
+1. ✅ All goals have `funnel_stage` and `kpi_hint` fields populated
+2. ✅ All topics have `related_goal_stages` and `recommended_content_types` fields populated
+3. ✅ All narratives have `primary_goal_ids`, `primary_topic_ids`, and `suggested_phase` fields populated
+4. ✅ Segment-Topic Matrix validation enforces max 2-3 high/core_message per segment
+5. ✅ "Ready for Execution" checklist validates all required strategic fields
+6. ✅ AI prompt generates all new strategic metadata fields
+7. ✅ Database migrations preserve backward compatibility
+8. ✅ UI displays validation status for each campaign structure element
+9. ✅ Validation helpers provide clear feedback on missing fields
+10. ✅ Campaign structure can be marked as "ready for execution" when all criteria met
+
+---
+
+### Epic 4.0 Key Code Locations
+
+**Database:**
+- `supabase/migrations/YYYYMMDD_strategic_metadata_enhancement.sql` - Schema enhancement migration
+- `lib/supabase/types.ts` - Generated TypeScript types (includes new fields)
+
+**Validation Logic:**
+- `lib/validation/campaign-structure.ts` - Validation helper functions
+- `app/api/campaigns/[id]/validation/route.ts` - Validation endpoint
+
+**API Endpoints:**
+- `/api/campaigns/structure/route.ts` - MODIFY to handle new fields
+- `/api/ai/campaign-brief/route.ts` - MODIFY to generate new fields
+
+**Frontend Components:**
+- `components/ai/ExecutionReadinessChecklist.tsx` - Checklist component
+- `components/ui/ValidationStatusIcon.tsx` - Status icon component
+- `components/ai/CampaignStructurePreview.tsx` - MODIFY to show validation status
+- `app/campaigns/[id]/page.tsx` - Display checklist
+
+**AI Integration:**
+- `lib/ai/schemas.ts` - MODIFY to add new fields to schemas
+- `lib/ai/prompts/strategy-designer.ts` - MODIFY to include new field requirements and matrix rules
 

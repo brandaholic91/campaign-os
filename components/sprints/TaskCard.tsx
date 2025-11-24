@@ -1,6 +1,5 @@
 'use client'
 
-import { Database } from '@/lib/supabase/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CalendarIcon, User } from 'lucide-react'
@@ -8,7 +7,20 @@ import { format } from 'date-fns'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-type Task = Database['campaign_os']['Tables']['tasks']['Row']
+type Task = {
+  id: string
+  campaign_id: string
+  sprint_id?: string | null
+  channel_id?: string | null
+  title: string
+  description?: string | null
+  category?: string | null
+  status?: 'todo' | 'in_progress' | 'done'
+  assignee?: string | null
+  due_date?: string | null
+  created_at?: string
+  updated_at?: string
+}
 
 interface TaskCardProps {
   task: Task

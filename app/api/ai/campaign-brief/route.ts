@@ -107,7 +107,8 @@ export async function POST(req: NextRequest) {
 
     // Step 2: Strategy Designer (Streaming)
     // Reasoning modelleknél több token kell
-    const strategyMaxTokens = isReasoningModel ? 16384 : 8192;
+    // Increased limit to ensure complete JSON generation (goals, segments, topics, narratives, matrix)
+    const strategyMaxTokens = isReasoningModel ? 32768 : 16384;
     const stream = provider.generateStream({
       model,
       maxTokens: strategyMaxTokens,

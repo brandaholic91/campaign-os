@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Database } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,7 +14,18 @@ import {
 } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
 
-type Sprint = Database['campaign_os']['Tables']['sprints']['Row']
+type Sprint = {
+  id: string
+  campaign_id: string
+  name: string
+  start_date: string
+  end_date: string
+  focus_goal?: string | null
+  focus_channels?: any
+  status?: string
+  created_at?: string
+  updated_at?: string
+}
 
 interface SprintFormProps {
   campaignId: string

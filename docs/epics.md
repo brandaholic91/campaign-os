@@ -16,7 +16,7 @@ Build a functional, manual "War Room" tool for communication and social media ca
 ### Scope
 
 **In Scope:**
-- Next.js 15 project initialization with App Router, TypeScript, Tailwind CSS
+- Next.js 16 project initialization with App Router, TypeScript, Tailwind CSS
 - Supabase PostgreSQL database schema with 8 core tables
 - Campaign CRUD operations (list, create, edit, delete)
 - Audience segments and topics management
@@ -48,7 +48,7 @@ Build a functional, manual "War Room" tool for communication and social media ca
 **External:**
 - Supabase account and project setup
 - Node.js 20.x LTS
-- Next.js 15.0.0, React 19.0.0, TypeScript 5.3.0
+- Next.js 16.0.3, React 19.0.0, TypeScript 5.3.0
 - Tailwind CSS 3.4.0
 - Supabase JS 2.39.0
 
@@ -87,7 +87,7 @@ So that **I have a solid foundation to build campaign management features on**.
 
 **Given** I have Node.js 20.x and a Supabase account
 **When** I run the project setup commands
-**Then** I have a Next.js 15 project with TypeScript, Tailwind CSS, and Supabase client configured
+**Then** I have a Next.js 16 project with TypeScript, Tailwind CSS, and Supabase client configured
 
 **And** the Supabase database has 8 tables (campaigns, goals, segments, topics, messages, channels, sprints, tasks) with proper foreign keys and constraints
 
@@ -309,7 +309,7 @@ So that **AI features can be reliably implemented with real-time frontend commun
 - Install @anthropic-ai/sdk, CopilotKit dependencies
 - Create `lib/ai/client.ts` for Anthropic client
 - Create `lib/ai/copilotkit/server.ts` for CopilotKit runtime configuration (CopilotRuntime, AnthropicAdapter, actions)
-- Create `app/api/copilotkit/route.ts` for CopilotKit endpoint (HTTP handler, rate limiting, error handling)
+- Create `app/api/ai/stream/route.ts` for CopilotKit event stream endpoint (HTTP handler, rate limiting, error handling)
 - Implement `lib/ai/schemas.ts` for JSON validation (Zod)
 - Add error handling utilities
 - Environment variables: ANTHROPIC_API_KEY
@@ -430,7 +430,7 @@ So that **I can get contextual assistance while manually creating campaigns, wit
 - Create `components/ai/AssistantChat.tsx` - streaming chat UI
 - Create `components/ai/InlineSuggestions.tsx` - field-level suggestions
 - Implement frontend tools: highlightField, prefillField, navigateToStep, openSuggestionModal
-- CopilotKit client connects to `/api/copilotkit` endpoint
+- CopilotKit client connects to `/api/ai/stream` endpoint
 - State management integration (form state sync with CopilotKit)
 - Real-time message streaming display
 - Tool execution feedback in UI
@@ -995,6 +995,343 @@ So that **I can switch between providers and models via environment variables wi
 - Story 3.0.5 adds segment-topic matrix for explicit relationship mapping (importance, role)
 - Priority system (primary/secondary) enables better filtering and AI generation focus
 - Story 3.0.6: AI Provider Abstraction enables cost optimization and vendor independence via environment variables
+
+---
+
+## Epic 4.0: Strategic Data Enhancement for Sprint & Content Calendar Planning
+
+**Slug:** campaign-os-epic4-strategic-data-enhancement
+
+### Goal
+
+Enhance the campaign structure data model with strategic metadata (funnel stages, priorities, goal relationships) to enable effective sprint planning and content calendar generation. The execution AI needs structured, prioritized strategic data rather than verbose text descriptions to make intelligent decisions about sprint sequencing and content scheduling.
+
+### Scope
+
+**In Scope:**
+- Goals schema enhancement: add `funnel_stage` and `kpi_hint` fields
+- Topics schema enhancement: add `related_goal_stages` (enum array) and `recommended_content_types` fields
+- Narratives schema enhancement: add `primary_goal_ids`, `primary_topic_ids`, and `suggested_phase` fields
+- Segment-Topic Matrix validation rules enforcement (max 2-3 high/core_message per segment)
+- "Ready for Execution" validation checklist system
+- AI prompt updates to generate enhanced strategic data
+- Database migrations for new fields
+- Validation helper functions for completeness checking
+- UI enhancements: validation status indicators, checklist display
+
+**Out of Scope (Epic 4.1+):**
+- Actual sprint planner AI implementation (Epic 4.1)
+- Content calendar AI generation (Epic 4.2)
+- Advanced prioritization algorithms
+- Multi-campaign strategic analysis
+
+### Success Criteria
+
+1. ✅ All goals have `funnel_stage` and `kpi_hint` fields populated
+2. ✅ All topics have `related_goal_stages` and `recommended_content_types` fields populated
+3. ✅ All narratives have `primary_goal_ids`, `primary_topic_ids`, and `suggested_phase` fields populated
+4. ✅ Segment-Topic Matrix validation enforces max 2-3 high/core_message per segment
+5. ✅ "Ready for Execution" checklist validates all required strategic fields
+6. ✅ AI prompt generates all new strategic metadata fields
+7. ✅ Database migrations preserve backward compatibility
+8. ✅ UI displays validation status for each campaign structure element
+9. ✅ Validation helpers provide clear feedback on missing fields
+10. ✅ Campaign structure can be marked as "ready for execution" when all criteria met
+
+### Dependencies
+
+**External:**
+- Epic 3.0 complete (enhanced segment/topic schema, segment-topic matrix)
+- Epic 2 complete (LLM infrastructure)
+- Anthropic Claude API (reuse from Epic 2)
+
+**Internal:**
+- Epic 3.0 complete (all stories done, especially Story 3.0.5)
+- Database schema from Epic 1-3
+- Existing campaign structure generation (Story 2.2)
+- Segment-Topic Matrix implementation (Story 3.0.5)
+
+---
+
+## Story Map - Epic 4.0
+
+```
+Schema & Migration Layer
+├── Story 4.0.1: Strategic Metadata Schema Enhancement
+│   └── Goals, Topics, Narratives schema bővítés, DB migration
+│
+AI Generation Layer
+├── Story 4.0.2: AI Prompt Enhancement for Strategic Data
+│   └── Strategy Designer prompt frissítés, új mezők generálása
+│
+Validation Layer
+├── Story 4.0.3: Validation Logic & Matrix Rules
+│   └── Helper functions, matrix validation, completeness checks
+│
+User Experience Layer
+└── Story 4.0.4: UI Validation Status & Checklist
+    └── Validation indicators, "Ready for Execution" checklist UI
+```
+
+---
+
+## Stories - Epic 4.0
+
+### Story 4.0.1: Strategic Metadata Schema Enhancement
+
+As a **developer**,
+I want **enhanced schemas for Goals, Topics, and Narratives with strategic metadata fields**,
+So that **the execution AI has structured, prioritized data for sprint and content calendar planning**.
+
+**Acceptance Criteria:**
+
+**Given** I have Epic 3.0 database schema
+**When** I run the migration
+**Then** goals table is enhanced with:
+- `funnel_stage` TEXT enum ('awareness' | 'engagement' | 'consideration' | 'conversion' | 'mobilization')
+- `kpi_hint` TEXT (optional, e.g., "FB/IG reach", "newsletter signup", "event registration")
+
+**And** topics table is enhanced with:
+- `related_goal_stages` JSONB array of enum values ('awareness' | 'engagement' | 'consideration' | 'conversion' | 'mobilization')
+- `recommended_content_types` JSONB array (optional, e.g., ["short_video", "story", "static_image", "carousel", "email"])
+
+**And** narratives table is created with strategic metadata:
+- New `narratives` table with `id`, `campaign_id` (FK), `title`, `description`, `priority`, `suggested_phase`
+- Junction tables: `narrative_goals` and `narrative_topics` for referential integrity
+- `campaigns.narratives` JSONB column preserved for backward compatibility
+- Migration script converts existing JSONB narratives to table structure
+
+**And** Zod schemas are updated for all new structures
+
+**And** TypeScript types are generated from the schema
+
+**And** existing data remains accessible (backward compatibility preserved)
+
+**Prerequisites:** Epic 3.0 complete (especially Story 3.0.5)
+
+**Technical Notes:**
+- Create migration: `supabase/migrations/YYYYMMDD_strategic_metadata_enhancement.sql`
+  - Add `funnel_stage` and `kpi_hint` to `goals` table
+  - Add `related_goal_stages` and `recommended_content_types` to `topics` table
+  - Create `narratives` table with strategic metadata fields
+  - Create `narrative_goals` and `narrative_topics` junction tables for referential integrity
+  - Migrate existing JSONB narratives to table structure
+  - Preserve `campaigns.narratives` JSONB column for backward compatibility
+  - All new fields nullable initially (backward compatibility)
+  - Create indexes for new enum fields and foreign keys if needed
+- Update Zod schemas in `lib/ai/schemas.ts`:
+  - Update `GoalSchema`: add `funnel_stage` (enum), `kpi_hint` (optional string)
+  - Update `TopicSchema`: add `related_goal_stages` (array of enum), `recommended_content_types` (optional array)
+  - Update `NarrativeSchema`: support both table-based (with junction tables) and JSONB-based storage, include `suggested_phase` (optional enum)
+- Generate TypeScript types: `supabase gen types typescript --project-id <project-id> > lib/supabase/types.ts`
+- Test migration:
+  - Run migration on local Supabase instance
+  - Verify new fields exist and are nullable
+  - Test enum constraints
+  - Test JSONB array fields
+  - Verify backward compatibility (existing campaigns still work)
+
+**Estimated Effort:** 5 points (2-3 days)
+
+---
+
+### Story 4.0.2: AI Prompt Enhancement for Strategic Data
+
+As a **campaign manager**,
+I want **the AI to generate all strategic metadata fields when creating campaign structures**,
+So that **the generated structure is immediately ready for sprint and content calendar planning**.
+
+**Acceptance Criteria:**
+
+**Given** I am generating a campaign structure using AI
+**When** the AI generates goals, topics, and narratives
+**Then** all goals include `funnel_stage` and `kpi_hint` fields
+
+**And** all topics include `related_goal_stages` and `recommended_content_types` fields
+
+**And** all narratives include `primary_goal_ids`, `primary_topic_ids`, and `suggested_phase` fields
+
+**And** the Segment-Topic Matrix follows validation rules:
+- Max 2-3 high importance + core_message topics per segment
+- 2-4 medium importance support topics per segment
+- 1-2 experimental topics per segment
+
+**And** the AI output respects campaign type and goal type for strategic metadata
+
+**Prerequisites:** Story 4.0.1 (schema enhancement must exist)
+
+**Technical Notes:**
+- Update `lib/ai/prompts/strategy-designer.ts`:
+  - Add explicit instructions for `funnel_stage` and `kpi_hint` in goals
+  - Add explicit instructions for `related_goal_stages` and `recommended_content_types` in topics
+  - Add explicit instructions for `primary_goal_ids`, `primary_topic_ids`, `suggested_phase` in narratives
+  - Add matrix validation rules to prompt:
+    - "For each segment, assign maximum 2-3 high importance + core_message topics"
+    - "Assign 2-4 medium importance support topics per segment"
+    - "Limit experimental topics to 1-2 per segment"
+  - Update output schema examples in prompt to include all new fields
+  - Add examples of good strategic metadata:
+    - Goal: `funnel_stage: "awareness"`, `kpi_hint: "FB/IG reach"`
+    - Topic: `related_goal_stages: ["awareness", "engagement"]`, `recommended_content_types: ["short_video", "story"]`
+    - Narrative: `suggested_phase: "early"`, `primary_goal_ids: [...]`
+- Update `STRATEGY_DESIGNER_SYSTEM_PROMPT`:
+  - Emphasize importance of strategic metadata for execution planning
+  - Add guidance on funnel stage selection based on campaign type
+  - Add guidance on content type selection based on topic type and segment media habits
+- Test prompt updates:
+  - Generate test campaign structure
+  - Verify all new fields are populated
+  - Verify matrix validation rules are followed
+  - Check that strategic metadata makes sense for campaign type
+
+**Estimated Effort:** 5 points (2-3 days, prompt engineering)
+
+---
+
+### Story 4.0.3: Validation Logic & Matrix Rules
+
+As a **campaign manager**,
+I want **validation logic that ensures campaign structures are complete and follow matrix rules**,
+So that **I know when my campaign is ready for sprint and content calendar planning**.
+
+**Acceptance Criteria:**
+
+**Given** I have a campaign structure
+**When** I check validation
+**Then** I get clear feedback on:
+- Which goals are missing `funnel_stage` or `kpi_hint`
+- Which topics are missing `related_goal_stages` or `recommended_content_types`
+- Which narratives are missing `primary_goal_ids`, `primary_topic_ids`, or `suggested_phase`
+- Which segments violate matrix rules (too many high/core_message topics)
+
+**And** validation helper functions exist for:
+- `validateGoalCompleteness(goal)` - checks funnel_stage and kpi_hint
+- `validateSegmentCompleteness(segment)` - checks required fields from Epic 3.0.5
+- `validateTopicCompleteness(topic)` - checks related_goal_stages and recommended_content_types
+- `validateNarrativeCompleteness(narrative)` - checks primary_goal_ids, primary_topic_ids, suggested_phase
+- `validateMatrixRules(matrix, segments)` - checks max limits per segment
+- `isReadyForExecution(structure)` - comprehensive validation
+
+**And** matrix validation enforces:
+- Max 2-3 high importance + core_message topics per segment
+- Max 2-4 medium importance support topics per segment
+- Max 1-2 experimental topics per segment
+
+**Prerequisites:** Story 4.0.1 (schema enhancement), Story 4.0.2 (prompt updates)
+
+**Technical Notes:**
+- Create `lib/validation/campaign-structure.ts`:
+  - `validateGoalCompleteness(goal: GoalSchema)`: returns { valid: boolean, missing: string[] }
+  - `validateSegmentCompleteness(segment: SegmentSchema)`: returns { valid: boolean, missing: string[] }
+  - `validateTopicCompleteness(topic: TopicSchema)`: returns { valid: boolean, missing: string[] }
+  - `validateNarrativeCompleteness(narrative: NarrativeSchema)`: returns { valid: boolean, missing: string[] }
+  - `validateMatrixRules(matrix: SegmentTopicMatrixEntry[], segments: SegmentSchema[])`: returns { valid: boolean, violations: Array<{segment_id: string, issue: string}> }
+  - `isReadyForExecution(structure: CampaignStructure)`: returns { ready: boolean, issues: Array<{type: string, element: string, issue: string}> }
+- Matrix validation logic:
+  - Group matrix entries by segment_id
+  - For each segment, count:
+    - High importance + core_message topics (max 2-3)
+    - Medium importance + support topics (max 2-4)
+    - Experimental topics (max 1-2)
+  - Return violations with clear messages
+- Create API endpoint: `GET /api/campaigns/[id]/validation`
+  - Returns validation status for entire campaign structure
+  - Includes detailed issues list
+  - Includes "ready for execution" boolean
+- Integration with existing campaign structure endpoints:
+  - Add validation status to campaign structure responses
+  - Optionally validate on save (warn but don't block)
+
+**Estimated Effort:** 8 points (3-4 days)
+
+---
+
+### Story 4.0.4: UI Validation Status & Checklist
+
+As a **campaign manager**,
+I want **to see validation status indicators and a "Ready for Execution" checklist in the UI**,
+So that **I can easily identify what needs to be completed before sprint planning**.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing a campaign structure
+**When** I look at the structure preview
+**Then** I see validation status indicators (✓/⚠/✗) for each element:
+- Goals: shows status for funnel_stage and kpi_hint
+- Segments: shows status for required fields
+- Topics: shows status for related_goal_stages and recommended_content_types
+- Narratives: shows status for primary_goal_ids, primary_topic_ids, suggested_phase
+- Matrix: shows warnings for rule violations
+
+**And** I see a "Ready for Execution" checklist section showing:
+- Overall status (Ready / Not Ready)
+- Progress bar or percentage
+- Detailed list of missing fields per element
+- Matrix rule violations with clear explanations
+
+**And** I can click on validation issues to navigate to the relevant element
+
+**And** the checklist updates in real-time as I edit the structure
+
+**Prerequisites:** Story 4.0.3 (validation logic must exist)
+
+**Technical Notes:**
+- Update `components/ai/CampaignStructurePreview.tsx`:
+  - Add validation status column to each table (Goals, Segments, Topics, Narratives)
+  - Display status icons: ✓ (complete), ⚠ (partial), ✗ (missing)
+  - Add tooltip on hover showing specific missing fields
+- Create `components/ai/ExecutionReadinessChecklist.tsx`:
+  - Props: `campaignId`, `structure`, `validationStatus`
+  - Display overall "Ready for Execution" status (badge or banner)
+  - Progress indicator (e.g., "8/10 criteria met")
+  - Expandable sections for each validation category:
+    - Goals validation (list goals with missing fields)
+    - Segments validation (list segments with missing fields)
+    - Topics validation (list topics with missing fields)
+    - Narratives validation (list narratives with missing fields)
+    - Matrix validation (list rule violations)
+  - Click on issue → navigate to relevant element in preview
+  - Real-time updates when structure changes
+- Create `components/ui/ValidationStatusIcon.tsx`:
+  - Props: `status: 'complete' | 'partial' | 'missing'`
+  - Renders appropriate icon with color coding
+- Update `app/campaigns/[id]/page.tsx`:
+  - Fetch validation status from `/api/campaigns/[id]/validation`
+  - Display ExecutionReadinessChecklist component
+  - Show validation status in campaign header
+- Integration with CampaignStructurePreview:
+  - Call validation API when structure loads
+  - Display validation status in each table row
+  - Highlight rows with validation issues
+- Responsive design: mobile, tablet, desktop layouts
+- Loading states and error handling
+
+**Estimated Effort:** 8 points (3-4 days)
+
+---
+
+## Implementation Timeline - Epic 4.0
+
+**Total Story Points:** 26 points
+
+**Estimated Timeline:** 13-16 days (approximately 2.5-3 weeks with buffer)
+
+**Story Sequence:**
+1. Story 4.0.1: Schema Enhancement (must complete first - foundation)
+2. Story 4.0.2: AI Prompt Enhancement (depends on 4.0.1 - uses new schema)
+3. Story 4.0.3: Validation Logic (depends on 4.0.1 and 4.0.2 - validates new fields)
+4. Story 4.0.4: UI Validation Status (depends on 4.0.3 - displays validation results)
+
+**Notes:**
+- Story 4.0.1 is critical path - schema foundation required for all other stories
+- Story 4.0.2 can start immediately after 4.0.1 (prompt updates)
+- Story 4.0.3 requires both 4.0.1 and 4.0.2 (validates new fields and AI output)
+- Story 4.0.4 depends on 4.0.3 (displays validation results)
+- All new fields are nullable initially for backward compatibility
+- Matrix validation rules are enforced but don't block saving (warnings only)
+- "Ready for Execution" is informational, not a hard gate
+- Epic 4.1 will implement actual sprint planner AI using this strategic data
+- Epic 4.2 will implement content calendar AI generation using this strategic data
 
 ---
 

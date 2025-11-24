@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
       await supabase.schema('campaign_os').from('goals').delete().eq('campaign_id', campaignId)
       await supabase.schema('campaign_os').from('segments').delete().eq('campaign_id', campaignId)
       await supabase.schema('campaign_os').from('topics').delete().eq('campaign_id', campaignId)
+      await supabase.schema('campaign_os').from('narratives').delete().eq('campaign_id', campaignId)
     } else {
       // Create new campaign
       const { data: campaignData, error: campaignError } = await supabase
@@ -96,8 +97,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Create Goals
+    let goalIdMap = new Map<number, string>() // Map index in array to DB UUID
     if (structure.goals.length > 0) {
-      const { error: goalsError } = await supabase
+      const { data: createdGoals, error: goalsError } = await supabase
         .schema('campaign_os')
         .from('goals')
         .insert(
@@ -105,10 +107,19 @@ export async function POST(req: NextRequest) {
             campaign_id: campaignId,
             title: g.title,
             description: g.description,
-            priority: g.priority || 1
+            priority: g.priority || 1,
+            funnel_stage: g.funnel_stage,
+            kpi_hint: g.kpi_hint
           })) as any
         )
+        .select('id')
       if (goalsError) throw new Error(`Goals creation failed: ${goalsError.message}`)
+
+      if (createdGoals) {
+        createdGoals.forEach((goal, index) => {
+          goalIdMap.set(index, goal.id)
+        })
+      }
     }
 
     // 3. Create Segments
@@ -148,7 +159,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Create Topics
     let topicIdMap = new Map<number, string>() // Map index in array to DB UUID
-    if (structure.topics.length > 0) {
+    if (structure.topics && structure.topics.length > 0) {
       const { data: createdTopics, error: topicsError } = await supabase
         .schema('campaign_os')
         .from('topics')
@@ -165,7 +176,9 @@ export async function POST(req: NextRequest) {
             recommended_channels: t.recommended_channels || [],
             risk_notes: t.risk_notes || [],
             priority: t.priority || 'secondary',
-            category: t.category // Legacy
+            category: t.category, // Legacy
+            related_goal_stages: t.related_goal_stages || [],
+            recommended_content_types: t.recommended_content_types || []
           })) as any
         )
         .select('id')
@@ -222,6 +235,19 @@ export async function POST(req: NextRequest) {
       console.log('Valid matrix entries to insert:', validMatrixEntries.length)
 
       if (validMatrixEntries.length > 0) {
+        // Delete existing matrix entries for this campaign first to avoid duplicates
+        // Get segment and topic IDs from the matrix entries
+        const segmentIdsFromMatrix = Array.from(new Set(validMatrixEntries.map(e => e.segment_id)))
+        const topicIdsFromMatrix = Array.from(new Set(validMatrixEntries.map(e => e.topic_id)))
+        if (segmentIdsFromMatrix.length > 0 && topicIdsFromMatrix.length > 0) {
+          await supabase
+            .schema('campaign_os')
+            .from('segment_topic_matrix')
+            .delete()
+            .in('segment_id', segmentIdsFromMatrix)
+            .in('topic_id', topicIdsFromMatrix)
+        }
+        
         const { data: insertedData, error: matrixError } = await supabase
           .schema('campaign_os')
           .from('segment_topic_matrix')
@@ -231,10 +257,26 @@ export async function POST(req: NextRequest) {
         if (matrixError) {
           console.error('Matrix creation failed:', matrixError)
           console.error('Failed entries:', validMatrixEntries)
-          // Log the error but don't fail the entire operation
-          // The campaign structure is saved, but matrix entries are not
-          // This allows the user to manually add matrix entries later if needed
-          console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually or permissions need to be fixed.')
+          // If duplicate key error, try to upsert instead
+          if (matrixError.code === '23505') {
+            console.log('Duplicate key detected, attempting upsert...')
+            // Use upsert to handle duplicates
+            const { data: upsertedData, error: upsertError } = await supabase
+              .schema('campaign_os')
+              .from('segment_topic_matrix')
+              .upsert(validMatrixEntries, { onConflict: 'segment_id,topic_id' })
+              .select()
+            
+            if (upsertError) {
+              console.error('Matrix upsert also failed:', upsertError)
+              console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually.')
+            } else {
+              console.log('Matrix entries successfully upserted:', upsertedData?.length || 0)
+            }
+          } else {
+            // Log the error but don't fail the entire operation
+            console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually or permissions need to be fixed.')
+          }
         } else {
           console.log('Matrix entries successfully inserted:', insertedData?.length || 0)
         }
@@ -243,6 +285,107 @@ export async function POST(req: NextRequest) {
       }
     } else {
       console.warn('No segment_topic_matrix provided in structure or matrix is empty')
+    }
+
+    // 6. Create Narratives
+    if (structure.narratives && structure.narratives.length > 0) {
+      for (const narrative of structure.narratives) {
+        // Create narrative
+        const { data: createdNarrative, error: narrativeError } = await supabase
+          .schema('campaign_os')
+          .from('narratives')
+          .insert({
+            campaign_id: campaignId,
+            title: narrative.title,
+            description: narrative.description,
+            priority: narrative.priority || 1,
+            suggested_phase: narrative.suggested_phase
+          } as any)
+          .select('id')
+          .single()
+
+        if (narrativeError) {
+          console.error('Narrative creation failed:', {
+            error: narrativeError,
+            narrative: narrative,
+            campaignId: campaignId
+          })
+          throw new Error(`Failed to create narrative "${narrative.title}": ${narrativeError.message}`)
+        }
+
+        if (!createdNarrative || !createdNarrative.id) {
+          console.error('Narrative creation returned no data:', {
+            narrative: narrative,
+            campaignId: campaignId
+          })
+          throw new Error(`Failed to create narrative "${narrative.title}": No ID returned`)
+        }
+
+        const narrativeId = createdNarrative.id
+        const goalIds = new Set<string>()
+        const topicIds = new Set<string>()
+
+        // Collect Goal IDs from indices or direct IDs
+        if (narrative.goal_indices) {
+          narrative.goal_indices.forEach(idx => {
+            const id = goalIdMap.get(idx)
+            if (id) goalIds.add(id)
+          })
+        }
+        if (narrative.primary_goal_ids) {
+          narrative.primary_goal_ids.forEach(id => goalIds.add(id))
+        }
+
+        // Collect Topic IDs from indices or direct IDs
+        if (narrative.topic_indices) {
+          narrative.topic_indices.forEach(idx => {
+            const id = topicIdMap.get(idx)
+            if (id) topicIds.add(id)
+          })
+        }
+        if (narrative.primary_topic_ids) {
+          narrative.primary_topic_ids.forEach(id => topicIds.add(id))
+        }
+
+        // Insert Junctions
+        if (goalIds.size > 0) {
+          const { error: goalsJunctionError } = await supabase
+            .schema('campaign_os')
+            .from('narrative_goals')
+            .insert(Array.from(goalIds).map(goalId => ({
+              narrative_id: narrativeId,
+              goal_id: goalId
+            })))
+          
+          if (goalsJunctionError) {
+            console.error('Narrative-goals junction creation failed:', {
+              error: goalsJunctionError,
+              narrativeId: narrativeId,
+              goalIds: Array.from(goalIds)
+            })
+            // Don't throw - narrative is created, just junction failed
+          }
+        }
+
+        if (topicIds.size > 0) {
+          const { error: topicsJunctionError } = await supabase
+            .schema('campaign_os')
+            .from('narrative_topics')
+            .insert(Array.from(topicIds).map(topicId => ({
+              narrative_id: narrativeId,
+              topic_id: topicId
+            })))
+          
+          if (topicsJunctionError) {
+            console.error('Narrative-topics junction creation failed:', {
+              error: topicsJunctionError,
+              narrativeId: narrativeId,
+              topicIds: Array.from(topicIds)
+            })
+            // Don't throw - narrative is created, just junction failed
+          }
+        }
+      }
     }
 
     return NextResponse.json({ success: true, campaignId })

@@ -108,3 +108,26 @@ development_status:
   # Story 3.0.6: AI Provider Abstraction
   # Note: Story drafted 2025-11-24 - Multi-provider AI support (Anthropic, OpenAI, Google Gemini, Ollama) with unified interface
   3-0-6-ai-provider-abstraction: review
+
+  # Epic 4.0: Strategic Data Enhancement for Sprint & Content Calendar Planning
+  # Note: Epic created 2025-11-XX - Enhances campaign structure with strategic metadata for execution planning
+  epic-4-0: contexted
+
+  # Story 4.0.1: Strategic Metadata Schema Enhancement
+  # Note: Story drafted 2025-11-23 - Goals, Topics, Narratives schema bővítés, DB migration
+  4-0-1-strategic-metadata-schema-enhancement: done
+
+  # Story 4.0.2: AI Prompt Enhancement for Strategic Data
+  # Note: Story drafted 2025-11-23 - Strategy Designer prompt frissítés, új mezők generálása
+  4-0-2-ai-prompt-enhancement-strategic-data: done
+
+  # Story 4.0.3: Validation Logic & Matrix Rules
+  # Note: Story drafted 2025-11-23 - Helper functions, matrix validation, completeness checks
+  4-0-3-validation-logic-matrix-rules: done
+
+  # Story 4.0.4: UI Validation Status & Checklist
+  # Note: Story drafted 2025-11-23 - Validation indicators, "Ready for Execution" checklist UI
+  # Note: Status updated to review (2025-11-23) - All tasks completed, validation UI implemented
+  4-0-4-ui-validation-status-checklist: done
+
+  epic-4-0-retrospective: optional

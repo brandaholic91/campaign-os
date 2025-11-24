@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Database } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,8 +14,28 @@ import {
 } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
 
-type Task = Database['campaign_os']['Tables']['tasks']['Row']
-type Channel = Database['campaign_os']['Tables']['channels']['Row']
+type Task = {
+  id: string
+  campaign_id: string
+  sprint_id?: string | null
+  channel_id?: string | null
+  title: string
+  description?: string | null
+  category?: string | null
+  status?: 'todo' | 'in_progress' | 'done'
+  assignee?: string | null
+  due_date?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+type Channel = {
+  id: string
+  name: string
+  type?: string
+  created_at?: string
+  updated_at?: string
+}
 
 interface TaskFormProps {
   campaignId: string

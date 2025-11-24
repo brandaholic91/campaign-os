@@ -5,12 +5,19 @@ import { useRouter } from 'next/navigation'
 import { Database } from '@/lib/supabase/types'
 import { Loader2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { CheckboxList } from './CheckboxList'
 import { StrategyCell } from './StrategyCell'
 import { StrategyDetailModal } from './StrategyDetailModal'
 import { MessageStrategy } from '@/lib/ai/schemas'
 import { StrategyMatrixPreview } from '@/components/ai/StrategyMatrixPreview'
 import { StrategyForm } from './StrategyForm'
+import { MatrixConnectionModal } from './MatrixConnectionModal'
+import { DeleteMatrixConnectionsModal } from './DeleteMatrixConnectionsModal'
+import { EditMatrixConnectionsModal } from './EditMatrixConnectionsModal'
+import { MultiSelect } from '@/components/ui/multi-select'
+import { Plus, Trash2, Pencil } from 'lucide-react'
 
 type Segment = Database['campaign_os']['Tables']['segments']['Row']
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
@@ -62,6 +69,15 @@ export default function MessageMatrix({
   const [generatingCell, setGeneratingCell] = useState<{ segmentId: string; topicId: string } | null>(null)
   const [generatedStrategies, setGeneratedStrategies] = useState<any[]>([])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  
+  // Matrix connection modal state
+  const [isMatrixModalOpen, setIsMatrixModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  
+  // Multi-select dropdown selections for strategy generation
+  const [selectedSegmentsForGeneration, setSelectedSegmentsForGeneration] = useState<string[]>([])
+  const [selectedTopicsForGeneration, setSelectedTopicsForGeneration] = useState<string[]>([])
 
   const getStrategyForCell = (segmentId: string, topicId: string) => {
     const found = strategies.find(
@@ -165,7 +181,15 @@ export default function MessageMatrix({
   }
 
   const handleBatchGenerate = async () => {
-    if (selectedSegments.size === 0 || selectedTopics.size === 0) {
+    // Use multi-select dropdown selections
+    const segmentsToUse = selectedSegmentsForGeneration.length > 0
+      ? selectedSegmentsForGeneration
+      : Array.from(selectedSegments)
+    const topicsToUse = selectedTopicsForGeneration.length > 0
+      ? selectedTopicsForGeneration
+      : Array.from(selectedTopics)
+
+    if (segmentsToUse.length === 0 || topicsToUse.length === 0) {
       toast.error('Válassz ki legalább egy célcsoportot és egy témát')
       return
     }
@@ -177,8 +201,8 @@ export default function MessageMatrix({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaign_id: campaignId,
-          segment_ids: Array.from(selectedSegments),
-          topic_ids: Array.from(selectedTopics)
+          segment_ids: segmentsToUse,
+          topic_ids: topicsToUse
         })
       })
 
@@ -374,6 +398,17 @@ export default function MessageMatrix({
     setSelectedTopics(newSet)
   }
 
+  // Handle multi-select dropdown selections for strategy generation
+  const handleSegmentsSelect = (selectedIds: string[]) => {
+    setSelectedSegmentsForGeneration(selectedIds)
+    setSelectedSegments(new Set(selectedIds))
+  }
+
+  const handleTopicsSelect = (selectedIds: string[]) => {
+    setSelectedTopicsForGeneration(selectedIds)
+    setSelectedTopics(new Set(selectedIds))
+  }
+
   // Convert segments and topics to checkbox list format
   const segmentsForList = segments.map(s => ({
     id: s.id,
@@ -391,6 +426,7 @@ export default function MessageMatrix({
 
   const selectedSegmentsArray = segments.filter(s => selectedSegments.has(s.id))
   const selectedTopicsArray = topics.filter(t => selectedTopics.has(t.id))
+  // Count based on selected multi-select values
   const cellCount = selectedSegmentsArray.length * selectedTopicsArray.length
   const hasAnyData = segments.length > 0 && topics.length > 0
 
@@ -399,24 +435,75 @@ export default function MessageMatrix({
       {/* Configuration Panel (Bento Grid Style) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Audience Selector */}
+          {/* New Matrix Connection Card */}
           <div className="lg:col-span-4 bg-white rounded-2xl shadow-soft border border-gray-100 p-6 flex flex-col">
-            <CheckboxList 
-              title="Célcsoportok" 
-              count={selectedSegments.size}
-              items={segmentsForList} 
-              onToggle={toggleSegment} 
-            />
+            <h3 className="text-lg font-display font-bold mb-2">Új Matrix Kapcsolat</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Hozz létre egy új kapcsolatot egy célcsoport és egy téma között.
+            </p>
+            <div className="space-y-2">
+              <Button
+                onClick={() => setIsMatrixModalOpen(true)}
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Új Kapcsolat Létrehozása
+              </Button>
+              <Button
+                onClick={() => setIsEditModalOpen(true)}
+                variant="outline"
+                className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 flex items-center justify-center gap-2"
+                disabled={matrixEntries.length === 0}
+              >
+                <Pencil className="w-4 h-4" />
+                Kapcsolatok Szerkesztése
+              </Button>
+              <Button
+                onClick={() => setIsDeleteModalOpen(true)}
+                variant="outline"
+                className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 flex items-center justify-center gap-2"
+                disabled={matrixEntries.length === 0}
+              >
+                <Trash2 className="w-4 h-4" />
+                Kapcsolatok Törlése
+              </Button>
+            </div>
           </div>
 
-          {/* Topic Selector */}
+          {/* Strategy Generation Selector */}
           <div className="lg:col-span-4 bg-white rounded-2xl shadow-soft border border-gray-100 p-6 flex flex-col">
-             <CheckboxList 
-                title="Témák" 
-                count={selectedTopics.size}
-                items={topicsForList} 
-                onToggle={toggleTopic} 
-              />
+            <h3 className="text-lg font-display font-bold mb-2">Stratégia Generálás</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Válassz ki egy vagy több célcsoportot és témát a stratégia generálásához.
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="segment-select">Célcsoportok</Label>
+                <MultiSelect
+                  options={segments.map(s => ({
+                    value: s.id,
+                    label: s.name,
+                    description: s.description || undefined
+                  }))}
+                  selected={selectedSegmentsForGeneration}
+                  onSelectionChange={handleSegmentsSelect}
+                  placeholder="Válassz célcsoportokat..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="topic-select">Témák</Label>
+                <MultiSelect
+                  options={topics.map(t => ({
+                    value: t.id,
+                    label: t.name,
+                    description: t.description || undefined
+                  }))}
+                  selected={selectedTopicsForGeneration}
+                  onSelectionChange={handleTopicsSelect}
+                  placeholder="Válassz témákat..."
+                />
+              </div>
+            </div>
           </div>
 
           {/* Action & Stats Panel */}
@@ -600,6 +687,35 @@ export default function MessageMatrix({
         onClose={() => setIsPreviewOpen(false)}
         strategies={generatedStrategies}
         onSave={handleSaveStrategies}
+      />
+
+      <MatrixConnectionModal
+        isOpen={isMatrixModalOpen}
+        onClose={() => setIsMatrixModalOpen(false)}
+        segments={segments}
+        topics={topics}
+        campaignId={campaignId}
+        onSuccess={() => router.refresh()}
+      />
+
+      <DeleteMatrixConnectionsModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        segments={segments}
+        topics={topics}
+        matrixEntries={matrixEntries}
+        campaignId={campaignId}
+        onSuccess={() => router.refresh()}
+      />
+
+      <EditMatrixConnectionsModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        segments={segments}
+        topics={topics}
+        matrixEntries={matrixEntries}
+        campaignId={campaignId}
+        onSuccess={() => router.refresh()}
       />
     </div>
   )

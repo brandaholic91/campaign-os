@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Database } from '@/lib/supabase/types'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -42,9 +41,43 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useRouter } from 'next/navigation'
 
-type Sprint = Database['campaign_os']['Tables']['sprints']['Row']
-type Task = Database['campaign_os']['Tables']['tasks']['Row']
-type Channel = Database['campaign_os']['Tables']['channels']['Row']
+// Local type definitions for sprints, tasks, and channels
+// These tables may not exist in the database schema yet
+type Sprint = {
+  id: string
+  campaign_id: string
+  name: string
+  start_date: string
+  end_date: string
+  focus_goal?: string | null
+  focus_channels?: any
+  status?: string
+  created_at?: string
+  updated_at?: string
+}
+
+type Task = {
+  id: string
+  campaign_id: string
+  sprint_id?: string | null
+  channel_id?: string | null
+  title: string
+  description?: string | null
+  category?: string | null
+  status?: 'todo' | 'in_progress' | 'done'
+  assignee?: string | null
+  due_date?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+type Channel = {
+  id: string
+  name: string
+  type?: string
+  created_at?: string
+  updated_at?: string
+}
 
 interface SprintBoardProps {
   campaignId: string
