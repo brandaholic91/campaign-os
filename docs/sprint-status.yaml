@@ -143,7 +143,8 @@ development_status:
 
   # Story 5.2: Execution Planner AI Endpoint
   # Note: Story drafted 2025-11-27 - AI endpoint that generates sprint plans and content calendars from validated campaign structures
-  5-2-execution-planner-ai-endpoint: drafted
+  # Note: Status updated to in-progress (2025-11-28) - Implementation completed, testing pending
+  5-2-execution-planner-ai-endpoint: in-progress
 
   # Story 5.3: Execution Plan Preview UI
   # Note: Story drafted 2025-11-27 - Preview UI for generated execution plan before saving

@@ -1,6 +1,6 @@
 # Story 5.2: Execution Planner AI Endpoint
 
-Status: drafted
+Status: in-progress
 
 ## Story
 
@@ -107,66 +107,66 @@ so that **I can quickly create execution plans without manual planning**.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create AI endpoint route (AC: 1)
-  - [ ] Create `app/api/ai/campaign-execution/route.ts`
-  - [ ] Implement POST handler with streaming response
-  - [ ] Set up Server-Sent Events (SSE) format
+- [x] Task 1: Create AI endpoint route (AC: 1)
+  - [x] Create `app/api/ai/campaign-execution/route.ts`
+  - [x] Implement POST handler with streaming response
+  - [x] Set up Server-Sent Events (SSE) format
   - [ ] Test endpoint returns 200 status
   - [ ] Test streaming response format
 
-- [ ] Task 2: Implement input validation and soft gate (AC: 2)
-  - [ ] Load campaign structure from database
-  - [ ] Check validation status using validation helpers from Story 4.0.3
-  - [ ] If not ready, generate warning message with validation issues
-  - [ ] Continue execution even if not fully validated (soft gate)
+- [x] Task 2: Implement input validation and soft gate (AC: 2)
+  - [x] Load campaign structure from database
+  - [x] Check validation status using validation helpers from Story 4.0.3
+  - [x] If not ready, generate warning message with validation issues
+  - [x] Continue execution even if not fully validated (soft gate)
   - [ ] Test warning generation and display
 
-- [ ] Task 3: Create execution planner prompt (AC: 3, 4)
-  - [ ] Create `lib/ai/prompts/execution-planner.ts`
-  - [ ] Design system prompt with sprint planning guidelines
-  - [ ] Design system prompt with content slot planning guidelines
-  - [ ] Include campaign structure context (goals, segments, topics, narratives, matrix)
-  - [ ] Include strategic metadata (funnel_stage, priorities, recommended_content_types)
-  - [ ] Include constraint rules (max posts per day/channel, weekly totals)
-  - [ ] Include priority-based generation rules
+- [x] Task 3: Create execution planner prompt (AC: 3, 4)
+  - [x] Create `lib/ai/prompts/execution-planner.ts`
+  - [x] Design system prompt with sprint planning guidelines
+  - [x] Design system prompt with content slot planning guidelines
+  - [x] Include campaign structure context (goals, segments, topics, narratives, matrix)
+  - [x] Include strategic metadata (funnel_stage, priorities, recommended_content_types)
+  - [x] Include constraint rules (max posts per day/channel, weekly totals)
+  - [x] Include priority-based generation rules
   - [ ] Test prompt with sample campaign structures
 
-- [ ] Task 4: Implement sprint generation logic (AC: 3)
-  - [ ] Calculate sprint count based on campaign length and complexity
-  - [ ] Generate sprint dates (no overlaps, cover entire period)
-  - [ ] Assign focus goals based on campaign goal_type and sprint count
-  - [ ] Assign focus segments, topics, channels based on strategic priorities
-  - [ ] Generate sprint names and descriptions
+- [x] Task 4: Implement sprint generation logic (AC: 3)
+  - [x] Calculate sprint count based on campaign length and complexity
+  - [x] Generate sprint dates (no overlaps, cover entire period)
+  - [x] Assign focus goals based on campaign goal_type and sprint count
+  - [x] Assign focus segments, topics, channels based on strategic priorities
+  - [x] Generate sprint names and descriptions
   - [ ] Test sprint generation with various campaign lengths
 
-- [ ] Task 5: Implement content slot generation logic (AC: 4)
-  - [ ] Calculate slot count based on budget and constraints
-  - [ ] Distribute slots evenly across sprints
-  - [ ] Assign slots to segment×topic pairs based on priority
-  - [ ] Respect max posts per day per channel constraints
-  - [ ] Respect max total posts per week constraints
-  - [ ] Assign objectives and content types based on strategic metadata
-  - [ ] Generate angle hints for each slot
+- [x] Task 5: Implement content slot generation logic (AC: 4)
+  - [x] Calculate slot count based on budget and constraints
+  - [x] Distribute slots evenly across sprints
+  - [x] Assign slots to segment×topic pairs based on priority
+  - [x] Respect max posts per day per channel constraints
+  - [x] Respect max total posts per week constraints
+  - [x] Assign objectives and content types based on strategic metadata
+  - [x] Generate angle hints for each slot
   - [ ] Test slot generation with various campaign configurations
 
-- [ ] Task 6: Implement streaming progress updates (AC: 5)
-  - [ ] Send progress events during sprint planning phase
-  - [ ] Send progress events during content calendar generation phase
-  - [ ] Format progress messages in Hungarian
-  - [ ] Send final complete event with full execution plan
+- [x] Task 6: Implement streaming progress updates (AC: 5)
+  - [x] Send progress events during sprint planning phase
+  - [x] Send progress events during content calendar generation phase
+  - [x] Format progress messages in Hungarian
+  - [x] Send final complete event with full execution plan
   - [ ] Test streaming with frontend client
 
-- [ ] Task 7: Implement Zod validation (AC: 6)
-  - [ ] Validate AI response against ExecutionPlanSchema
-  - [ ] Handle validation errors with clear messages
-  - [ ] Return field-level error details
+- [x] Task 7: Implement Zod validation (AC: 6)
+  - [x] Validate AI response against ExecutionPlanSchema
+  - [x] Handle validation errors with clear messages
+  - [x] Return field-level error details
   - [ ] Test validation with valid and invalid plans
 
-- [ ] Task 8: Implement constraint enforcement (AC: 7)
-  - [ ] Create post-processing function to enforce constraints
-  - [ ] Remove slots by priority if constraints violated
-  - [ ] Attempt to move slots to other days if possible
-  - [ ] Generate warnings about removed/moved slots
+- [x] Task 8: Implement constraint enforcement (AC: 7)
+  - [x] Create post-processing function to enforce constraints
+  - [x] Remove slots by priority if constraints violated
+  - [x] Attempt to move slots to other days if possible
+  - [x] Generate warnings about removed/moved slots
   - [ ] Test constraint enforcement with various scenarios
 
 - [ ] Task 9: Testing (AC: 1-7)
@@ -229,9 +229,44 @@ so that **I can quickly create execution plans without manual planning**.
 
 ### Completion Notes List
 
+- ✅ **AI Endpoint implementálva** (`app/api/ai/campaign-execution/route.ts`):
+  - POST handler SSE streaming formátummal
+  - Campaign structure betöltése adatbázisból (goals, segments, topics, narratives, matrix)
+  - Channels betöltése campaign_channels junction táblán keresztül
+  - Validation soft gate (warning küldése, de folytatás)
+  - AI generálás execution planner prompt-tal
+  - Zod validáció ExecutionPlanSchema-val
+  - Constraint enforcement post-processing
+  - Progress eventek streaming formátumban (Hungarian)
+
+- ✅ **Execution Planner Prompt létrehozva** (`lib/ai/prompts/execution-planner.ts`):
+  - System prompt sprint planning guidelines-szel
+  - System prompt content slot planning guidelines-szel
+  - Campaign structure context (goals, segments, topics, narratives, matrix)
+  - Strategic metadata használata (funnel_stage, priorities, recommended_content_types)
+  - Constraint rules (max posts per day/channel, weekly totals)
+  - Priority-based generation rules
+  - User prompt context builder campaign adatokkal
+
+- ✅ **Constraint Enforcement implementálva** (`lib/ai/execution-planner.ts`):
+  - Max posts per day per channel constraint (max 2, Stories: 5)
+  - Slot removal by priority (experimental → medium → high)
+  - Slot moving to other days within sprint if possible
+  - Warning generation removed/moved slots-ról
+  - Slot index recalculation after enforcement
+
 ### File List
+
+- `app/api/ai/campaign-execution/route.ts` - új AI endpoint SSE streaminggel
+- `lib/ai/prompts/execution-planner.ts` - új execution planner prompt template
+- `lib/ai/execution-planner.ts` - új constraint enforcement függvény
 
 ## Change Log
 
 - 2025-11-27: Story drafted by Bob (Scrum Master) based on epic-5-execution-planner-stories.md
+- 2025-11-28: Implementation completed by Dev Agent (Amelia)
+  - AI endpoint route created with SSE streaming
+  - Execution planner prompt implemented
+  - Constraint enforcement logic added
+  - All tasks completed except testing (Task 9)
 
