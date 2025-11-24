@@ -19,7 +19,9 @@ export const GoalSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   target_metric: z.record(z.string(), z.any()).optional(),
-  priority: z.number().int().nonnegative(),
+  priority: z.number().int().min(1).max(3), // Only 1, 2, or 3 allowed
+  funnel_stage: z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization']).optional(),
+  kpi_hint: z.string().optional(),
 })
 
 export const DemographicProfileSchema = z.object({
@@ -81,6 +83,8 @@ export const TopicSchema = z.object({
   }),
   priority: z.enum(['primary', 'secondary']).default('secondary'),
   category: z.string().optional(), // Legacy field
+  related_goal_stages: z.array(z.enum(['awareness', 'engagement', 'consideration', 'conversion', 'mobilization'])).optional(),
+  recommended_content_types: flexibleStringArray().optional(),
 })
 
 // Schema for segment-topic matrix with indices (from AI generation)
@@ -101,24 +105,90 @@ export const SegmentTopicMatrixSchema = z.object({
   summary: z.string().max(500).optional(),
 })
 
-// Union schema that accepts both formats
-export const SegmentTopicMatrixEntrySchema = z.union([
-  SegmentTopicMatrixEntryWithIndicesSchema,
-  SegmentTopicMatrixSchema,
-])
+// Preprocess to normalize the data before validation
+const preprocessMatrixEntry = (data: unknown) => {
+  if (typeof data !== 'object' || data === null) return data
+  
+  const entry = data as Record<string, unknown>
+  
+  // Normalize importance to lowercase if it's a string
+  if (entry.importance && typeof entry.importance === 'string') {
+    const normalized = entry.importance.toLowerCase()
+    // If AI mistakenly put "experimental" in importance, move it to role and set importance to "low"
+    if (normalized === 'experimental') {
+      entry.importance = 'low'
+      // Only set role to experimental if it's not already set
+      if (!entry.role || typeof entry.role !== 'string') {
+        entry.role = 'experimental'
+      }
+    } else if (normalized === 'high' || normalized === 'medium' || normalized === 'low') {
+      entry.importance = normalized
+    }
+  }
+  
+  // Normalize role to lowercase if it's a string
+  if (entry.role && typeof entry.role === 'string') {
+    const normalized = entry.role.toLowerCase()
+    if (normalized === 'core_message' || normalized === 'support' || normalized === 'experimental') {
+      entry.role = normalized
+    }
+  }
+  
+  // If it has segment_index and topic_index, it's index-based format
+  if (('segment_index' in entry && typeof entry.segment_index === 'number') && 
+      ('topic_index' in entry && typeof entry.topic_index === 'number')) {
+    return {
+      segment_index: Number(entry.segment_index),
+      topic_index: Number(entry.topic_index),
+      importance: entry.importance,
+      role: entry.role,
+      summary: entry.summary,
+    }
+  }
+  
+  // If it has segment_id and topic_id, it's ID-based format
+  if (('segment_id' in entry && typeof entry.segment_id === 'string') && 
+      ('topic_id' in entry && typeof entry.topic_id === 'string')) {
+    return {
+      segment_id: entry.segment_id,
+      topic_id: entry.topic_id,
+      importance: entry.importance,
+      role: entry.role,
+      summary: entry.summary,
+    }
+  }
+  
+  // Return as-is if neither format matches (will fail validation)
+  return data
+}
+
+// Union schema that accepts both formats with preprocessing
+export const SegmentTopicMatrixEntrySchema = z.preprocess(
+  preprocessMatrixEntry,
+  z.union([
+    SegmentTopicMatrixEntryWithIndicesSchema,
+    SegmentTopicMatrixSchema,
+  ])
+)
 
 export const NarrativeSchema = z.object({
+  id: z.string().uuid().optional(), // Optional for new narratives before saving
   title: z.string(),
   description: z.string(),
   priority: z.number().int().nonnegative().optional(),
+  primary_goal_ids: z.array(z.string().uuid()).optional(),
+  primary_topic_ids: z.array(z.string().uuid()).optional(),
+  goal_indices: z.array(z.number().int().nonnegative()).optional(), // For AI generation to link to new goals
+  topic_indices: z.array(z.number().int().nonnegative()).optional(), // For AI generation to link to new topics
+  suggested_phase: z.enum(['early', 'mid', 'late']).optional(),
 })
 
 export const CampaignStructureSchema = z.object({
-  goals: z.array(GoalSchema),
+  goals: z.array(GoalSchema).min(3, 'At least 3 goals required').max(5, 'Maximum 5 goals allowed'),
   segments: z.array(SegmentSchema),
-  topics: z.array(TopicSchema),
-  narratives: z.array(NarrativeSchema).optional().default([]),
-  segment_topic_matrix: z.array(SegmentTopicMatrixEntrySchema).optional(),
+  topics: z.array(TopicSchema).optional(), // Optional in schema to handle AI generation issues, but validated separately
+  narratives: z.array(NarrativeSchema).min(2, 'At least 2 narratives required').max(4, 'Maximum 4 narratives allowed').optional(), // Optional in schema to handle AI generation issues, but validated separately
+  segment_topic_matrix: z.array(SegmentTopicMatrixEntrySchema).min(10, 'At least 10 matrix entries required').max(25, 'Maximum 25 matrix entries allowed').optional(), // Optional in schema to handle AI generation issues, but validated separately
 })
 
 export const BriefNormalizerOutputSchema = z.object({

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -9,7 +9,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Check, X, Edit2, Save } from 'lucide-react'
+import { ValidationStatusIcon, type ValidationStatus } from '@/components/ui/ValidationStatusIcon'
 import { SegmentTopicMatrixEditor } from './SegmentTopicMatrixEditor'
+import type { ExecutionReadinessResult } from '@/lib/validation/campaign-structure'
 
 interface StructureItem {
   id?: string
@@ -40,12 +42,58 @@ interface CampaignStructurePreviewProps {
   structure: CampaignStructure
   onSave: (structure: CampaignStructure) => void
   isSaving: boolean
+  campaignId?: string // Optional: if provided, fetch and display validation status
 }
 
-export function CampaignStructurePreview({ structure: initialStructure, onSave, isSaving }: CampaignStructurePreviewProps) {
+export function CampaignStructurePreview({ structure: initialStructure, onSave, isSaving, campaignId }: CampaignStructurePreviewProps) {
   const [structure, setStructure] = useState(initialStructure)
   const [editingItem, setEditingItem] = useState<{ section: keyof CampaignStructure, index: number } | null>(null)
   const [editValues, setEditValues] = useState<StructureItem | null>(null)
+  const [validationStatus, setValidationStatus] = useState<ExecutionReadinessResult | null>(null)
+  const [isLoadingValidation, setIsLoadingValidation] = useState(false)
+
+  // Fetch validation status if campaignId is provided
+  useEffect(() => {
+    if (!campaignId) return
+
+    const fetchValidation = async () => {
+      setIsLoadingValidation(true)
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}/validation`)
+        if (response.ok) {
+          const data = await response.json()
+          setValidationStatus(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch validation status:', error)
+      } finally {
+        setIsLoadingValidation(false)
+      }
+    }
+
+    fetchValidation()
+  }, [campaignId, structure]) // Re-fetch when structure changes
+
+  // Helper to get validation status for an element
+  const getElementValidationStatus = (type: 'goal' | 'segment' | 'topic' | 'narrative', elementName: string): { status: ValidationStatus; tooltip: string } | null => {
+    if (!validationStatus) return null
+
+    const issues = validationStatus.issues.filter(
+      issue => issue.type === type && issue.element === elementName
+    )
+
+    if (issues.length === 0) {
+      return { status: 'complete', tooltip: 'Minden mező kitöltve' }
+    }
+
+    const missingFields = issues.map(i => i.issue).join(', ')
+    const hasRequiredMissing = issues.some(i => !i.issue.includes('(recommended)'))
+
+    return {
+      status: hasRequiredMissing ? 'missing' : 'partial',
+      tooltip: `Hiányzó mezők: ${missingFields}`
+    }
+  }
 
   const sections: { key: keyof CampaignStructure; label: string }[] = [
     { key: 'goals', label: 'Célok' },
@@ -161,65 +209,88 @@ export function CampaignStructurePreview({ structure: initialStructure, onSave, 
           return (
             <TabsContent key={section.key} value={section.key} className="mt-6">
               <div className="grid gap-4">
-                {Array.isArray(structure[section.key]) && structure[section.key].map((item, index) => (
-                <Card key={index} className={`relative transition-colors ${item.selected === false ? 'opacity-60 bg-muted' : 'border-primary/50'}`}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <Checkbox 
-                          checked={item.selected !== false}
-                          onCheckedChange={() => toggleSelection(section.key, index)}
-                        />
+                {Array.isArray(structure[section.key]) && structure[section.key].map((item, index) => {
+                  const elementName = item.title || item.name || `Item ${index + 1}`
+                  const validationType = section.key === 'goals' ? 'goal' : 
+                                       section.key === 'segments' ? 'segment' : 
+                                       section.key === 'topics' ? 'topic' : 
+                                       section.key === 'narratives' ? 'narrative' : null
+                  const validation = validationType ? getElementValidationStatus(validationType, elementName) : null
+                  const hasValidationIssues = validation && validation.status !== 'complete'
+
+                  return (
+                    <Card 
+                      key={index} 
+                      className={`relative transition-colors ${
+                        item.selected === false ? 'opacity-60 bg-muted' : 
+                        hasValidationIssues ? 'border-yellow-300 bg-yellow-50/30' : 
+                        'border-primary/50'
+                      }`}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox 
+                              checked={item.selected !== false}
+                              onCheckedChange={() => toggleSelection(section.key, index)}
+                            />
+                            {editingItem?.section === section.key && editingItem?.index === index ? (
+                              <Input 
+                                value={editValues?.title || editValues?.name || ''}
+                                onChange={(e) => setEditValues(prev => prev ? { ...prev, [item.title ? 'title' : 'name']: e.target.value } : null)}
+                                className="font-semibold"
+                              />
+                            ) : (
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                {item.title || item.name}
+                                {validation && (
+                                  <ValidationStatusIcon 
+                                    status={validation.status} 
+                                    tooltip={validation.tooltip}
+                                  />
+                                )}
+                              </CardTitle>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            {editingItem?.section === section.key && editingItem?.index === index ? (
+                              <>
+                                <Button size="icon" variant="ghost" onClick={saveEdit}>
+                                  <Check className="h-4 w-4 text-green-500" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={cancelEdit}>
+                                  <X className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button size="icon" variant="ghost" onClick={() => startEditing(section.key, index)}>
+                                <Edit2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
                         {editingItem?.section === section.key && editingItem?.index === index ? (
-                          <Input 
-                            value={editValues?.title || editValues?.name || ''}
-                            onChange={(e) => setEditValues(prev => prev ? { ...prev, [item.title ? 'title' : 'name']: e.target.value } : null)}
-                            className="font-semibold"
+                          <Textarea 
+                            value={editValues?.description || ''}
+                            onChange={(e) => setEditValues(prev => prev ? { ...prev, description: e.target.value } : null)}
+                            className="mt-2"
                           />
                         ) : (
-                          <CardTitle className="text-lg">
-                            {item.title || item.name}
-                          </CardTitle>
+                          <p className="text-muted-foreground">{item.description}</p>
                         )}
-                      </div>
-                      <div className="flex gap-2">
-                        {editingItem?.section === section.key && editingItem?.index === index ? (
-                          <>
-                            <Button size="icon" variant="ghost" onClick={saveEdit}>
-                              <Check className="h-4 w-4 text-green-500" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={cancelEdit}>
-                              <X className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </>
-                        ) : (
-                          <Button size="icon" variant="ghost" onClick={() => startEditing(section.key, index)}>
-                            <Edit2 className="h-4 w-4 text-muted-foreground" />
-                          </Button>
+                        {item.priority && (
+                          <div className="mt-2">
+                            <Badge variant="outline">Prioritás: {item.priority}</Badge>
+                          </div>
                         )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {editingItem?.section === section.key && editingItem?.index === index ? (
-                      <Textarea 
-                        value={editValues?.description || ''}
-                        onChange={(e) => setEditValues(prev => prev ? { ...prev, description: e.target.value } : null)}
-                        className="mt-2"
-                      />
-                    ) : (
-                      <p className="text-muted-foreground">{item.description}</p>
-                    )}
-                    {item.priority && (
-                      <div className="mt-2">
-                        <Badge variant="outline">Prioritás: {item.priority}</Badge>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </TabsContent>
           )
         })}
       </Tabs>

@@ -11,6 +11,84 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { CampaignStructureSchema } from '@/lib/ai/schemas'
 import { jsonrepair } from 'jsonrepair'
+import { CampaignStructurePreview } from '@/components/ai/CampaignStructurePreview'
+import type { CampaignStructure as CampaignStructureType } from '@/lib/ai/schemas'
+
+// Helper function to convert CampaignStructureType to the format expected by CampaignStructurePreview
+function convertStructureForPreview(structure: CampaignStructureType): any {
+  return {
+    goals: structure.goals.map(goal => ({
+      title: goal.title,
+      description: goal.description || '',
+      priority: goal.priority,
+      selected: true
+    })),
+    segments: structure.segments.map(segment => ({
+      name: segment.name,
+      description: segment.description || '',
+      priority: segment.priority,
+      selected: true
+    })),
+    topics: (structure.topics || []).map(topic => ({
+      name: topic.name,
+      description: topic.description || '',
+      priority: topic.priority,
+      selected: true
+    })),
+    narratives: (structure.narratives || []).map(narrative => ({
+      title: narrative.title,
+      description: narrative.description,
+      priority: narrative.priority || 1,
+      selected: true
+    })),
+    segment_topic_matrix: structure.segment_topic_matrix || []
+  }
+}
+
+// Helper function to convert preview structure back to CampaignStructureType
+function convertPreviewToStructure(previewStructure: any, originalStructure: CampaignStructureType): CampaignStructureType {
+  // Find original goals by title
+  const originalGoals = originalStructure.goals || []
+  const originalSegments = originalStructure.segments || []
+  const originalTopics = originalStructure.topics || []
+  const originalNarratives = originalStructure.narratives || []
+
+  return {
+    goals: previewStructure.goals.map((previewGoal: any) => {
+      const original = originalGoals.find(g => g.title === previewGoal.title)
+      return original || {
+        title: previewGoal.title,
+        description: previewGoal.description,
+        priority: typeof previewGoal.priority === 'number' ? previewGoal.priority : 1
+      }
+    }),
+    segments: previewStructure.segments.map((previewSegment: any) => {
+      const original = originalSegments.find(s => s.name === previewSegment.name)
+      return original || {
+        name: previewSegment.name,
+        description: previewSegment.description,
+        priority: previewSegment.priority || 'secondary'
+      }
+    }),
+    topics: previewStructure.topics.map((previewTopic: any) => {
+      const original = originalTopics.find(t => t.name === previewTopic.name)
+      return original || {
+        name: previewTopic.name,
+        description: previewTopic.description,
+        priority: previewTopic.priority || 'secondary'
+      }
+    }),
+    narratives: previewStructure.narratives.map((previewNarrative: any) => {
+      const original = originalNarratives.find(n => n.title === previewNarrative.title)
+      return original || {
+        title: previewNarrative.title,
+        description: previewNarrative.description,
+        priority: typeof previewNarrative.priority === 'number' ? previewNarrative.priority : 1
+      }
+    }),
+    segment_topic_matrix: previewStructure.segment_topic_matrix || []
+  }
+}
 
 // Custom Tag Input Component for list-based fields
 const TagInput: React.FC<{
@@ -90,7 +168,9 @@ interface CampaignWizardEditorProps {
 export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goalType, onUpdate }: CampaignWizardEditorProps) {
   const router = useRouter()
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState(wizardData || {})
+  const [generatedStructure, setGeneratedStructure] = useState<CampaignStructureType | null>(null)
 
   const updateField = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }))
@@ -144,6 +224,9 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
         resultText += decoder.decode(value, { stream: true })
       }
       
+      console.log('[Campaign Generation] Raw response length:', resultText.length)
+      console.log('[Campaign Generation] Raw response preview (last 500 chars):', resultText.slice(-500))
+      
       // Clean up potential markdown code blocks
       let jsonContent = resultText.trim()
       if (jsonContent.startsWith('```')) {
@@ -153,17 +236,48 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
         }
       }
 
+      // Check if JSON seems complete (has closing braces)
+      const openBraces = (jsonContent.match(/{/g) || []).length
+      const closeBraces = (jsonContent.match(/}/g) || []).length
+      const openBrackets = (jsonContent.match(/\[/g) || []).length
+      const closeBrackets = (jsonContent.match(/\]/g) || []).length
+      console.log('[Campaign Generation] JSON brace count - open:', openBraces, 'close:', closeBraces)
+      console.log('[Campaign Generation] JSON bracket count - open:', openBrackets, 'close:', closeBrackets)
+      
+      // Check if JSON is incomplete (unbalanced braces/brackets)
+      if (openBraces !== closeBraces || openBrackets !== closeBrackets) {
+        console.error('[Campaign Generation] JSON appears incomplete - unbalanced braces/brackets')
+        console.error('JSON content length:', jsonContent.length)
+        console.error('JSON content (last 500 chars):', jsonContent.slice(-500))
+        toast.error('Hiba: Az AI válasza csonka volt. A generálás megszakadt. Kérlek próbáld újra.')
+        return
+      }
+      
+      // Check for required fields
+      const hasTopics = jsonContent.includes('"topics"') || jsonContent.includes("'topics'")
+      const hasNarratives = jsonContent.includes('"narratives"') || jsonContent.includes("'narratives'")
+      const hasMatrix = jsonContent.includes('"segment_topic_matrix"') || jsonContent.includes("'segment_topic_matrix'")
+      console.log('[Campaign Generation] Required fields check - topics:', hasTopics, 'narratives:', hasNarratives, 'matrix:', hasMatrix)
+
       let structure
       try {
         structure = JSON.parse(jsonContent)
+        console.log('[Campaign Generation] JSON parsed successfully')
+        console.log('[Campaign Generation] Structure keys:', Object.keys(structure))
+        console.log('[Campaign Generation] Topics present:', !!structure.topics, 'count:', structure.topics?.length)
+        console.log('[Campaign Generation] Matrix present:', !!structure.segment_topic_matrix, 'count:', structure.segment_topic_matrix?.length)
       } catch (e) {
         console.log('Standard JSON parse failed, attempting repair...')
+        console.log('Parse error:', e)
         try {
           const repaired = jsonrepair(jsonContent)
           structure = JSON.parse(repaired)
           console.log('JSON repaired successfully')
         } catch (repairError) {
           console.error('JSON Repair Failed:', repairError)
+          console.error('Original JSON content length:', jsonContent.length)
+          console.error('Original JSON content (first 1000 chars):', jsonContent.substring(0, 1000))
+          console.error('Original JSON content (last 1000 chars):', jsonContent.substring(Math.max(0, jsonContent.length - 1000)))
           throw new Error('A generálás megszakadt és nem sikerült helyreállítani. Kérlek próbáld újra.')
         }
       }
@@ -172,36 +286,34 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
       const validated = CampaignStructureSchema.safeParse(structure)
       if (!validated.success) {
         console.error('Validation Error:', validated.error)
+        console.error('Structure data:', JSON.stringify(structure, null, 2))
+        console.error('Segment-topic matrix:', structure.segment_topic_matrix)
         toast.error('Hiba: Érvénytelen AI kimenet. Kérlek próbáld újra.')
         return
       }
 
-      // Save structure
-      const saveResponse = await fetch('/api/campaigns/structure', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId: campaignId, // Include campaignId to update existing campaign
-          campaign: {
-            name: formData.name || '',
-            description: formData.description || '',
-            startDate: formData.startDate || '',
-            endDate: formData.endDate || '',
-            campaignType: formData.type || campaignType,
-            goalType: formData.goalType || goalType
-          },
-          structure: validated.data
-        })
-      })
-
-      if (!saveResponse.ok) {
-        const error = await saveResponse.json()
-        throw new Error(error.error || 'Failed to save campaign structure')
+      // Check for required fields that AI might have omitted
+      const missingFields: string[] = []
+      if (!validated.data.topics || validated.data.topics.length === 0) {
+        missingFields.push('topics')
+      }
+      if (!validated.data.narratives || validated.data.narratives.length === 0) {
+        missingFields.push('narratives')
+      }
+      if (!validated.data.segment_topic_matrix || validated.data.segment_topic_matrix.length === 0) {
+        missingFields.push('segment_topic_matrix')
       }
 
-      toast.success('Kampány struktúra sikeresen generálva!')
-      router.refresh()
-      if (onUpdate) onUpdate()
+      if (missingFields.length > 0) {
+        console.error('Missing required fields:', missingFields)
+        console.error('Structure data:', JSON.stringify(structure, null, 2))
+        toast.error(`Hiba: Az AI nem generálta a következő mezőket: ${missingFields.join(', ')}. Kérlek próbáld újra.`)
+        return
+      }
+
+      // Store generated structure for preview instead of saving immediately
+      setGeneratedStructure(validated.data)
+      toast.success('Kampány struktúra generálva! Válaszd ki, mit szeretnél megtartani.')
     } catch (error) {
       console.error('Error generating campaign:', error)
       toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás során')
@@ -234,6 +346,49 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
     }
   }
 
+  const handleSaveStructure = async (previewStructure: any) => {
+    if (!generatedStructure) return
+    
+    setIsSaving(true)
+    try {
+      // Convert preview structure back to CampaignStructureType
+      const structure = convertPreviewToStructure(previewStructure, generatedStructure)
+      
+      const saveResponse = await fetch('/api/campaigns/structure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId: campaignId, // Include campaignId to update existing campaign
+          campaign: {
+            name: formData.name || '',
+            description: formData.description || '',
+            startDate: formData.startDate || '',
+            endDate: formData.endDate || '',
+            campaignType: formData.type || campaignType,
+            goalType: formData.goalType || goalType
+          },
+          structure,
+          wizardData: formData // Include wizard data to preserve it
+        })
+      })
+
+      if (!saveResponse.ok) {
+        const error = await saveResponse.json()
+        throw new Error(error.error || 'Failed to save campaign structure')
+      }
+
+      toast.success('Kampány struktúra sikeresen mentve!')
+      setGeneratedStructure(null) // Clear preview after save
+      router.refresh()
+      if (onUpdate) onUpdate()
+    } catch (error) {
+      console.error('Error saving campaign structure:', error)
+      toast.error(error instanceof Error ? error.message : 'Hiba történt a mentés során')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const channelOptions = [
     'Facebook Organic',
     'Facebook Ads',
@@ -248,35 +403,44 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Kampány Tervező Adatok</h3>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleSaveWizardData}
-            variant="outline"
-            className="px-4 py-2"
-          >
-            Wizard Adatok Mentése
-          </Button>
-          <Button
-            onClick={handleGenerateStructure}
-            disabled={isGenerating}
-            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white flex items-center gap-2"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Generálás...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Kampány Struktúra Generálása
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+      {generatedStructure ? (
+        <CampaignStructurePreview
+          structure={convertStructureForPreview(generatedStructure)}
+          onSave={handleSaveStructure}
+          isSaving={isSaving}
+          campaignId={campaignId}
+        />
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Kampány Tervező Adatok</h3>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSaveWizardData}
+                variant="outline"
+                className="px-4 py-2"
+              >
+                Mentés
+              </Button>
+              <Button
+                onClick={handleGenerateStructure}
+                disabled={isGenerating}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white flex items-center gap-2"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generálás...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Kampánystruktúra újragenerálása
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
 
       {/* Step 1: Alapadatok */}
       <div className="space-y-4 p-4 border rounded-lg">
@@ -563,6 +727,8 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
           />
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

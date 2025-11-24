@@ -52,18 +52,40 @@ export class OpenAIProvider extends BaseAIProvider {
 
     const response = await this.client.chat.completions.create(requestParams);
 
-    const content = response.choices[0]?.message?.content;
+    const firstChoice = response.choices[0];
+    const content = firstChoice?.message?.content;
+    const finishReason = firstChoice?.finish_reason;
     
     // Log részletek, ha üres a válasz
     if (!content) {
       console.error('[OpenAIProvider] Empty response received:', {
         model: modelName,
         choicesCount: response.choices?.length || 0,
-        firstChoice: response.choices[0],
-        finishReason: response.choices[0]?.finish_reason,
+        firstChoice: firstChoice,
+        finishReason: finishReason,
         usage: response.usage,
         responseId: response.id,
+        message: firstChoice?.message,
       });
+      
+      // Ha a finish_reason nem 'stop', akkor valami probléma van
+      if (finishReason && finishReason !== 'stop') {
+        console.error('[OpenAIProvider] Finish reason indicates issue:', {
+          finishReason: finishReason,
+          possibleReasons: {
+            'length': 'Response was cut off due to max_tokens limit',
+            'content_filter': 'Response was filtered by content filter',
+            'function_call': 'Model decided to call a function',
+            'tool_calls': 'Model decided to make tool calls',
+          }
+        });
+      }
+    }
+
+    // Ha nincs content, de van finish_reason, próbáljuk meg visszaadni egy üres stringet
+    // és logoljuk a részleteket
+    if (!content) {
+      console.warn('[OpenAIProvider] Returning empty content. This may indicate an issue with the API call.');
     }
 
     return {
