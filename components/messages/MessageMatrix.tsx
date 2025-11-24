@@ -14,8 +14,10 @@ import { MessageStrategy } from '@/lib/ai/schemas'
 import { StrategyMatrixPreview } from '@/components/ai/StrategyMatrixPreview'
 import { StrategyForm } from './StrategyForm'
 import { MatrixConnectionModal } from './MatrixConnectionModal'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus } from 'lucide-react'
+import { DeleteMatrixConnectionsModal } from './DeleteMatrixConnectionsModal'
+import { EditMatrixConnectionsModal } from './EditMatrixConnectionsModal'
+import { MultiSelect } from '@/components/ui/multi-select'
+import { Plus, Trash2, Pencil } from 'lucide-react'
 
 type Segment = Database['campaign_os']['Tables']['segments']['Row']
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
@@ -70,10 +72,12 @@ export default function MessageMatrix({
   
   // Matrix connection modal state
   const [isMatrixModalOpen, setIsMatrixModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   
-  // Dropdown selections for strategy generation
-  const [selectedSegmentForGeneration, setSelectedSegmentForGeneration] = useState<string>('')
-  const [selectedTopicForGeneration, setSelectedTopicForGeneration] = useState<string>('')
+  // Multi-select dropdown selections for strategy generation
+  const [selectedSegmentsForGeneration, setSelectedSegmentsForGeneration] = useState<string[]>([])
+  const [selectedTopicsForGeneration, setSelectedTopicsForGeneration] = useState<string[]>([])
 
   const getStrategyForCell = (segmentId: string, topicId: string) => {
     const found = strategies.find(
@@ -177,12 +181,12 @@ export default function MessageMatrix({
   }
 
   const handleBatchGenerate = async () => {
-    // Use dropdown selections if available, otherwise use checkbox selections
-    const segmentsToUse = selectedSegmentForGeneration 
-      ? [selectedSegmentForGeneration]
+    // Use multi-select dropdown selections
+    const segmentsToUse = selectedSegmentsForGeneration.length > 0
+      ? selectedSegmentsForGeneration
       : Array.from(selectedSegments)
-    const topicsToUse = selectedTopicForGeneration
-      ? [selectedTopicForGeneration]
+    const topicsToUse = selectedTopicsForGeneration.length > 0
+      ? selectedTopicsForGeneration
       : Array.from(selectedTopics)
 
     if (segmentsToUse.length === 0 || topicsToUse.length === 0) {
@@ -394,23 +398,15 @@ export default function MessageMatrix({
     setSelectedTopics(newSet)
   }
 
-  // Handle dropdown selections for strategy generation
-  const handleSegmentSelect = (segmentId: string) => {
-    setSelectedSegmentForGeneration(segmentId)
-    const newSet = new Set(selectedSegments)
-    if (segmentId) {
-      newSet.add(segmentId)
-    }
-    setSelectedSegments(newSet)
+  // Handle multi-select dropdown selections for strategy generation
+  const handleSegmentsSelect = (selectedIds: string[]) => {
+    setSelectedSegmentsForGeneration(selectedIds)
+    setSelectedSegments(new Set(selectedIds))
   }
 
-  const handleTopicSelect = (topicId: string) => {
-    setSelectedTopicForGeneration(topicId)
-    const newSet = new Set(selectedTopics)
-    if (topicId) {
-      newSet.add(topicId)
-    }
-    setSelectedTopics(newSet)
+  const handleTopicsSelect = (selectedIds: string[]) => {
+    setSelectedTopicsForGeneration(selectedIds)
+    setSelectedTopics(new Set(selectedIds))
   }
 
   // Convert segments and topics to checkbox list format
@@ -430,10 +426,8 @@ export default function MessageMatrix({
 
   const selectedSegmentsArray = segments.filter(s => selectedSegments.has(s.id))
   const selectedTopicsArray = topics.filter(t => selectedTopics.has(t.id))
-  // For dropdown mode, count based on selected dropdown values
-  const cellCount = selectedSegmentForGeneration && selectedTopicForGeneration 
-    ? 1 
-    : selectedSegmentsArray.length * selectedTopicsArray.length
+  // Count based on selected multi-select values
+  const cellCount = selectedSegmentsArray.length * selectedTopicsArray.length
   const hasAnyData = segments.length > 0 && topics.length > 0
 
   return (
@@ -447,51 +441,67 @@ export default function MessageMatrix({
             <p className="text-sm text-gray-500 mb-4">
               Hozz létre egy új kapcsolatot egy célcsoport és egy téma között.
             </p>
-            <Button
-              onClick={() => setIsMatrixModalOpen(true)}
-              className="w-full bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Új Kapcsolat Létrehozása
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={() => setIsMatrixModalOpen(true)}
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Új Kapcsolat Létrehozása
+              </Button>
+              <Button
+                onClick={() => setIsEditModalOpen(true)}
+                variant="outline"
+                className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 flex items-center justify-center gap-2"
+                disabled={matrixEntries.length === 0}
+              >
+                <Pencil className="w-4 h-4" />
+                Kapcsolatok Szerkesztése
+              </Button>
+              <Button
+                onClick={() => setIsDeleteModalOpen(true)}
+                variant="outline"
+                className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 flex items-center justify-center gap-2"
+                disabled={matrixEntries.length === 0}
+              >
+                <Trash2 className="w-4 h-4" />
+                Kapcsolatok Törlése
+              </Button>
+            </div>
           </div>
 
           {/* Strategy Generation Selector */}
           <div className="lg:col-span-4 bg-white rounded-2xl shadow-soft border border-gray-100 p-6 flex flex-col">
             <h3 className="text-lg font-display font-bold mb-2">Stratégia Generálás</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Válassz ki egy célcsoportot és egy témát a stratégia generálásához.
+              Válassz ki egy vagy több célcsoportot és témát a stratégia generálásához.
             </p>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="segment-select">Célcsoport</Label>
-                <Select value={selectedSegmentForGeneration} onValueChange={handleSegmentSelect}>
-                  <SelectTrigger id="segment-select">
-                    <SelectValue placeholder="Válassz célcsoportot..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {segments.map(segment => (
-                      <SelectItem key={segment.id} value={segment.id}>
-                        {segment.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="segment-select">Célcsoportok</Label>
+                <MultiSelect
+                  options={segments.map(s => ({
+                    value: s.id,
+                    label: s.name,
+                    description: s.description || undefined
+                  }))}
+                  selected={selectedSegmentsForGeneration}
+                  onSelectionChange={handleSegmentsSelect}
+                  placeholder="Válassz célcsoportokat..."
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="topic-select">Téma</Label>
-                <Select value={selectedTopicForGeneration} onValueChange={handleTopicSelect}>
-                  <SelectTrigger id="topic-select">
-                    <SelectValue placeholder="Válassz témát..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {topics.map(topic => (
-                      <SelectItem key={topic.id} value={topic.id}>
-                        {topic.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="topic-select">Témák</Label>
+                <MultiSelect
+                  options={topics.map(t => ({
+                    value: t.id,
+                    label: t.name,
+                    description: t.description || undefined
+                  }))}
+                  selected={selectedTopicsForGeneration}
+                  onSelectionChange={handleTopicsSelect}
+                  placeholder="Válassz témákat..."
+                />
               </div>
             </div>
           </div>
@@ -684,6 +694,26 @@ export default function MessageMatrix({
         onClose={() => setIsMatrixModalOpen(false)}
         segments={segments}
         topics={topics}
+        campaignId={campaignId}
+        onSuccess={() => router.refresh()}
+      />
+
+      <DeleteMatrixConnectionsModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        segments={segments}
+        topics={topics}
+        matrixEntries={matrixEntries}
+        campaignId={campaignId}
+        onSuccess={() => router.refresh()}
+      />
+
+      <EditMatrixConnectionsModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        segments={segments}
+        topics={topics}
+        matrixEntries={matrixEntries}
         campaignId={campaignId}
         onSuccess={() => router.refresh()}
       />

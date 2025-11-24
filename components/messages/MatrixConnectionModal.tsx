@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { X } from 'lucide-react'
+import { X, Sparkles, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 type Segment = {
@@ -41,6 +41,13 @@ interface MatrixConnectionModalProps {
   topics: Topic[]
   campaignId: string
   onSuccess?: () => void
+  initialData?: {
+    segmentId: string
+    topicId: string
+    importance: 'high' | 'medium' | 'low'
+    role: 'core_message' | 'support' | 'experimental'
+    summary: string
+  }
 }
 
 export function MatrixConnectionModal({
@@ -50,13 +57,37 @@ export function MatrixConnectionModal({
   topics,
   campaignId,
   onSuccess,
+  initialData,
 }: MatrixConnectionModalProps) {
-  const [selectedSegmentId, setSelectedSegmentId] = useState<string>('')
-  const [selectedTopicId, setSelectedTopicId] = useState<string>('')
-  const [importance, setImportance] = useState<'high' | 'medium' | 'low'>('medium')
-  const [role, setRole] = useState<'core_message' | 'support' | 'experimental'>('support')
-  const [summary, setSummary] = useState('')
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string>(initialData?.segmentId || '')
+  const [selectedTopicId, setSelectedTopicId] = useState<string>(initialData?.topicId || '')
+  const [importance, setImportance] = useState<'high' | 'medium' | 'low'>(initialData?.importance || 'medium')
+  const [role, setRole] = useState<'core_message' | 'support' | 'experimental'>(initialData?.role || 'support')
+  const [summary, setSummary] = useState(initialData?.summary || '')
   const [isSaving, setIsSaving] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  // Update form when initialData changes or modal opens
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setSelectedSegmentId(initialData.segmentId)
+      setSelectedTopicId(initialData.topicId)
+      setImportance(initialData.importance)
+      setRole(initialData.role)
+      setSummary(initialData.summary)
+    }
+  }, [isOpen, initialData])
+
+  // Reset form when modal closes (but not during save/generate operations)
+  useEffect(() => {
+    if (!isOpen && !isSaving && !isGenerating && !initialData) {
+      setSelectedSegmentId('')
+      setSelectedTopicId('')
+      setImportance('medium')
+      setRole('support')
+      setSummary('')
+    }
+  }, [isOpen, isSaving, isGenerating, initialData])
 
   const handleSave = async () => {
     if (!selectedSegmentId || !selectedTopicId) {
@@ -110,13 +141,77 @@ export function MatrixConnectionModal({
   const selectedSegment = segments.find(s => s.id === selectedSegmentId)
   const selectedTopic = topics.find(t => t.id === selectedTopicId)
 
+  const handleGenerateSummary = async () => {
+    if (!selectedSegmentId || !selectedTopicId) {
+      toast.error('Válassz ki egy célcsoportot és egy témát az összefoglaló generálásához')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const response = await fetch('/api/ai/matrix-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          segment_id: selectedSegmentId,
+          topic_id: selectedTopicId,
+          importance,
+          role,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Hiba történt a generálás során')
+      }
+
+      const data = await response.json()
+      console.log('Generated summary response:', data)
+      console.log('Response data type:', typeof data)
+      console.log('Response data keys:', Object.keys(data))
+      
+      const generatedSummary = data?.summary || data?.content || ''
+      console.log('Extracted summary:', generatedSummary)
+      console.log('Summary type:', typeof generatedSummary)
+      console.log('Summary length:', generatedSummary?.length)
+      
+      if (generatedSummary && generatedSummary.trim()) {
+        const trimmedSummary = generatedSummary.trim()
+        console.log('Setting summary to state:', trimmedSummary)
+        setSummary(trimmedSummary)
+        // Force a re-render check
+        console.log('Summary state should be updated')
+        toast.success('Összefoglaló sikeresen generálva!')
+      } else {
+        console.warn('Generated summary is empty or invalid:', generatedSummary)
+        toast.warning('Az összefoglaló üres lett. Kérlek próbáld újra.')
+      }
+    } catch (error) {
+      console.error('Error generating summary:', error)
+      toast.error(error instanceof Error ? error.message : 'Hiba történt a generálás során')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && !isSaving && !isGenerating) {
+      // Only close if not in the middle of an operation
+      onClose()
+    }
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Új Matrix Kapcsolat</DialogTitle>
+          <DialogTitle>{initialData ? 'Matrix Kapcsolat Szerkesztése' : 'Új Matrix Kapcsolat'}</DialogTitle>
           <DialogDescription>
-            Állítsd be a kapcsolat fontosságát, szerepét és adj hozzá egy összefoglalót.
+            {initialData 
+              ? 'Módosítsd a kapcsolat fontosságát, szerepét vagy összefoglalóját.'
+              : 'Állítsd be a kapcsolat fontosságát, szerepét és adj hozzá egy összefoglalót.'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -142,7 +237,11 @@ export function MatrixConnectionModal({
           {/* Segment Selection */}
           <div className="space-y-2">
             <Label htmlFor="segment">Célcsoport *</Label>
-            <Select value={selectedSegmentId} onValueChange={setSelectedSegmentId}>
+            <Select 
+              value={selectedSegmentId} 
+              onValueChange={setSelectedSegmentId}
+              disabled={!!initialData}
+            >
               <SelectTrigger id="segment">
                 <SelectValue placeholder="Válassz célcsoportot..." />
               </SelectTrigger>
@@ -154,12 +253,19 @@ export function MatrixConnectionModal({
                 ))}
               </SelectContent>
             </Select>
+            {initialData && (
+              <p className="text-xs text-gray-500">A célcsoport nem módosítható szerkesztés során.</p>
+            )}
           </div>
 
           {/* Topic Selection */}
           <div className="space-y-2">
             <Label htmlFor="topic">Téma *</Label>
-            <Select value={selectedTopicId} onValueChange={setSelectedTopicId}>
+            <Select 
+              value={selectedTopicId} 
+              onValueChange={setSelectedTopicId}
+              disabled={!!initialData}
+            >
               <SelectTrigger id="topic">
                 <SelectValue placeholder="Válassz témát..." />
               </SelectTrigger>
@@ -171,6 +277,9 @@ export function MatrixConnectionModal({
                 ))}
               </SelectContent>
             </Select>
+            {initialData && (
+              <p className="text-xs text-gray-500">A téma nem módosítható szerkesztés során.</p>
+            )}
           </div>
 
           {/* Importance */}
@@ -205,9 +314,31 @@ export function MatrixConnectionModal({
 
           {/* Summary */}
           <div className="space-y-2">
-            <Label htmlFor="summary">
-              Összefoglaló (2-3 mondat, max 500 karakter)
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="summary">
+                Összefoglaló (2-3 mondat, max 500 karakter)
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateSummary}
+                disabled={isGenerating || !selectedSegmentId || !selectedTopicId}
+                className="h-8 text-xs"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    Generálás...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Generálás
+                  </>
+                )}
+              </Button>
+            </div>
             <Textarea
               id="summary"
               value={summary}

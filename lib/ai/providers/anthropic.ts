@@ -32,6 +32,16 @@ export class AnthropicProvider extends BaseAIProvider {
       .map(block => (block as Anthropic.TextBlock).text)
       .join('');
 
+    // Log warning if content is empty
+    if (!textContent || textContent.trim().length === 0) {
+      console.warn('[AnthropicProvider] Empty content in response:', {
+        contentBlocks: response.content.length,
+        blockTypes: response.content.map((b: any) => b.type),
+        model: response.model,
+        usage: response.usage,
+      });
+    }
+
     return {
       content: textContent,
       model: response.model,
