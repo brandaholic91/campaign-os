@@ -131,3 +131,30 @@ development_status:
   4-0-4-ui-validation-status-checklist: done
 
   epic-4-0-retrospective: optional
+
+  # Epic 5: Execution Planner - Sprint & Content Calendar AI
+  # Note: Epic created 2025-11-27 - AI-powered execution planner for sprint plans and content calendars
+  # Note: Tech context available in tech-spec.md and epic-5-execution-planner-stories.md (2025-11-27)
+  epic-5: contexted
+
+  # Story 5.1: Database Schema for Execution Planning
+  # Note: Story drafted 2025-11-27 - Database tables for sprints and content slots with proper relationships
+  5-1-database-schema-execution-planning: drafted
+
+  # Story 5.2: Execution Planner AI Endpoint
+  # Note: Story drafted 2025-11-27 - AI endpoint that generates sprint plans and content calendars from validated campaign structures
+  5-2-execution-planner-ai-endpoint: drafted
+
+  # Story 5.3: Execution Plan Preview UI
+  # Note: Story drafted 2025-11-27 - Preview UI for generated execution plan before saving
+  5-3-execution-plan-preview-ui: drafted
+
+  # Story 5.4: Save Execution Plan API & Workflow
+  # Note: Story drafted 2025-11-27 - Save execution plan to database with transaction support
+  5-4-save-execution-plan-api: drafted
+
+  # Story 5.5: Execution Plan Edit & Management UI
+  # Note: Story drafted 2025-11-27 - Edit sprints and content slots after saving
+  5-5-execution-plan-edit-management-ui: drafted
+
+  epic-5-retrospective: optional
