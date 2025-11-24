@@ -176,7 +176,9 @@ export async function POST(req: NextRequest) {
             recommended_channels: t.recommended_channels || [],
             risk_notes: t.risk_notes || [],
             priority: t.priority || 'secondary',
-            category: t.category // Legacy
+            category: t.category, // Legacy
+            related_goal_stages: t.related_goal_stages || [],
+            recommended_content_types: t.recommended_content_types || []
           })) as any
         )
         .select('id')
