@@ -1,6 +1,7 @@
 # Story 5.5: Execution Plan Edit & Management UI
 
-Status: drafted
+Status: in-progress
+
 
 ## Story
 
@@ -83,37 +84,37 @@ so that **I can fine-tune the execution plan to match reality**.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create sprint edit form (AC: 1)
-  - [ ] Create `components/campaigns/SprintEditForm.tsx`
-  - [ ] Add fields: name, start_date, end_date, focus_goal, focus_description, focus_segments, focus_topics, focus_channels, success_indicators
-  - [ ] Implement form validation
-  - [ ] Implement save handler (PUT `/api/sprints/[id]`)
-  - [ ] Validate related content slots after sprint date changes
-  - [ ] Show warning if slots need to be moved/deleted
+- [x] Task 1: Create sprint edit form (AC: 1)
+  - [x] Create `components/campaigns/SprintEditForm.tsx`
+  - [x] Add fields: name, start_date, end_date, focus_goal, focus_description, focus_segments, focus_topics, focus_channels, success_indicators
+  - [x] Implement form validation
+  - [x] Implement save handler (PUT `/api/sprints/[id]`)
+  - [x] Validate related content slots after sprint date changes
+  - [x] Show warning if slots need to be moved/deleted
   - [ ] Test sprint editing with various scenarios
 
-- [ ] Task 2: Create content slot edit form (AC: 2)
-  - [ ] Create `components/campaigns/ContentSlotEditForm.tsx`
-  - [ ] Add fields: date, channel, slot_index, primary_segment_id, primary_topic_id, objective, content_type, angle_hint, notes, status
-  - [ ] Implement form validation
-  - [ ] Implement save handler (PUT `/api/content-slots/[id]`)
-  - [ ] Validate date is within sprint range
-  - [ ] Validate no duplicate slot_index per (date, channel)
+- [x] Task 2: Create content slot edit form (AC: 2)
+  - [x] Create `components/campaigns/ContentSlotEditForm.tsx`
+  - [x] Add fields: date, channel, slot_index, primary_segment_id, primary_topic_id, objective, content_type, angle_hint, notes, status
+  - [x] Implement form validation
+  - [x] Implement save handler (PUT `/api/content-slots/[id]`)
+  - [x] Validate date is within sprint range
+  - [x] Validate no duplicate slot_index per (date, channel)
   - [ ] Test slot editing with various scenarios
 
-- [ ] Task 3: Implement delete functionality (AC: 3)
-  - [ ] Add "Törlés" button to sprint and slot components
-  - [ ] Create confirmation dialog component
-  - [ ] Implement delete handler (DELETE `/api/sprints/[id]` or `/api/content-slots/[id]`)
-  - [ ] Verify CASCADE delete works correctly
+- [x] Task 3: Implement delete functionality (AC: 3)
+  - [x] Add "Törlés" button to sprint and slot components
+  - [x] Create confirmation dialog component
+  - [x] Implement delete handler (DELETE `/api/sprints/[id]` or `/api/content-slots/[id]`)
+  - [x] Verify CASCADE delete works correctly
   - [ ] Test deletion with various scenarios
 
-- [ ] Task 4: Implement re-generate functionality (AC: 4)
-  - [ ] Add "Újragenerálás" button to execution plan view
-  - [ ] Create confirmation dialog
-  - [ ] Implement delete old plan logic
-  - [ ] Call Story 5.2 AI endpoint to generate new plan
-  - [ ] Show preview (Story 5.3)
+- [x] Task 4: Implement re-generate functionality (AC: 4)
+  - [x] Add "Újragenerálás" button to execution plan view
+  - [x] Create confirmation dialog
+  - [x] Implement delete old plan logic
+  - [x] Call Story 5.2 AI endpoint to generate new plan
+  - [x] Show preview (Story 5.3)
   - [ ] Test re-generation flow
 
 - [ ] Task 5: Implement bulk operations (AC: 5, optional)
@@ -124,19 +125,19 @@ so that **I can fine-tune the execution plan to match reality**.
   - [ ] Implement bulk channel change
   - [ ] Test bulk operations
 
-- [ ] Task 6: Implement validation feedback (AC: 6)
-  - [ ] Add inline validation to edit forms
-  - [ ] Display validation errors below fields
-  - [ ] Disable save button when form is invalid
-  - [ ] Show clear, actionable error messages
+- [x] Task 6: Implement validation feedback (AC: 6)
+  - [x] Add inline validation to edit forms
+  - [x] Display validation errors below fields
+  - [x] Disable save button when form is invalid
+  - [x] Show clear, actionable error messages
   - [ ] Test validation feedback with various invalid inputs
 
-- [ ] Task 7: Create API endpoints for edit/delete (AC: 1, 2, 3)
-  - [ ] Create PUT `/api/sprints/[id]/route.ts`
-  - [ ] Create PUT `/api/content-slots/[id]/route.ts`
-  - [ ] Create DELETE `/api/sprints/[id]/route.ts`
-  - [ ] Create DELETE `/api/content-slots/[id]/route.ts`
-  - [ ] Implement validation in endpoints
+- [x] Task 7: Create API endpoints for edit/delete (AC: 1, 2, 3)
+  - [x] Create PUT `/api/sprints/[id]/route.ts`
+  - [x] Create PUT `/api/content-slots/[id]/route.ts`
+  - [x] Create DELETE `/api/sprints/[id]/route.ts`
+  - [x] Create DELETE `/api/content-slots/[id]/route.ts`
+  - [x] Implement validation in endpoints
   - [ ] Test all endpoints
 
 - [ ] Task 8: Testing (AC: 1-6)
@@ -199,7 +200,22 @@ so that **I can fine-tune the execution plan to match reality**.
 
 ### Completion Notes List
 
+- ✅ SprintEditForm: Teljes form implementálva minden mezővel, validációval, és junction táblák kezelésével
+- ✅ ContentSlotEditForm: Teljes form implementálva validációval (dátum tartomány, duplicate slot_index ellenőrzés)
+- ✅ Delete functionality: Confirmation dialogs implementálva sprint és slot törléshez
+- ✅ Re-generate functionality: Régi terv törlése és újragenerálás implementálva
+- ✅ API endpoints: PUT és DELETE végpontok létrehozva sprints és content-slots számára
+- ✅ Validation feedback: Inline validáció és hibaüzenetek implementálva mindkét formban
+
 ### File List
+
+- `components/campaigns/SprintEditForm.tsx` - Sprint edit form component
+- `components/campaigns/ContentSlotEditForm.tsx` - Content slot edit form component
+- `components/campaigns/SprintList.tsx` - Updated with edit/delete buttons
+- `components/campaigns/ContentCalendar.tsx` - Updated with edit/delete buttons
+- `components/campaigns/ExecutionPlanner.tsx` - Updated with re-generate functionality
+- `app/api/sprints/[id]/route.ts` - PUT and DELETE endpoints for sprints
+- `app/api/content-slots/[id]/route.ts` - PUT and DELETE endpoints for content slots
 
 ## Change Log
 

@@ -154,8 +154,51 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
   }
 
   const handleRegenerate = async () => {
-    if (confirm('Biztosan újragenerálod a sprint tervet és tartalomnaptárt?')) {
+    const confirmed = confirm(
+      'Biztosan újragenerálod? A jelenlegi terv törlődik.'
+    )
+
+    if (!confirmed) return
+
+    setIsGenerating(true)
+    setError(null)
+    setProgress('Régi terv törlése...')
+    setExecutionPlan(null)
+
+    try {
+      // Delete existing plan from database
+      const supabase = createClient()
+      const db = supabase.schema('campaign_os')
+
+      const { data: existingSprints } = await db
+        .from('sprints')
+        .select('id')
+        .eq('campaign_id', campaignId)
+
+      if (existingSprints && existingSprints.length > 0) {
+        const sprintIds = existingSprints.map((s) => s.id)
+
+        // Delete content slots
+        await db.from('content_slots').delete().in('sprint_id', sprintIds)
+
+        // Delete junction tables
+        await db.from('sprint_segments').delete().in('sprint_id', sprintIds)
+        await db.from('sprint_topics').delete().in('sprint_id', sprintIds)
+        await db.from('sprint_channels').delete().in('sprint_id', sprintIds)
+
+        // Delete sprints
+        await db.from('sprints').delete().eq('campaign_id', campaignId)
+      }
+
+      // Generate new plan
+      setProgress('Új terv generálása...')
       await handleGenerate()
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Ismeretlen hiba történt'
+      setError(errorMessage)
+      setIsGenerating(false)
+      toast.error(errorMessage)
     }
   }
 
@@ -260,6 +303,7 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
               <Button
                 variant="outline"
                 onClick={handleRegenerate}
+                disabled={isGenerating}
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Újragenerálás
@@ -281,12 +325,25 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
           </div>
 
           {/* Sprint List */}
-          <SprintList sprints={executionPlan.sprints} />
+          <SprintList 
+            sprints={executionPlan.sprints} 
+            campaignId={campaignId}
+            onSprintUpdate={() => {
+              // Reload execution plan after update
+              // For now, just refresh the page or reload data
+              window.location.reload()
+            }}
+          />
 
           {/* Content Calendar */}
           <ContentCalendar
             slots={executionPlan.content_calendar}
             sprints={executionPlan.sprints}
+            campaignId={campaignId}
+            onSlotUpdate={() => {
+              // Reload execution plan after update
+              window.location.reload()
+            }}
           />
         </div>
       )}

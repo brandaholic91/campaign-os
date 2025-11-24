@@ -3,13 +3,29 @@
 import React, { useState, useMemo } from 'react'
 import { ContentSlot, SprintPlan } from '@/lib/ai/schemas'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, isSameMonth } from 'date-fns'
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { ContentSlotEditForm } from './ContentSlotEditForm'
+import { Database } from '@/lib/supabase/types'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { toast } from 'sonner'
+
+type ContentSlotRow = Database['campaign_os']['Tables']['content_slots']['Row']
 
 interface ContentCalendarProps {
   slots: ContentSlot[]
   sprints: SprintPlan[]
+  campaignId?: string
+  onSlotUpdate?: () => void
 }
 
 const objectiveLabels: Record<string, string> = {
@@ -42,12 +58,14 @@ const objectiveColors: Record<string, string> = {
 
 type ViewType = 'weekly' | 'monthly' | 'sprint'
 
-export function ContentCalendar({ slots, sprints }: ContentCalendarProps) {
+export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: ContentCalendarProps) {
   const [viewType, setViewType] = useState<ViewType>('weekly')
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [segmentNames, setSegmentNames] = useState<Record<string, string>>({})
   const [topicNames, setTopicNames] = useState<Record<string, string>>({})
+  const [editingSlot, setEditingSlot] = useState<ContentSlotRow | null>(null)
+  const [deletingSlotId, setDeletingSlotId] = useState<string | null>(null)
 
   // Load segment and topic names
   React.useEffect(() => {
@@ -161,43 +179,144 @@ export function ContentCalendar({ slots, sprints }: ContentCalendarProps) {
     setCurrentMonth(newMonth)
   }
 
-  const renderSlot = (slot: ContentSlot) => (
-    <div
-      key={slot.id}
-      className="p-2 bg-white border border-gray-200 rounded-lg mb-2 hover:shadow-md transition-shadow"
-    >
-      <div className="flex items-start justify-between gap-2 mb-1">
-        <Badge
-          className={`${objectiveColors[slot.objective] || 'bg-gray-100 text-gray-700 border-gray-200'} border text-xs`}
-        >
-          {objectiveLabels[slot.objective] || slot.objective}
-        </Badge>
-        <Badge variant="outline" className="text-xs">
-          {slot.channel}
-        </Badge>
-      </div>
-      <div className="text-xs text-gray-600 space-y-0.5">
-        {slot.primary_segment_id && (
-          <div className="truncate">
-            Szegmens: {segmentNames[slot.primary_segment_id] || slot.primary_segment_id}
+  const handleEdit = async (slotId: string) => {
+    if (!campaignId) {
+      toast.error('Kampány ID hiányzik')
+      return
+    }
+
+    const supabase = createClient()
+    const db = supabase.schema('campaign_os')
+
+    const { data: slot, error } = await db
+      .from('content_slots')
+      .select('*')
+      .eq('id', slotId)
+      .single()
+
+    if (error || !slot) {
+      toast.error('Tartalom slot betöltése sikertelen')
+      return
+    }
+
+    setEditingSlot(slot)
+  }
+
+  const handleDelete = async (slotId: string) => {
+    setDeletingSlotId(slotId)
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingSlotId) return
+
+    try {
+      const response = await fetch(`/api/content-slots/${deletingSlotId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Sikertelen törlés')
+      }
+
+      toast.success('Tartalom slot sikeresen törölve')
+      setDeletingSlotId(null)
+      if (onSlotUpdate) {
+        onSlotUpdate()
+      }
+    } catch (error) {
+      toast.error('Hiba történt a törlés során')
+      console.error('Error deleting content slot:', error)
+    }
+  }
+
+  const handleEditSuccess = () => {
+    setEditingSlot(null)
+    if (onSlotUpdate) {
+      onSlotUpdate()
+    }
+  }
+
+  const renderSlot = (slot: ContentSlot) => {
+    // Convert ContentSlot to ContentSlotRow format for editing
+    const slotRow: ContentSlotRow = {
+      id: slot.id,
+      sprint_id: slot.sprint_id,
+      date: slot.date,
+      channel: slot.channel,
+      slot_index: slot.slot_index,
+      primary_segment_id: slot.primary_segment_id || null,
+      primary_topic_id: slot.primary_topic_id || null,
+      objective: slot.objective,
+      content_type: slot.content_type,
+      angle_hint: slot.angle_hint || null,
+      notes: slot.notes || null,
+      status: slot.status,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    return (
+      <div
+        key={slot.id}
+        className="p-2 bg-white border border-gray-200 rounded-lg mb-2 hover:shadow-md transition-shadow"
+      >
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge
+              className={`${objectiveColors[slot.objective] || 'bg-gray-100 text-gray-700 border-gray-200'} border text-xs`}
+            >
+              {objectiveLabels[slot.objective] || slot.objective}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {slot.channel}
+            </Badge>
           </div>
-        )}
-        {slot.primary_topic_id && (
-          <div className="truncate">
-            Téma: {topicNames[slot.primary_topic_id] || slot.primary_topic_id}
-          </div>
-        )}
-        <div className="text-gray-500">
-          {contentTypeLabels[slot.content_type] || slot.content_type}
+          {campaignId && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => handleEdit(slot.id)}
+                title="Szerkesztés"
+              >
+                <Edit className="w-3 h-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-destructive"
+                onClick={() => handleDelete(slot.id)}
+                title="Törlés"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
         </div>
-        {slot.angle_hint && (
-          <div className="text-gray-500 truncate" title={slot.angle_hint}>
-            {slot.angle_hint.length > 30 ? `${slot.angle_hint.substring(0, 30)}...` : slot.angle_hint}
+        <div className="text-xs text-gray-600 space-y-0.5">
+          {slot.primary_segment_id && (
+            <div className="truncate">
+              Szegmens: {segmentNames[slot.primary_segment_id] || slot.primary_segment_id}
+            </div>
+          )}
+          {slot.primary_topic_id && (
+            <div className="truncate">
+              Téma: {topicNames[slot.primary_topic_id] || slot.primary_topic_id}
+            </div>
+          )}
+          <div className="text-gray-500">
+            {contentTypeLabels[slot.content_type] || slot.content_type}
           </div>
-        )}
+          {slot.angle_hint && (
+            <div className="text-gray-500 truncate" title={slot.angle_hint}>
+              {slot.angle_hint.length > 30 ? `${slot.angle_hint.substring(0, 30)}...` : slot.angle_hint}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-soft overflow-hidden">
@@ -359,6 +478,36 @@ export function ContentCalendar({ slots, sprints }: ContentCalendarProps) {
           </div>
         )}
       </div>
+
+      {/* Edit Form Dialog */}
+      {editingSlot && campaignId && (
+        <ContentSlotEditForm
+          slot={editingSlot}
+          campaignId={campaignId}
+          onSuccess={handleEditSuccess}
+          onCancel={() => setEditingSlot(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deletingSlotId !== null} onOpenChange={() => setDeletingSlotId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Törlés megerősítése</DialogTitle>
+            <DialogDescription>
+              Biztosan törölni szeretnéd ezt a tartalom slotot?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingSlotId(null)}>
+              Mégse
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Törlés
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

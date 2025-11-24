@@ -157,6 +157,7 @@ development_status:
 
   # Story 5.5: Execution Plan Edit & Management UI
   # Note: Story drafted 2025-11-27 - Edit sprints and content slots after saving
-  5-5-execution-plan-edit-management-ui: drafted
+  # Note: Status updated to in-progress (2025-11-28) - Dev agent starting implementation
+  5-5-execution-plan-edit-management-ui: in-progress
 
   epic-5-retrospective: optional
