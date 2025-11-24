@@ -1,11 +1,12 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { SprintPlan } from '@/lib/ai/schemas'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
-import { ChevronDown, ChevronUp, Calendar, Target, Users, MessageSquare, Radio, Edit, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Calendar, Target, Users, MessageSquare, Radio, Edit, Trash2, Plus, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { SprintEditForm } from './SprintEditForm'
 import { Database } from '@/lib/supabase/types'
@@ -25,6 +26,8 @@ interface SprintListProps {
   sprints: SprintPlan[]
   campaignId?: string
   onSprintUpdate?: () => void
+  onGenerateContent?: (sprintId: string) => void
+  generatingContentFor?: string | null
 }
 
 const focusGoalLabels: Record<string, string> = {
@@ -43,7 +46,8 @@ const focusGoalColors: Record<string, string> = {
   mobilization: 'bg-red-100 text-red-700 border-red-200',
 }
 
-export function SprintList({ sprints, campaignId, onSprintUpdate }: SprintListProps) {
+export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateContent, generatingContentFor }: SprintListProps) {
+  const router = useRouter()
   const [expandedSprints, setExpandedSprints] = useState<Set<string>>(new Set())
   const [segmentNames, setSegmentNames] = useState<Record<string, string>>({})
   const [topicNames, setTopicNames] = useState<Record<string, string>>({})
@@ -228,7 +232,10 @@ export function SprintList({ sprints, campaignId, onSprintUpdate }: SprintListPr
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
-                    <h4 className="text-base font-display font-semibold text-gray-900">
+                    <h4
+                      className="text-base font-display font-semibold text-gray-900 cursor-pointer hover:text-primary-600 transition-colors"
+                      onClick={() => campaignId && router.push(`/campaigns/${campaignId}/sprints/${sprint.id}`)}
+                    >
                       {sprint.name}
                     </h4>
                     <Badge
@@ -308,6 +315,26 @@ export function SprintList({ sprints, campaignId, onSprintUpdate }: SprintListPr
                 </div>
 
                 <div className="ml-4 flex items-center gap-2">
+                  {onGenerateContent && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onGenerateContent(sprint.id)}
+                      disabled={generatingContentFor === sprint.id}
+                    >
+                      {generatingContentFor === sprint.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                          Generálás...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Tartalomnaptár létrehozása
+                        </>
+                      )}
+                    </Button>
+                  )}
                   {campaignId && (
                     <>
                       <Button

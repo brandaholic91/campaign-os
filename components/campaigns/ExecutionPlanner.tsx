@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { ExecutionPlan } from '@/lib/ai/schemas'
+import { SprintPlan, ContentSlot } from '@/lib/ai/schemas'
 import { isReadyForExecution } from '@/lib/validation/campaign-structure'
 import { SprintList } from './SprintList'
 import { ContentCalendar } from './ContentCalendar'
-import { Loader2, AlertCircle, RefreshCw, X } from 'lucide-react'
+import { Loader2, AlertCircle, RefreshCw, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 
@@ -15,14 +15,15 @@ interface ExecutionPlannerProps {
 }
 
 export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
-  const [executionPlan, setExecutionPlan] = useState<ExecutionPlan | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [sprints, setSprints] = useState<SprintPlan[]>([])
+  const [contentSlots, setContentSlots] = useState<ContentSlot[]>([])
+  const [isGeneratingSprints, setIsGeneratingSprints] = useState(false)
+  const [generatingContentFor, setGeneratingContentFor] = useState<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<string>('')
 
-  // Check campaign readiness and load existing execution plan
+  // Check campaign readiness and load existing sprints and content from database
   useEffect(() => {
     async function checkReadiness() {
       try {
@@ -46,13 +47,14 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
       }
     }
     
-    async function loadExistingPlan() {
+    async function loadExistingData() {
       try {
         const response = await fetch(`/api/campaigns/execution?campaign_id=${campaignId}`)
         if (response.ok) {
           const savedPlan = await response.json()
           if (savedPlan) {
-            setExecutionPlan(savedPlan)
+            setSprints(savedPlan.sprints || [])
+            setContentSlots(savedPlan.content_calendar || [])
           }
         }
       } catch (err) {
@@ -61,30 +63,29 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
     }
     
     checkReadiness()
-    loadExistingPlan()
+    loadExistingData()
   }, [campaignId])
 
-  const handleGenerate = async () => {
+  const handleGenerateSprints = async () => {
     // Check readiness before generating
     if (!isReady) {
       const proceed = confirm('A kampány struktúra nem teljesen validált. Folytatod a generálást?')
       if (!proceed) return
     }
 
-    setIsGenerating(true)
+    setIsGeneratingSprints(true)
     setError(null)
     setProgress('')
-    setExecutionPlan(null)
 
     try {
-      const response = await fetch('/api/ai/campaign-execution', {
+      const response = await fetch('/api/ai/campaign-sprints', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ campaignId }),
       })
 
       if (!response.ok) {
-        throw new Error('Hiba történt a generálás során')
+        throw new Error('Hiba történt a sprint generálás során')
       }
 
       // Set up SSE connection
@@ -112,21 +113,17 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
               
               if (data.type === 'progress') {
                 setProgress(data.message || '')
-                if (data.sprints) {
-                  // Progress update with sprints
-                }
-                if (data.slots !== undefined) {
-                  // Progress update with slots count
-                }
               } else if (data.type === 'warning') {
                 toast.warning(data.message || 'Figyelmeztetés')
-              } else if (data.type === 'complete') {
-                setExecutionPlan(data.executionPlan)
+              } else if (data.type === 'done') {
+                // Save generated sprints to database
+                await saveSprints(data.data.sprints)
+                setSprints(data.data.sprints)
                 setProgress('')
-                setIsGenerating(false)
-                toast.success('Sprint terv és tartalomnaptár sikeresen generálva')
+                setIsGeneratingSprints(false)
+                toast.success('Sprint struktúra sikeresen generálva')
               } else if (data.type === 'error') {
-                throw new Error(data.message || 'Ismeretlen hiba')
+                throw new Error(data.error || 'Ismeretlen hiba')
               }
             } catch (parseError) {
               console.error('Error parsing SSE data:', parseError)
@@ -137,148 +134,167 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ismeretlen hiba történt'
       setError(errorMessage)
-      setIsGenerating(false)
+      setIsGeneratingSprints(false)
       toast.error(errorMessage)
     }
   }
 
-  const handleRegenerate = async () => {
-    const confirmed = confirm(
-      'Biztosan újragenerálod? A jelenlegi terv törlődik.'
-    )
-
-    if (!confirmed) return
-
-    setIsGenerating(true)
+  const handleGenerateContentSlots = async (sprintId: string) => {
+    setGeneratingContentFor(sprintId)
     setError(null)
-    setProgress('Régi terv törlése...')
-    setExecutionPlan(null)
-
-    try {
-      // Delete existing plan from database
-      const supabase = createClient()
-      const db = supabase.schema('campaign_os')
-
-      const { data: existingSprints } = await db
-        .from('sprints')
-        .select('id')
-        .eq('campaign_id', campaignId)
-
-      if (existingSprints && existingSprints.length > 0) {
-        const sprintIds = existingSprints.map((s) => s.id)
-
-        // Delete content slots
-        await db.from('content_slots').delete().in('sprint_id', sprintIds)
-
-        // Delete junction tables
-        await db.from('sprint_segments').delete().in('sprint_id', sprintIds)
-        await db.from('sprint_topics').delete().in('sprint_id', sprintIds)
-        await db.from('sprint_channels').delete().in('sprint_id', sprintIds)
-
-        // Delete sprints
-        await db.from('sprints').delete().eq('campaign_id', campaignId)
-      }
-
-      // Generate new plan
-      setProgress('Új terv generálása...')
-      await handleGenerate()
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Ismeretlen hiba történt'
-      setError(errorMessage)
-      setIsGenerating(false)
-      toast.error(errorMessage)
-    }
-  }
-
-  const handleCancel = () => {
-    setExecutionPlan(null)
     setProgress('')
-    setError(null)
-  }
-
-  const handleSave = async () => {
-    if (!executionPlan) {
-      toast.error('Nincs mentendő terv')
-      return
-    }
-
-    setIsSaving(true)
-    setError(null)
 
     try {
-      const response = await fetch('/api/campaigns/execution', {
+      const response = await fetch(`/api/ai/campaign-sprints/${sprintId}/content-slots`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId,
-          executionPlan,
-        }),
+        body: JSON.stringify({}), // Optional: weekly_post_volume override can be added here
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Hiba történt a mentés során')
+        throw new Error('Hiba történt a tartalomnaptár generálás során')
       }
 
-      const result = await response.json()
-      
-      toast.success(
-        `${result.sprints.length} sprint és ${result.contentSlots} tartalom slot sikeresen mentve`
-      )
-      
-      // Load saved execution plan from database to update preview
-      const loadResponse = await fetch(`/api/campaigns/execution?campaign_id=${campaignId}`)
-      if (loadResponse.ok) {
-        const savedPlan = await loadResponse.json()
-        if (savedPlan) {
-          setExecutionPlan(savedPlan)
-          setProgress('')
-        } else {
-          // If no plan found, clear preview
-          setExecutionPlan(null)
-          setProgress('')
+      // Set up SSE connection
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('Nem sikerült létrehozni a stream kapcsolatot')
+      }
+
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              
+              if (data.type === 'progress') {
+                setProgress(data.message || '')
+              } else if (data.type === 'warning') {
+                toast.warning(data.message || 'Figyelmeztetés')
+              } else if (data.type === 'done') {
+                // Save generated content slots to database
+                await saveContentSlots(sprintId, data.data.content_slots)
+                // Reload all content slots from database
+                await loadContentSlots()
+                setProgress('')
+                setGeneratingContentFor(null)
+                toast.success('Tartalomnaptár sikeresen generálva')
+              } else if (data.type === 'error') {
+                throw new Error(data.error || 'Ismeretlen hiba')
+              }
+            } catch (parseError) {
+              console.error('Error parsing SSE data:', parseError)
+            }
+          }
         }
-      } else {
-        // If load fails, keep current plan but show warning
-        console.warn('Failed to reload saved execution plan')
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ismeretlen hiba történt'
       setError(errorMessage)
+      setGeneratingContentFor(null)
       toast.error(errorMessage)
-    } finally {
-      setIsSaving(false)
+    }
+  }
+
+  const saveSprints = async (sprintsToSave: SprintPlan[]) => {
+    // Use the existing save endpoint to save sprints
+    const response = await fetch('/api/campaigns/execution', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        campaignId,
+        executionPlan: {
+          sprints: sprintsToSave,
+          content_calendar: [], // Empty content calendar
+        },
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || 'Hiba történt a sprint mentés során')
+    }
+  }
+
+  const saveContentSlots = async (sprintId: string, slotsToSave: ContentSlot[]) => {
+    const supabase = createClient()
+    const db = supabase.schema('campaign_os')
+
+    // Delete existing content slots for this sprint
+    await db.from('content_slots').delete().eq('sprint_id', sprintId)
+
+    // Insert new content slots
+    for (const slot of slotsToSave) {
+      await db.from('content_slots').insert({
+        sprint_id: sprintId,
+        date: slot.date,
+        channel: slot.channel,
+        slot_index: slot.slot_index,
+        primary_segment_id: slot.primary_segment_id,
+        primary_topic_id: slot.primary_topic_id,
+        objective: slot.objective,
+        content_type: slot.content_type,
+        angle_hint: slot.angle_hint,
+        notes: slot.notes,
+      })
+    }
+  }
+
+  const loadContentSlots = async () => {
+    try {
+      const response = await fetch(`/api/campaigns/execution?campaign_id=${campaignId}`)
+      if (response.ok) {
+        const savedPlan = await response.json()
+        if (savedPlan) {
+          setContentSlots(savedPlan.content_calendar || [])
+        }
+      }
+    } catch (err) {
+      console.error('Error loading content slots:', err)
     }
   }
 
   return (
     <div className="space-y-6">
-      {/* Generate Button Section */}
-      {!executionPlan && (
+      {/* Generate Sprint Structure Button Section */}
+      {sprints.length === 0 && (
         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h3 className="text-lg font-display font-bold text-gray-900 mb-2">
-                Sprintek és tartalomnaptár generálása AI-val
+                Sprintstruktúra generálása AI-val
               </h3>
               <p className="text-sm text-gray-600">
-                Az AI generál egy részletes sprint tervet és tartalomnaptárt a kampány struktúrája alapján.
+                Az AI generál egy részletes sprint tervet a kampány struktúrája alapján.
               </p>
             </div>
             <div className="ml-4">
               <Button
-                onClick={handleGenerate}
-                disabled={isGenerating}
+                onClick={handleGenerateSprints}
+                disabled={isGeneratingSprints}
                 title={!isReady ? 'A kampány struktúra nem teljesen validált. Javasoljuk, hogy először töltse ki az összes kötelező mezőt.' : undefined}
               >
-                {isGenerating ? (
+                {isGeneratingSprints ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Generálás...
                   </>
                 ) : (
-                  'Sprintek és tartalomnaptár generálása AI-val'
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Sprintstruktúra generálása AI-val
+                  </>
                 )}
               </Button>
             </div>
@@ -300,7 +316,7 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
       )}
 
       {/* Progress Section */}
-      {isGenerating && progress && (
+      {(isGeneratingSprints || generatingContentFor) && progress && (
         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft">
           <div className="flex items-center gap-3">
             <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
@@ -319,79 +335,43 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleGenerate}
+                onClick={sprints.length === 0 ? handleGenerateSprints : () => setError(null)}
                 className="mt-2"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Újrapróbálás
+                {sprints.length === 0 ? 'Újrapróbálás' : 'Bezárás'}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Preview Section */}
-      {executionPlan && !isGenerating && (
+      {/* Sprint List with Per-Sprint Content Generation */}
+      {sprints.length > 0 && (
         <div className="space-y-6">
-          {/* Action Buttons */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-soft flex items-center justify-between">
-            <h3 className="text-lg font-display font-bold text-gray-900">
-              Előnézet
-            </h3>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={handleRegenerate}
-                disabled={isGenerating}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Újragenerálás
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-              >
-                <X className="w-4 h-4 mr-2" />
-                Mégse
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="bg-primary-600 hover:bg-primary-700"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Mentés...
-                  </>
-                ) : (
-                  'Mentés'
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Sprint List */}
           <SprintList 
-            sprints={executionPlan.sprints} 
+            sprints={sprints} 
             campaignId={campaignId}
             onSprintUpdate={() => {
               // Reload execution plan after update
-              // For now, just refresh the page or reload data
               window.location.reload()
             }}
+            onGenerateContent={handleGenerateContentSlots}
+            generatingContentFor={generatingContentFor}
           />
 
           {/* Content Calendar */}
-          <ContentCalendar
-            slots={executionPlan.content_calendar}
-            sprints={executionPlan.sprints}
-            campaignId={campaignId}
-            onSlotUpdate={() => {
-              // Reload execution plan after update
-              window.location.reload()
-            }}
-          />
+          {contentSlots.length > 0 && (
+            <ContentCalendar
+              slots={contentSlots}
+              sprints={sprints}
+              campaignId={campaignId}
+              onSlotUpdate={() => {
+                // Reload content slots after update
+                loadContentSlots()
+              }}
+            />
+          )}
         </div>
       )}
     </div>

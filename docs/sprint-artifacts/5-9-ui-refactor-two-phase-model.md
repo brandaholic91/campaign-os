@@ -1,6 +1,6 @@
 # Story 5.9: UI Refactor - Two-Phase Model
 
-Status: drafted
+Status: review
 
 ## Story
 
@@ -92,20 +92,20 @@ so that **I have control over when to generate content and can review sprints fi
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Refactor ExecutionPlanner component (AC: 1)
-  - [ ] Modify `components/campaigns/ExecutionPlanner.tsx`
-  - [ ] Replace single "Generate Execution Plan" button with two buttons:
+- [x] Task 1: Refactor ExecutionPlanner component (AC: 1)
+  - [x] Modify `components/campaigns/ExecutionPlanner.tsx`
+  - [x] Replace single "Generate Execution Plan" button with two buttons:
     - "Sprintstruktúra generálása AI-val" (calls `/api/ai/campaign-sprints`)
     - Per-sprint: "Tartalomnaptár létrehozása" (calls `/api/ai/campaign-sprints/[sprintId]/content-slots`)
-  - [ ] Show "Sprintstruktúra generálása" button when no sprints exist
-  - [ ] Show per-sprint buttons only for sprints without content slots (or allow regeneration)
-  - [ ] Implement SSE handling for sprint generation (Story 5.7)
-  - [ ] Implement SSE handling for content slot generation (Story 5.8)
-  - [ ] Update loading states and error handling
+  - [x] Show "Sprintstruktúra generálása" button when no sprints exist
+  - [x] Show per-sprint buttons only for sprints without content slots (or allow regeneration)
+  - [x] Implement SSE handling for sprint generation (Story 5.7)
+  - [x] Implement SSE handling for content slot generation (Story 5.8)
+  - [x] Update loading states and error handling
 
-- [ ] Task 2: Enhance SprintList component (AC: 2)
-  - [ ] Modify `components/campaigns/SprintList.tsx`
-  - [ ] Add display for all enhanced sprint metadata:
+- [x] Task 2: Enhance SprintList component (AC: 2)
+  - [x] Modify `components/campaigns/SprintList.tsx`
+  - [x] Add display for all enhanced sprint metadata:
     - Focus stage badge component
     - Focus goals list display
     - Primary/secondary segments display (with priority indicators)
@@ -116,51 +116,51 @@ so that **I have control over when to generate content and can review sprints fi
     - Key messages summary display (formatted as bullet points)
     - Success criteria display
     - Risks and watchouts display
-  - [ ] Make sprint cards clickable (navigate to sprint detail page)
-  - [ ] Improve visual design and organization of sprint cards
-  - [ ] Test with various sprint configurations
+  - [x] Make sprint cards clickable (navigate to sprint detail page)
+  - [x] Improve visual design and organization of sprint cards
+  - [x] Test with various sprint configurations
 
-- [ ] Task 3: Create sprint detail page (AC: 3)
-  - [ ] Create `app/campaigns/[id]/sprints/[sprintId]/page.tsx`
-  - [ ] Create `components/campaigns/SprintDetailPage.tsx`
-  - [ ] Load sprint data with all enhanced metadata from database
-  - [ ] Display full sprint information in detailed format
-  - [ ] Add "Tartalomnaptár generálása" button (calls Story 5.8 endpoint)
-  - [ ] Implement content calendar view for slots (if slots exist)
-  - [ ] Add edit sprint functionality (if Story 5.5 complete, reuse SprintEditForm)
-  - [ ] Handle loading states and errors
-  - [ ] Add navigation back to campaign page
+- [x] Task 3: Create sprint detail page (AC: 3)
+  - [x] Create `app/campaigns/[id]/sprints/[sprintId]/page.tsx`
+  - [x] Create `components/campaigns/SprintDetailPage.tsx`
+  - [x] Load sprint data with all enhanced metadata from database
+  - [x] Display full sprint information in detailed format
+  - [x] Add "Tartalomnaptár generálása" button (calls Story 5.8 endpoint)
+  - [x] Implement content calendar view for slots (if slots exist)
+  - [x] Add edit sprint functionality (if Story 5.5 complete, reuse SprintEditForm)
+  - [x] Handle loading states and errors
+  - [x] Add navigation back to campaign page
 
-- [ ] Task 4: Implement sprint generation workflow UI (AC: 4)
-  - [ ] Add SSE event handling for `/api/ai/campaign-sprints` endpoint
-  - [ ] Display progress updates in UI:
+- [x] Task 4: Implement sprint generation workflow UI (AC: 4)
+  - [x] Add SSE event handling for `/api/ai/campaign-sprints` endpoint
+  - [x] Display progress updates in UI:
     - "Analyzing campaign structure..."
     - "Generating sprint 1 of X..."
     - "Sprint generation complete!"
-  - [ ] Show loading state during generation
-  - [ ] Display generated sprints in timeline view after completion
-  - [ ] Handle errors and display clear error messages
-  - [ ] Disable button during generation
+  - [x] Show loading state during generation
+  - [x] Display generated sprints in timeline view after completion
+  - [x] Handle errors and display clear error messages
+  - [x] Disable button during generation
 
-- [ ] Task 5: Implement per-sprint content slot generation workflow UI (AC: 5)
-  - [ ] Add SSE event handling for `/api/ai/campaign-sprints/[sprintId]/content-slots` endpoint
-  - [ ] Display progress updates in UI:
+- [x] Task 5: Implement per-sprint content slot generation workflow UI (AC: 5)
+  - [x] Add SSE event handling for `/api/ai/campaign-sprints/[sprintId]/content-slots` endpoint
+  - [x] Display progress updates in UI:
     - "Generating content slots for sprint [name]..."
     - "Content slot generation complete!"
-  - [ ] Show loading state during generation
-  - [ ] Display generated slots in calendar view after completion
-  - [ ] Handle errors and display clear error messages
+  - [x] Show loading state during generation
+  - [x] Display generated slots in calendar view after completion
+  - [x] Handle errors and display clear error messages
   - [ ] Optional: Add volume override dialog before generation
-  - [ ] Disable button during generation
+  - [x] Disable button during generation
 
-- [ ] Task 6: Enhance content calendar view (AC: 6)
-  - [ ] Modify `components/campaigns/ContentCalendar.tsx` or create new component
-  - [ ] Group slots by sprint
-  - [ ] Add sprint section headers (sprint name and date range)
-  - [ ] Show slots in calendar format (date-based) within each sprint
-  - [ ] Add filter by sprint functionality
-  - [ ] Add "View all sprints" option to show all slots together
-  - [ ] Test with multiple sprints and various slot configurations
+- [x] Task 6: Enhance content calendar view (AC: 6)
+  - [x] Modify `components/campaigns/ContentCalendar.tsx` or create new component (not needed - sprint view already existed)
+  - [x] Group slots by sprint
+  - [x] Add sprint section headers (sprint name and date range)
+  - [x] Show slots in calendar format (date-based) within each sprint
+  - [x] Add filter by sprint functionality (Sprint view toggle)
+  - [x] Add "View all sprints" option to show all slots together (Weekly/Monthly views)
+  - [ ] Test with multiple sprints and various slot configurations (manual testing pending)
 
 - [ ] Task 7: Backward compatibility and cleanup (AC: 7)
   - [ ] Verify existing `/api/ai/campaign-execution` endpoint still works
