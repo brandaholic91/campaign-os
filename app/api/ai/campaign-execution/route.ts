@@ -134,7 +134,9 @@ export async function POST(req: NextRequest) {
 
           // Generate execution plan with AI
           const isReasoningModel = model.startsWith('gpt-5') || model.startsWith('o1')
-          const maxTokens = isReasoningModel ? 32768 : 16384
+          // For reasoning models, use higher limit but cap at reasonable amount to avoid empty responses
+          // Reasoning models use reasoning tokens, so we need higher limit for actual output
+          const maxTokens = isReasoningModel ? 65536 : 16384
 
           const aiResponse = await provider.generateText({
             model,
@@ -149,6 +151,13 @@ export async function POST(req: NextRequest) {
             throw new Error('Empty response from AI')
           }
 
+          // Check if response was cut off due to token limit
+          if (aiResponse.usage && aiResponse.usage.completionTokens >= (maxTokens * 0.95)) {
+            console.warn(
+              `AI response may have been cut off: ${aiResponse.usage.completionTokens}/${maxTokens} tokens used`
+            )
+          }
+
           // Extract JSON from response (handle markdown code blocks)
           let jsonContent = aiResponse.content.trim()
           if (jsonContent.includes('```')) {
@@ -161,34 +170,207 @@ export async function POST(req: NextRequest) {
           }
 
           // Parse JSON
-          let executionPlan
+          let executionPlan: any
           try {
             executionPlan = JSON.parse(jsonContent)
           } catch (parseError) {
             console.error('JSON parse error:', parseError)
-            console.error('Raw output:', aiResponse.content)
+            console.error('Raw output:', aiResponse.content.substring(0, 1000))
             throw new Error('Failed to parse AI response as JSON')
           }
 
-          // Ensure all IDs are UUIDs (AI might not generate proper UUIDs)
-          executionPlan.sprints = executionPlan.sprints.map((sprint: any) => ({
-            ...sprint,
-            id: sprint.id || randomUUID(),
-          }))
+          // Ensure executionPlan has required structure
+          if (!executionPlan || typeof executionPlan !== 'object') {
+            throw new Error('Invalid execution plan structure')
+          }
+          if (!Array.isArray(executionPlan.sprints)) {
+            executionPlan.sprints = []
+          }
+          if (!Array.isArray(executionPlan.content_calendar)) {
+            executionPlan.content_calendar = []
+          }
 
-          executionPlan.content_calendar = executionPlan.content_calendar.map((slot: any) => ({
-            ...slot,
-            id: slot.id || randomUUID(),
-            status: slot.status || 'planned',
-          }))
+          // Helper function to validate UUID (matches Zod's UUID validation)
+          const isValidUUID = (str: string | undefined | null): boolean => {
+            if (!str || typeof str !== 'string') return false
+            // Zod uses a more permissive UUID regex that allows 00000000-0000-0000-0000-000000000000 and ffffffff-ffff-ffff-ffff-ffffffffffff
+            const uuidRegex = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/
+            return uuidRegex.test(str)
+          }
+
+          // Get valid segment and topic IDs from structure
+          const validSegmentIds = new Set(structure.segments.map(s => s.id).filter(isValidUUID))
+          const validTopicIds = new Set((structure.topics || []).map(t => t.id).filter(isValidUUID))
+
+          if (validSegmentIds.size === 0) {
+            throw new Error('No valid segment IDs found in campaign structure')
+          }
+          if (validTopicIds.size === 0) {
+            throw new Error('No valid topic IDs found in campaign structure')
+          }
+
+          // Ensure all sprint IDs are valid UUIDs
+          executionPlan.sprints = executionPlan.sprints.map((sprint: any, index: number) => {
+            // Fix sprint ID
+            const sprintId = isValidUUID(sprint.id) ? sprint.id : randomUUID()
+            
+            // Fix focus_segments - filter invalid UUIDs and keep only valid segment IDs
+            const validFocusSegments = (sprint.focus_segments || [])
+              .filter((id: string) => isValidUUID(id) && validSegmentIds.has(id))
+            
+            // Fix focus_topics - filter invalid UUIDs and keep only valid topic IDs
+            const validFocusTopics = (sprint.focus_topics || [])
+              .filter((id: string) => isValidUUID(id) && validTopicIds.has(id))
+            
+            // Ensure at least one segment and topic (required by schema)
+            const finalFocusSegments = validFocusSegments.length > 0 
+              ? validFocusSegments 
+              : [Array.from(validSegmentIds)[0]]
+            const finalFocusTopics = validFocusTopics.length > 0 
+              ? validFocusTopics 
+              : [Array.from(validTopicIds)[0]]
+            
+            return {
+              ...sprint,
+              id: sprintId,
+              focus_segments: finalFocusSegments,
+              focus_topics: finalFocusTopics,
+            }
+          })
+
+          // Create a map of sprint IDs for validation
+          const sprintIdMap = new Set(executionPlan.sprints.map((s: any) => s.id))
+
+          if (sprintIdMap.size === 0) {
+            throw new Error('No valid sprints generated')
+          }
+
+          // Check if content_calendar is empty (AI response might have been cut off)
+          if (!executionPlan.content_calendar || executionPlan.content_calendar.length === 0) {
+            console.warn('Content calendar is empty - AI response may have been cut off due to token limit')
+            throw new Error(
+              'Az AI válasza le lett vágva a token limit miatt, és a tartalomnaptár nem lett generálva. ' +
+              'Kérlek, próbáld újra, vagy használj egy másik AI modellt.'
+            )
+          }
+
+          // Ensure all content calendar IDs are valid UUIDs
+          executionPlan.content_calendar = executionPlan.content_calendar.map((slot: any) => {
+            // Fix slot ID
+            const slotId = isValidUUID(slot.id) ? slot.id : randomUUID()
+            
+            // Fix sprint_id - must match a valid sprint ID
+            let validSprintId = slot.sprint_id
+            if (!isValidUUID(validSprintId) || !sprintIdMap.has(validSprintId)) {
+              // Fallback to first sprint if invalid
+              validSprintId = Array.from(sprintIdMap)[0] as string
+            }
+            
+            // Fix primary_segment_id - must be a valid segment ID or undefined
+            let validPrimarySegmentId = slot.primary_segment_id
+            if (validPrimarySegmentId !== undefined && validPrimarySegmentId !== null) {
+              if (!isValidUUID(validPrimarySegmentId) || !validSegmentIds.has(validPrimarySegmentId)) {
+                validPrimarySegmentId = undefined // Remove invalid segment ID
+              }
+            }
+            
+            // Fix primary_topic_id - must be a valid topic ID or undefined
+            let validPrimaryTopicId = slot.primary_topic_id
+            if (validPrimaryTopicId !== undefined && validPrimaryTopicId !== null) {
+              if (!isValidUUID(validPrimaryTopicId) || !validTopicIds.has(validPrimaryTopicId)) {
+                validPrimaryTopicId = undefined // Remove invalid topic ID
+              }
+            }
+            
+            // Fix content_type - normalize invalid values to valid ones
+            const validContentTypes = [
+              'short_video',
+              'story',
+              'static_image',
+              'carousel',
+              'live',
+              'long_post',
+              'email'
+            ] as const
+            
+            let validContentType = slot.content_type
+            if (!validContentTypes.includes(validContentType as any)) {
+              // Map common invalid values to valid ones
+              const contentTypeMap: Record<string, typeof validContentTypes[number]> = {
+                'long_form_video': 'long_post',
+                'video': 'short_video',
+                'post': 'long_post',
+                'image': 'static_image',
+                'photo': 'static_image',
+                'reel': 'short_video',
+                'tiktok': 'short_video',
+              }
+              
+              validContentType = contentTypeMap[validContentType?.toLowerCase() || ''] || 'long_post'
+              console.warn(
+                `Invalid content_type "${slot.content_type}" normalized to "${validContentType}" for slot ${slotId}`
+              )
+            }
+            
+            // Fix objective - normalize invalid values to valid ones
+            const validObjectives = [
+              'reach',
+              'engagement',
+              'traffic',
+              'lead',
+              'conversion',
+              'mobilization'
+            ] as const
+            
+            let validObjective = slot.objective
+            if (!validObjectives.includes(validObjective as any)) {
+              // Map common invalid values to valid ones
+              const objectiveMap: Record<string, typeof validObjectives[number]> = {
+                'awareness': 'reach',
+                'aware': 'reach',
+                'click': 'traffic',
+                'clicks': 'traffic',
+                'action': 'conversion',
+                'actions': 'conversion',
+                'mobilize': 'mobilization',
+                'mobilizing': 'mobilization',
+              }
+              
+              validObjective = objectiveMap[validObjective?.toLowerCase() || ''] || 'engagement'
+              console.warn(
+                `Invalid objective "${slot.objective}" normalized to "${validObjective}" for slot ${slotId}`
+              )
+            }
+            
+            return {
+              ...slot,
+              id: slotId,
+              sprint_id: validSprintId,
+              primary_segment_id: validPrimarySegmentId,
+              primary_topic_id: validPrimaryTopicId,
+              content_type: validContentType,
+              objective: validObjective,
+              status: slot.status || 'planned',
+            }
+          })
 
           // Validate against schema
           try {
             executionPlan = ExecutionPlanSchema.parse(executionPlan)
           } catch (validationError) {
             console.error('Schema validation error:', validationError)
-            console.error('Parsed plan:', executionPlan)
-            throw new Error(`Validation failed: ${validationError instanceof Error ? validationError.message : 'Unknown error'}`)
+            console.error('Parsed plan:', JSON.stringify(executionPlan, null, 2))
+            
+            // Provide more helpful error message
+            const errorMessage = validationError instanceof Error ? validationError.message : 'Unknown error'
+            if (errorMessage.includes('content_calendar') && errorMessage.includes('too_small')) {
+              throw new Error(
+                'Az AI válasza le lett vágva a token limit miatt, és a tartalomnaptár nem lett teljesen generálva. ' +
+                'Kérlek, próbáld újra, vagy használj egy másik AI modellt (pl. nem reasoning modellt).'
+              )
+            }
+            
+            throw new Error(`Validation failed: ${errorMessage}`)
           }
 
           // Send progress after sprint planning

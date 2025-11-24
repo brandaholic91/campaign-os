@@ -358,11 +358,11 @@ export function ContentSlotEditForm({
             <div className="space-y-2">
               <Label htmlFor="primary_segment_id">Elsődleges szegmens</Label>
               <Select
-                value={formData.primary_segment_id || ''}
+                value={formData.primary_segment_id || 'none'}
                 onValueChange={(value) =>
                   setFormData({
                     ...formData,
-                    primary_segment_id: value || '',
+                    primary_segment_id: value === 'none' ? '' : value,
                   })
                 }
               >
@@ -370,7 +370,7 @@ export function ContentSlotEditForm({
                   <SelectValue placeholder="Válassz szegmenst (opcionális)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nincs</SelectItem>
+                  <SelectItem value="none">Nincs</SelectItem>
                   {segments.map((segment) => (
                     <SelectItem key={segment.id} value={segment.id}>
                       {segment.name}
@@ -383,11 +383,11 @@ export function ContentSlotEditForm({
             <div className="space-y-2">
               <Label htmlFor="primary_topic_id">Elsődleges téma</Label>
               <Select
-                value={formData.primary_topic_id || ''}
+                value={formData.primary_topic_id || 'none'}
                 onValueChange={(value) =>
                   setFormData({
                     ...formData,
-                    primary_topic_id: value || '',
+                    primary_topic_id: value === 'none' ? '' : value,
                   })
                 }
               >
@@ -395,7 +395,7 @@ export function ContentSlotEditForm({
                   <SelectValue placeholder="Válassz témát (opcionális)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nincs</SelectItem>
+                  <SelectItem value="none">Nincs</SelectItem>
                   {topics.map((topic) => (
                     <SelectItem key={topic.id} value={topic.id}>
                       {topic.name}

@@ -17,62 +17,51 @@ interface ExecutionPlannerProps {
 export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
   const [executionPlan, setExecutionPlan] = useState<ExecutionPlan | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<string>('')
 
-  // Check campaign readiness
+  // Check campaign readiness and load existing execution plan
   useEffect(() => {
     async function checkReadiness() {
       try {
-        const supabase = createClient()
-        const db = supabase.schema('campaign_os')
-
-        // Fetch campaign with all related data
-        const { data: campaign } = await db
-          .from('campaigns')
-          .select('*, goals(*), segments(*), topics(*), narratives(*)')
-          .eq('id', campaignId)
-          .single()
-
-        if (!campaign) return
-
-        // Fetch segment_topic_matrix
-        const segmentIds = (campaign.segments || []).map((s: any) => s.id)
-        const topicIds = (campaign.topics || []).map((t: any) => t.id)
+        // Use the same API endpoint as the dashboard to ensure consistent normalization
+        const response = await fetch(`/api/campaigns/${campaignId}/structure`)
         
-        const { data: matrixEntries } = segmentIds.length > 0 && topicIds.length > 0
-          ? await db
-              .from('segment_topic_matrix')
-              .select('*')
-              .in('segment_id', segmentIds)
-              .in('topic_id', topicIds)
-          : { data: [] }
-
-        // Transform matrix entries
-        const segmentTopicMatrix = (matrixEntries || []).map((entry: any) => ({
-          segment_id: entry.segment_id,
-          topic_id: entry.topic_id,
-          importance: entry.importance,
-          role: entry.role,
-          summary: entry.summary,
-        }))
-
-        const structure = {
-          goals: campaign.goals || [],
-          segments: campaign.segments || [],
-          topics: campaign.topics || [],
-          narratives: campaign.narratives || [],
-          segment_topic_matrix: segmentTopicMatrix,
+        if (!response.ok) {
+          console.error('Failed to fetch campaign structure')
+          return
         }
 
-        const readiness = isReadyForExecution(structure as any)
+        const structure = await response.json()
+
+        if (!structure) return
+
+        // Use the same validation function with properly normalized structure
+        const readiness = isReadyForExecution(structure)
         setIsReady(readiness.ready)
       } catch (err) {
         console.error('Error checking readiness:', err)
       }
     }
+    
+    async function loadExistingPlan() {
+      try {
+        const response = await fetch(`/api/campaigns/execution?campaign_id=${campaignId}`)
+        if (response.ok) {
+          const savedPlan = await response.json()
+          if (savedPlan) {
+            setExecutionPlan(savedPlan)
+          }
+        }
+      } catch (err) {
+        console.error('Error loading existing execution plan:', err)
+      }
+    }
+    
     checkReadiness()
+    loadExistingPlan()
   }, [campaignId])
 
   const handleGenerate = async () => {
@@ -209,8 +198,58 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
   }
 
   const handleSave = async () => {
-    // Story 5.4 will implement this
-    toast.info('Mentés funkció hamarosan elérhető (Story 5.4)')
+    if (!executionPlan) {
+      toast.error('Nincs mentendő terv')
+      return
+    }
+
+    setIsSaving(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/campaigns/execution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          executionPlan,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Hiba történt a mentés során')
+      }
+
+      const result = await response.json()
+      
+      toast.success(
+        `${result.sprints.length} sprint és ${result.contentSlots} tartalom slot sikeresen mentve`
+      )
+      
+      // Load saved execution plan from database to update preview
+      const loadResponse = await fetch(`/api/campaigns/execution?campaign_id=${campaignId}`)
+      if (loadResponse.ok) {
+        const savedPlan = await loadResponse.json()
+        if (savedPlan) {
+          setExecutionPlan(savedPlan)
+          setProgress('')
+        } else {
+          // If no plan found, clear preview
+          setExecutionPlan(null)
+          setProgress('')
+        }
+      } else {
+        // If load fails, keep current plan but show warning
+        console.warn('Failed to reload saved execution plan')
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Ismeretlen hiba történt'
+      setError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -317,9 +356,17 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
               </Button>
               <Button
                 onClick={handleSave}
+                disabled={isSaving}
                 className="bg-primary-600 hover:bg-primary-700"
               >
-                Mentés
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Mentés...
+                  </>
+                ) : (
+                  'Mentés'
+                )}
               </Button>
             </div>
           </div>

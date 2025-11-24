@@ -105,6 +105,35 @@ export function SprintList({ sprints, campaignId, onSprintUpdate }: SprintListPr
       return
     }
 
+    // First, try to find the sprint in the preview list (SprintPlan)
+    const sprintPlan = sprints.find(s => s.id === sprintId)
+    
+    if (sprintPlan) {
+      // Convert SprintPlan to Sprint format for editing
+      // Store focus_segments and focus_topics in a way that SprintEditForm can access them
+      const sprintForEdit: Sprint & { _focus_segments?: string[], _focus_topics?: string[] } = {
+        id: sprintPlan.id,
+        campaign_id: campaignId,
+        name: sprintPlan.name,
+        start_date: sprintPlan.start_date,
+        end_date: sprintPlan.end_date,
+        focus_goal: sprintPlan.focus_goal,
+        focus_description: sprintPlan.focus_description,
+        focus_channels: sprintPlan.focus_channels as any,
+        status: 'planned' as const,
+        created_at: null, // null indicates this sprint is not yet saved to database
+        updated_at: null,
+        order: sprintPlan.order,
+        success_indicators: sprintPlan.success_indicators as any || [],
+        _focus_segments: sprintPlan.focus_segments, // Temporary field for unsaved sprints
+        _focus_topics: sprintPlan.focus_topics, // Temporary field for unsaved sprints
+      }
+      
+      setEditingSprint(sprintForEdit as Sprint)
+      return
+    }
+
+    // If not found in preview, try to load from database
     const supabase = createClient()
     const db = supabase.schema('campaign_os')
 

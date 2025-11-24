@@ -424,8 +424,8 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
               </button>
             </div>
             <div className="grid grid-cols-7 gap-1">
-              {['H', 'K', 'Sz', 'Cs', 'P', 'Sz', 'V'].map(day => (
-                <div key={day} className="text-xs font-semibold text-gray-500 text-center py-2">
+              {['H', 'K', 'Sz', 'Cs', 'P', 'Szo', 'V'].map((day, index) => (
+                <div key={`${day}-${index}`} className="text-xs font-semibold text-gray-500 text-center py-2">
                   {day}
                 </div>
               ))}

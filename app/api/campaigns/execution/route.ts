@@ -367,6 +367,176 @@ async function saveExecutionPlan(
   }
 }
 
+/**
+ * Loads execution plan from database for a campaign
+ */
+async function loadExecutionPlan(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  campaignId: string
+): Promise<ExecutionPlan | null> {
+  const db = supabase.schema('campaign_os')
+  
+  // Load sprints
+  const { data: sprints, error: sprintsError } = await db
+    .from('sprints')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('order', { ascending: true })
+  
+  if (sprintsError) {
+    throw new Error(`Failed to load sprints: ${sprintsError.message}`)
+  }
+  
+  if (!sprints || sprints.length === 0) {
+    return null // No execution plan exists yet
+  }
+  
+  const sprintIds = sprints.map(s => s.id)
+  
+  // Load junction tables
+  const { data: sprintSegments, error: segmentsError } = await db
+    .from('sprint_segments')
+    .select('sprint_id, segment_id')
+    .in('sprint_id', sprintIds)
+  
+  if (segmentsError) {
+    throw new Error(`Failed to load sprint_segments: ${segmentsError.message}`)
+  }
+  
+  const { data: sprintTopics, error: topicsError } = await db
+    .from('sprint_topics')
+    .select('sprint_id, topic_id')
+    .in('sprint_id', sprintIds)
+  
+  if (topicsError) {
+    throw new Error(`Failed to load sprint_topics: ${topicsError.message}`)
+  }
+  
+  const { data: sprintChannels, error: channelsError } = await db
+    .from('sprint_channels')
+    .select('sprint_id, channel_key')
+    .in('sprint_id', sprintIds)
+  
+  if (channelsError) {
+    throw new Error(`Failed to load sprint_channels: ${channelsError.message}`)
+  }
+  
+  // Load content slots
+  const { data: contentSlots, error: slotsError } = await db
+    .from('content_slots')
+    .select('*')
+    .in('sprint_id', sprintIds)
+    .order('date', { ascending: true })
+    .order('slot_index', { ascending: true })
+  
+  if (slotsError) {
+    throw new Error(`Failed to load content_slots: ${slotsError.message}`)
+  }
+  
+  // Build sprint map for segments/topics/channels
+  const segmentMap = new Map<string, string[]>()
+  const topicMap = new Map<string, string[]>()
+  const channelMap = new Map<string, string[]>()
+  
+  sprintSegments?.forEach(ss => {
+    if (!segmentMap.has(ss.sprint_id)) {
+      segmentMap.set(ss.sprint_id, [])
+    }
+    segmentMap.get(ss.sprint_id)!.push(ss.segment_id)
+  })
+  
+  sprintTopics?.forEach(st => {
+    if (!topicMap.has(st.sprint_id)) {
+      topicMap.set(st.sprint_id, [])
+    }
+    topicMap.get(st.sprint_id)!.push(st.topic_id)
+  })
+  
+  sprintChannels?.forEach(sc => {
+    if (!channelMap.has(sc.sprint_id)) {
+      channelMap.set(sc.sprint_id, [])
+    }
+    channelMap.get(sc.sprint_id)!.push(sc.channel_key)
+  })
+  
+  // Transform to ExecutionPlan format
+  const executionPlan: ExecutionPlan = {
+    sprints: sprints.map(sprint => {
+      // Normalize success_indicators to array
+      let successIndicators: any[] = []
+      if (sprint.success_indicators) {
+        if (Array.isArray(sprint.success_indicators)) {
+          successIndicators = sprint.success_indicators
+        } else {
+          // If it's not an array, wrap it
+          successIndicators = [sprint.success_indicators]
+        }
+      }
+      
+      return {
+        id: sprint.id,
+        name: sprint.name,
+        order: sprint.order || 1,
+        start_date: sprint.start_date,
+        end_date: sprint.end_date,
+        focus_goal: sprint.focus_goal as any,
+        focus_description: sprint.focus_description || '',
+        focus_segments: segmentMap.get(sprint.id) || [],
+        focus_topics: topicMap.get(sprint.id) || [],
+        focus_channels: channelMap.get(sprint.id) || (sprint.focus_channels as string[] || []),
+        success_indicators: successIndicators,
+      }
+    }),
+    content_calendar: (contentSlots || []).map(slot => ({
+      id: slot.id,
+      sprint_id: slot.sprint_id,
+      date: slot.date,
+      channel: slot.channel,
+      slot_index: slot.slot_index,
+      primary_segment_id: slot.primary_segment_id || undefined,
+      primary_topic_id: slot.primary_topic_id || undefined,
+      objective: slot.objective as any,
+      content_type: slot.content_type as any,
+      angle_hint: slot.angle_hint || undefined,
+      notes: slot.notes || undefined,
+      status: (slot.status || 'planned') as any,
+    })),
+  }
+  
+  return executionPlan
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const campaignId = searchParams.get('campaign_id')
+    
+    if (!campaignId) {
+      return NextResponse.json(
+        { error: 'campaign_id query parameter is required' },
+        { status: 400 }
+      )
+    }
+    
+    const supabase = await createClient()
+    const executionPlan = await loadExecutionPlan(supabase, campaignId)
+    
+    if (!executionPlan) {
+      return NextResponse.json(null, { status: 200 })
+    }
+    
+    return NextResponse.json(executionPlan)
+  } catch (error) {
+    console.error('Error loading execution plan:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: SaveExecutionPlanRequest = await request.json()
