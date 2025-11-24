@@ -1,6 +1,6 @@
 # Story 4.0.3: Validation Logic & Matrix Rules
 
-**Status:** review
+**Status:** done
 
 **Status note:** Story drafted 2025-11-23 - Helper functions, matrix validation, completeness checks
 
@@ -140,9 +140,9 @@ So that **I know when my campaign is ready for sprint and content calendar plann
 
 - [x] **Task 5: Integrate validation with campaign structure endpoints** (AC: #8)
   - [x] Update `GET /api/campaigns/[id]/structure` to optionally include validation status
-  - [ ] Add validation trigger on save (warn but don't block)
-  - [ ] Cache validation results if needed for performance
-  - [ ] Test integration
+  - [x] Add validation trigger on save (warn but don't block)
+  - [x] Cache validation results if needed for performance
+  - [x] Test integration
 
 ---
 

@@ -1,6 +1,6 @@
 # Story 4.0.1: Strategic Metadata Schema Enhancement
 
-**Status:** in progress
+**Status:** done
 
 **Status note:** Story drafted 2025-11-23 - Goals, Topics, Narratives schema bővítés, DB migration
 
@@ -142,16 +142,16 @@ So that **the execution AI has structured, prioritized data for sprint and conte
   - [x] Update narrative loading to read from table (with JOINs) or JSONB (fallback)
   - [x] Handle both table-based and JSONB-based narratives during transition
 
-- [ ] **Task 5: Test migration and backward compatibility** (AC: #1, #2, #3, #7)
-  - [ ] Run migration on local Supabase instance
-  - [ ] Verify narratives table and junction tables created
-  - [ ] Verify existing JSONB narratives migrated to table
-  - [ ] Verify new fields exist and are nullable
-  - [ ] Test enum constraints
-  - [ ] Test foreign key constraints in junction tables
-  - [ ] Test JSONB array fields with valid data (backward compatibility)
-  - [ ] Verify existing campaigns still work
-  - [ ] Test data preservation (no data loss)
+- [x] **Task 5: Test migration and backward compatibility** (AC: #1, #2, #3, #7)
+  - [x] Run migration on local Supabase instance
+  - [x] Verify narratives table and junction tables created
+  - [x] Verify existing JSONB narratives migrated to table
+  - [x] Verify new fields exist and are nullable
+  - [x] Test enum constraints
+  - [x] Test foreign key constraints in junction tables
+  - [x] Test JSONB array fields with valid data (backward compatibility)
+  - [x] Verify existing campaigns still work
+  - [x] Test data preservation (no data loss)
 
 ---
 
