@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ExecutionReadinessChecklist } from './ExecutionReadinessChecklist'
+import { CompactExecutionReadinessChecklist } from './CompactExecutionReadinessChecklist'
 import type { ExecutionReadinessResult } from '@/lib/validation/campaign-structure'
 import type { CampaignStructure } from '@/lib/validation/campaign-structure'
 import { Badge } from '@/components/ui/badge'
@@ -76,7 +76,7 @@ export function ValidationStatusSection({ campaignId }: ValidationStatusSectionP
 
   return (
     <div className="space-y-4">
-      <ExecutionReadinessChecklist
+      <CompactExecutionReadinessChecklist
         campaignId={campaignId}
         structure={structure}
         validationStatus={validationStatus}

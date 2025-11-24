@@ -7,6 +7,7 @@ import { DeleteCampaignButton } from '@/components/campaigns/DeleteCampaignButto
 import { CampaignStatusCard } from '@/components/campaigns/CampaignStatusCard'
 import { ValidationStatusSection } from '@/components/ai/ValidationStatusSection'
 import { ValidationStatusBadge } from '@/components/ai/ValidationStatusBadge'
+import { CampaignOverviewCard } from '@/components/campaigns/CampaignOverviewCard'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 
@@ -183,7 +184,12 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
           </div>
         )}
 
-        {/* Validation Status Checklist (Full Width) */}
+        {/* Overview Card (Full Width) */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <CampaignOverviewCard campaignId={id} />
+        </div>
+
+        {/* Validation Status Checklist (Compact, Full Width) */}
         <div className="col-span-1 md:col-span-2 lg:col-span-3">
           <ValidationStatusSection campaignId={id} />
         </div>
