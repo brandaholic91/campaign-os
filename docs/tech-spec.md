@@ -2750,20 +2750,31 @@ interface EnhancedNarrative {
 - ✅ Validation checklist system (Epic 4.0)
 
 **Epic 5 Goal:**
-Build an AI-powered execution planner that generates sprint plans and content calendars from validated campaign structures. The planner creates 2-4 sprints based on campaign length and complexity, then generates content slots distributed evenly across sprints, respecting channel constraints and strategic priorities.
+Build an AI-powered execution planner with a two-phase approach: first generating sprint plans (strategic execution phases with rich metadata), then allowing content slot generation per sprint when ready. This separates strategic planning from tactical content scheduling, giving users more control over content creation timing. The planner creates 2-4 sprints based on campaign length and complexity, with enhanced sprint metadata to guide future content slot generation.
 
 ---
 
 ### Epic 5 Scope
 
 **In Scope:**
+
+**Phase 1 (Current Implementation):**
 1. **Database schema** - `sprints`, `sprint_segments`, `sprint_topics`, `sprint_channels`, `content_slots` tables
-2. **AI endpoint** - `POST /api/ai/campaign-execution` with streaming progress (SSE)
+2. **AI endpoint** - `POST /api/ai/campaign-execution` with streaming progress (SSE) - generates both sprints and content slots
 3. **Execution plan preview UI** - Sprint list + content calendar view
 4. **Save execution plan API** - Transaction support with rollback
 5. **Edit & management UI** - Edit sprints/slots, delete, re-generate
 6. **Zod schema validation** - All execution plan data validated
 7. **Constraint enforcement** - Max posts per day/channel, max total per week
+
+**Phase 2 (Two-Phase Refactor):**
+8. **Enhanced sprint schema** - Add `focus_stage`, `focus_goals[]`, `suggested_weekly_post_volume`, `narrative_emphasis[]`, `key_messages_summary`, `success_criteria[]`, `risks_and_watchouts[]` fields
+9. **Sprint-only AI endpoint** - `POST /api/ai/campaign-sprints` - generates sprints only (strategic execution phases)
+10. **Sprint-specific content slot generation** - `POST /api/ai/campaign-sprints/[sprintId]/content-slots` - generates content slots per sprint when ready
+11. **Sprint timeline UI** - Enhanced sprint metadata display (focus stage, goals, segments, topics, channels, volume suggestions, narratives, key messages, success criteria, risks)
+12. **Sprint detail page** - Per-sprint view with content slot generation button (`/campaigns/[id]/sprints/[sprintId]`)
+13. **UI refactor** - Two separate workflows: sprint generation + per-sprint content generation
+14. **Backward compatibility** - Existing `/api/ai/campaign-execution` endpoint remains functional (deprecated)
 
 **Out of Scope (Epic 6+):**
 - Content copy generation for slots
@@ -2777,6 +2788,7 @@ Build an AI-powered execution planner that generates sprint plans and content ca
 
 **New files for Epic 5:**
 
+**Phase 1 (Current Implementation):**
 ```
 campaign-os/
 ├── supabase/
@@ -2786,7 +2798,7 @@ campaign-os/
 │   └── api/
 │       ├── ai/
 │       │   └── campaign-execution/
-│       │       └── route.ts                         # CREATE - Execution planner AI endpoint
+│       │       └── route.ts                         # CREATE - Execution planner AI endpoint (generates both sprints + content slots)
 │       └── campaigns/
 │           └── execution/
 │               └── route.ts                         # CREATE - Save execution plan API
@@ -2805,9 +2817,49 @@ campaign-os/
         └── ExecutionPlanEditor.tsx                  # CREATE - Edit execution plan component
 ```
 
+**Phase 2 (Two-Phase Refactor):**
+```
+campaign-os/
+├── supabase/
+│   └── migrations/
+│       └── YYYYMMDD_enhanced_sprint_schema.sql     # CREATE - Enhanced sprint schema migration (Story 5.6)
+├── app/
+│   ├── api/
+│   │   └── ai/
+│   │       ├── campaign-sprints/
+│   │       │   └── route.ts                         # CREATE - Sprint-only AI generation endpoint (Story 5.7)
+│   │       └── campaign-sprints/
+│   │           └── [sprintId]/
+│   │               └── content-slots/
+│   │                   └── route.ts                 # CREATE - Sprint-specific content slot generation (Story 5.8)
+│   └── campaigns/
+│       └── [id]/
+│           └── sprints/
+│               └── [sprintId]/
+│                   └── page.tsx                     # CREATE - Sprint detail page (Story 5.9)
+├── lib/
+│   └── ai/
+│       ├── schemas.ts                               # MODIFY - Enhance SprintPlanSchema with new fields (Story 5.6)
+│       └── prompts/
+│           ├── sprint-planner.ts                    # CREATE - Sprint-only generation prompt (Story 5.7)
+│           └── content-slot-planner.ts              # CREATE - Sprint-specific content slot generation prompt (Story 5.8)
+└── components/
+    └── campaigns/
+        ├── ExecutionPlanner.tsx                     # MODIFY - Refactor to two-phase model (Story 5.9)
+        └── SprintDetailPage.tsx                     # CREATE - Sprint detail page component (Story 5.9)
+```
+
 **Modified files:**
+
+**Phase 1:**
 - `app/campaigns/[id]/page.tsx` - Add "Sprintek & Naptár" tab
 - `lib/ai/schemas.ts` - Add execution plan Zod schemas
+
+**Phase 2:**
+- `lib/ai/schemas.ts` - Enhance SprintPlanSchema with new fields (focus_stage, focus_goals[], suggested_weekly_post_volume, narrative_emphasis[], key_messages_summary, success_criteria[], risks_and_watchouts[])
+- `components/campaigns/ExecutionPlanner.tsx` - Refactor to show two buttons: "Sprintstruktúra generálása" and per-sprint "Tartalomnaptár generálása"
+- `components/campaigns/SprintList.tsx` - Enhance to show new sprint metadata fields
+- `app/api/ai/campaign-execution/route.ts` - Mark as deprecated (but remains functional for backward compatibility)
 
 ---
 
@@ -2815,6 +2867,7 @@ campaign-os/
 
 **Database Schema:**
 
+**Phase 1 (Current Implementation):**
 ```sql
 -- Sprints table (junction tables for relationships)
 CREATE TABLE sprints (
@@ -2831,7 +2884,63 @@ CREATE TABLE sprints (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CHECK (end_date > start_date)
 );
+```
 
+**Phase 2 (Enhanced Schema):**
+```sql
+-- Enhanced sprints table (Story 5.6)
+ALTER TABLE sprints
+  ADD COLUMN focus_stage TEXT CHECK (focus_stage IN ('awareness', 'engagement', 'consideration', 'conversion', 'mobilization')),
+  ADD COLUMN focus_goals JSONB DEFAULT '[]'::jsonb, -- Array of goal_id UUIDs (1-3 goals)
+  ADD COLUMN suggested_weekly_post_volume JSONB, -- {total_posts_per_week, video_posts_per_week, stories_per_week}
+  ADD COLUMN narrative_emphasis JSONB DEFAULT '[]'::jsonb, -- Array of narrative_id UUIDs (1-2 narratives)
+  ADD COLUMN key_messages_summary TEXT, -- 4-6 bullet points: what we emphasize in this sprint
+  ADD COLUMN success_criteria JSONB DEFAULT '[]'::jsonb, -- Array of qualitative indicators
+  ADD COLUMN risks_and_watchouts JSONB DEFAULT '[]'::jsonb; -- Array of 2-4 risk points
+```
+
+**Enhanced Sprint Schema TypeScript Definition (Story 5.6):**
+```typescript
+type SprintFocusStage = 'awareness' | 'engagement' | 'consideration' | 'conversion' | 'mobilization';
+
+interface SuggestedWeeklyPostVolume {
+  total_posts_per_week: number;
+  video_posts_per_week: number;
+  stories_per_week?: number;
+}
+
+interface EnhancedSprintPlan {
+  id: string;                      // UUID
+  order: number;                   // 1, 2, 3...
+  name: string;                    // "Kickoff – Ismertségnövelés"
+  start_date: string;              // "2025-03-01"
+  end_date: string;                // "2025-03-10"
+  
+  // Enhanced metadata (Phase 2)
+  focus_stage: SprintFocusStage;   // Main funnel stage
+  focus_goals: string[];           // goal_id UUIDs (1-3 goals)
+  focus_segments_primary: string[];    // segment_id UUIDs (1-2 primary)
+  focus_segments_secondary: string[];  // segment_id UUIDs (optional)
+  focus_topics_primary: string[];      // topic_id UUIDs (2-3 primary)
+  focus_topics_secondary: string[];    // topic_id UUIDs (2-4 supporting)
+  
+  focus_channels_primary: string[];    // Channel keys (2-3 primary)
+  focus_channels_secondary: string[];  // Channel keys (optional)
+  
+  suggested_weekly_post_volume: SuggestedWeeklyPostVolume; // Guidance for content generation
+  narrative_emphasis: string[];        // narrative_id UUIDs (1-2 narratives)
+  key_messages_summary: string;        // 4-6 bullet points summary
+  success_criteria: string[];          // Qualitative indicators
+  risks_and_watchouts: string[];       // 2-4 risk points
+  
+  // Legacy fields (Phase 1, kept for backward compatibility)
+  focus_goal?: string;             // Legacy, replaced by focus_stage
+  focus_description?: string;      // Legacy, replaced by key_messages_summary
+  success_indicators?: any[];      // Legacy, replaced by success_criteria
+}
+```
+
+```sql
 -- Junction tables
 CREATE TABLE sprint_segments (
   sprint_id UUID NOT NULL REFERENCES sprints(id) ON DELETE CASCADE,
@@ -2871,22 +2980,40 @@ CREATE TABLE content_slots (
 );
 ```
 
-**AI Endpoint:**
+**AI Endpoints:**
+
+**Phase 1 (Current Implementation):**
+- `POST /api/ai/campaign-execution` - Generates both sprints and content slots together
 - Streaming response (SSE) with progress updates
 - Soft gate validation (warns but doesn't block)
 - Priority-based slot generation (high → medium → experimental)
 - Post-processing constraint enforcement
 
+**Phase 2 (Two-Phase Model):**
+- `POST /api/ai/campaign-sprints` - Generates sprints only (strategic execution phases)
+  - Response: `{ sprints: SprintPlan[] }` (no content_calendar)
+  - Enhanced sprint metadata generation (all new fields from Story 5.6)
+  - Sprint count logic: 1-10 days → 1 sprint, 11-25 days → 2 sprints, 26-45 days → 3 sprints, 46+ days → 4-6 sprints
+  - Sprint focus stages follow funnel progression
+  
+- `POST /api/ai/campaign-sprints/[sprintId]/content-slots` - Generates content slots for specific sprint
+  - Input: `sprintId`, optional `{ weekly_post_volume?: {...} }` override
+  - Uses sprint's focus_stage, focus_segments, focus_topics, focus_channels, suggested_weekly_post_volume
+  - Response: `{ content_slots: ContentSlot[] }`
+  - Constraint enforcement: max posts per day/channel, weekly totals
+
 **Sprint Planning Logic:**
 - Flexible logic with guidelines (not rigid rules)
 - Sprint count based on campaign length + complexity
-- Sprint focus goals based on campaign goal_type + length
+- Sprint focus stages based on funnel progression (awareness → engagement → consideration → conversion)
+- Enhanced metadata generation: focus_goals, narrative_emphasis, key_messages_summary, success_criteria, risks_and_watchouts
 
 **Content Slot Planning:**
 - Dynamic calculation with constraints
 - Per channel, per day limits (max 2, except Stories: 5)
-- Weekly total limits (budget-based)
+- Weekly total limits (budget-based or sprint's suggested_weekly_post_volume)
 - Priority-based generation (high-importance pairs always get slots)
+- Sprint-specific: uses sprint's focus areas and suggested volume
 
 ---
 
@@ -2911,22 +3038,51 @@ CREATE TABLE content_slots (
 - `lib/supabase/types.ts` - Generated TypeScript types
 
 **AI Integration:**
+
+**Phase 1:**
 - `lib/ai/schemas.ts` - Execution plan Zod schemas (SprintPlanSchema, ContentSlotSchema, ExecutionPlanSchema)
-- `lib/ai/prompts/execution-planner.ts` - Execution planner prompt template
-- `app/api/ai/campaign-execution/route.ts` - Execution planner AI endpoint
+- `lib/ai/prompts/execution-planner.ts` - Execution planner prompt template (generates both sprints and content slots)
+- `app/api/ai/campaign-execution/route.ts` - Execution planner AI endpoint (Phase 1 implementation)
+
+**Phase 2:**
+- `lib/ai/schemas.ts` - Enhanced SprintPlanSchema with new metadata fields
+- `lib/ai/prompts/sprint-planner.ts` - Sprint-only generation prompt (Story 5.7)
+- `lib/ai/prompts/content-slot-planner.ts` - Sprint-specific content slot generation prompt (Story 5.8)
+- `app/api/ai/campaign-sprints/route.ts` - Sprint-only AI generation endpoint (Story 5.7)
+- `app/api/ai/campaign-sprints/[sprintId]/content-slots/route.ts` - Sprint-specific content slot generation (Story 5.8)
 
 **API Endpoints:**
-- `/api/ai/campaign-execution` - Generate execution plan (streaming)
+
+**Phase 1:**
+- `/api/ai/campaign-execution` - Generate execution plan (both sprints + content slots, streaming)
 - `/api/campaigns/execution` - Save execution plan
 
+**Phase 2:**
+- `/api/ai/campaign-sprints` - Generate sprints only (streaming) - NEW
+- `/api/ai/campaign-sprints/[sprintId]/content-slots` - Generate content slots for specific sprint (streaming) - NEW
+- `/api/ai/campaign-execution` - DEPRECATED but functional (backward compatibility)
+- `/api/campaigns/execution` - Save sprints (can save sprints independently, without content slots)
+
 **Frontend Components:**
+
+**Phase 1:**
 - `components/campaigns/ExecutionPlanner.tsx` - Main execution planner component
 - `components/campaigns/SprintList.tsx` - Sprint list component
 - `components/campaigns/ContentCalendar.tsx` - Content calendar component
 - `components/campaigns/ExecutionPlanEditor.tsx` - Edit execution plan component
 
+**Phase 2:**
+- `components/campaigns/ExecutionPlanner.tsx` - Refactored for two-phase model (two buttons, separate workflows)
+- `components/campaigns/SprintList.tsx` - Enhanced to show new sprint metadata fields
+- `components/campaigns/SprintDetailPage.tsx` - Sprint detail page component (NEW, Story 5.9)
+- `app/campaigns/[id]/sprints/[sprintId]/page.tsx` - Sprint detail page route (NEW, Story 5.9)
+
 **Validation:**
 - `lib/validation/execution-plan.ts` - Execution plan validation helpers
+
+**Database Migrations:**
+- `supabase/migrations/YYYYMMDD_execution_planning_schema.sql` - Phase 1 schema
+- `supabase/migrations/YYYYMMDD_enhanced_sprint_schema.sql` - Phase 2 enhanced sprint schema (Story 5.6)
 
 **Detailed story breakdown:** `docs/sprint-artifacts/epic-5-execution-planner-stories.md`
 

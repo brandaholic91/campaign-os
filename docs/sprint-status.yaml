@@ -160,4 +160,24 @@ development_status:
   # Note: Status updated to in-progress (2025-11-28) - Dev agent starting implementation
   5-5-execution-plan-edit-management-ui: in-progress
 
+  # Story 5.6: Enhanced Sprint Schema & Database Migration
+  # Note: Epic 5 Phase 2 - Two-phase refactor: Enhanced sprint schema with strategic metadata
+  # Note: Story drafted 2025-01-XX - Enhanced sprint schema with strategic metadata fields
+  5-6-enhanced-sprint-schema-database-migration: drafted
+
+  # Story 5.7: Sprint-Only AI Generation Endpoint
+  # Note: Epic 5 Phase 2 - Two-phase refactor: AI endpoint that generates only sprint plans
+  # Note: Story drafted 2025-01-XX - AI endpoint for sprint-only generation
+  5-7-sprint-only-ai-generation-endpoint: drafted
+
+  # Story 5.8: Sprint-Specific Content Slot Generation
+  # Note: Epic 5 Phase 2 - Two-phase refactor: Generate content slots per sprint when ready
+  # Note: Story drafted 2025-01-XX - Sprint-specific content slot generation endpoint
+  5-8-sprint-specific-content-slot-generation: drafted
+
+  # Story 5.9: UI Refactor - Two-Phase Model
+  # Note: Epic 5 Phase 2 - Two-phase refactor: UI that separates sprint generation from content slot generation
+  # Note: Story drafted 2025-01-XX - UI refactor for two-phase model
+  5-9-ui-refactor-two-phase-model: drafted
+
   epic-5-retrospective: optional

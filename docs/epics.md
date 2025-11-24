@@ -1341,18 +1341,23 @@ So that **I can easily identify what needs to be completed before sprint plannin
 
 ### Goal
 
-Build an AI-powered execution planner that generates sprint plans and content calendars from validated campaign structures. The planner creates 2-4 sprints based on campaign length and complexity, then generates content slots distributed evenly across sprints, respecting channel constraints and strategic priorities.
+Build an AI-powered execution planner with a two-phase approach: first generating sprint plans (strategic execution phases), then allowing content slot generation per sprint when ready. This separates strategic planning from tactical content scheduling, giving users more control over content creation timing. The planner creates 2-4 sprints based on campaign length and complexity, with rich sprint metadata to guide future content slot generation.
 
 ### Scope
 
 **In Scope:**
 - Database schema: `sprints`, `sprint_segments`, `sprint_topics`, `sprint_channels`, `content_slots` tables
-- AI endpoint: `POST /api/ai/campaign-execution` with streaming progress
-- Execution plan preview UI (sprint list + content calendar view)
-- Save execution plan API with transaction support
+- Enhanced sprint schema: `focus_stage`, `focus_goals[]`, `suggested_weekly_post_volume`, `narrative_emphasis[]`, `key_messages_summary`, `success_criteria[]`, `risks_and_watchouts[]`
+- Two-phase AI generation:
+  - Phase 1: Sprint-only generation (`POST /api/ai/campaign-sprints`) - strategic execution phases
+  - Phase 2: Sprint-specific content slot generation (`POST /api/ai/campaign-sprints/[sprintId]/content-slots`) - tactical content scheduling
+- Sprint timeline UI with enhanced sprint metadata display
+- Sprint detail page for per-sprint content slot generation
+- Save sprints API (can save sprints independently, without content slots)
 - Edit & management UI for sprints and content slots
 - Zod schema validation for all execution plan data
 - Constraint enforcement (max posts per day/channel, max total per week)
+- Backward compatibility: existing `/api/ai/campaign-execution` endpoint deprecated but functional
 
 **Out of Scope (Epic 6+):**
 - Content copy generation for slots (future epic)
@@ -1362,13 +1367,15 @@ Build an AI-powered execution planner that generates sprint plans and content ca
 
 ### Success Criteria
 
-1. ✅ Users can generate execution plans from validated campaign structures
-2. ✅ AI generates 2-4 sprints based on campaign length and complexity
-3. ✅ AI generates content slots distributed evenly across sprints
-4. ✅ Content slots respect channel constraints and strategic priorities
-5. ✅ Execution plan can be previewed before saving
-6. ✅ Execution plan can be edited after saving
-7. ✅ All execution plan data validated against Zod schemas
+1. ✅ Users can generate sprint plans from validated campaign structures (sprints only, no content slots)
+2. ✅ AI generates 2-4 sprints based on campaign length and complexity with enhanced metadata
+3. ✅ Sprint plans include strategic metadata: focus_stage, focus_goals, suggested_weekly_post_volume, narrative_emphasis, key_messages_summary, success_criteria, risks_and_watchouts
+4. ✅ Users can generate content slots per sprint when ready (sprint-specific generation)
+5. ✅ Content slots respect sprint focus and channel constraints
+6. ✅ Sprint plans can be previewed and saved independently of content slots
+7. ✅ Sprint detail page allows per-sprint content slot generation
+8. ✅ Execution plan can be edited after saving
+9. ✅ All execution plan data validated against Zod schemas
 
 ### Dependencies
 
@@ -1391,21 +1398,34 @@ Database Foundation Layer
 ├── Story 5.1: Database Schema for Execution Planning
 │   └── sprints, junction tables, content_slots, Zod schemas
 │
-AI Generation Layer
+AI Generation Layer (Phase 1 - Current Implementation)
 ├── Story 5.2: Execution Planner AI Endpoint
-│   └── POST /api/ai/campaign-execution, streaming, prompt engineering
+│   └── POST /api/ai/campaign-execution, streaming, prompt engineering (generates both sprints + content slots)
 │
-User Experience Layer
+User Experience Layer (Phase 1 - Current Implementation)
 ├── Story 5.3: Execution Plan Preview UI
 │   └── Sprint list, content calendar, progress feedback
 │
-Persistence Layer
+Persistence Layer (Phase 1 - Current Implementation)
 ├── Story 5.4: Save Execution Plan API & Workflow
 │   └── POST /api/campaigns/execution, transaction, rollback
 │
-Management Layer
+Management Layer (Phase 1 - Current Implementation)
 └── Story 5.5: Execution Plan Edit & Management UI
     └── Edit sprints/slots, delete, re-generate
+
+Two-Phase Refactor (Phase 2 - New Implementation)
+├── Story 5.6: Enhanced Sprint Schema & Database Migration
+│   └── Sprint schema enhancement, new fields, DB migration, backward compatibility
+│
+├── Story 5.7: Sprint-Only AI Generation Endpoint
+│   └── POST /api/ai/campaign-sprints, sprint-only generation with enhanced metadata
+│
+├── Story 5.8: Sprint-Specific Content Slot Generation
+│   └── POST /api/ai/campaign-sprints/[sprintId]/content-slots, per-sprint content generation
+│
+└── Story 5.9: UI Refactor - Two-Phase Model
+    └── ExecutionPlanner refactor, sprint timeline, sprint detail page, per-sprint content generation
 ```
 
 ---
@@ -1472,20 +1492,153 @@ So that **I can fine-tune the execution plan to match reality**.
 
 ---
 
+### Story 5.6: Enhanced Sprint Schema & Database Migration
+
+As a **developer**,
+I want **an enhanced sprint schema with strategic metadata fields and database migration**,
+So that **sprints contain enough information to guide future content slot generation without micromanagement**.
+
+**Acceptance Criteria:**
+
+**Given** I have Epic 5 Phase 1 database schema
+**When** I run the migration
+**Then** sprints table is enhanced with:
+- `focus_stage` TEXT enum ('awareness' | 'engagement' | 'consideration' | 'conversion' | 'mobilization')
+- `focus_goals` JSONB array (goal_id UUIDs, 1-3 goals per sprint)
+- `suggested_weekly_post_volume` JSONB (total_posts_per_week, video_posts_per_week, stories_per_week)
+- `narrative_emphasis` JSONB array (narrative_id UUIDs, 1-2 narratives per sprint)
+- `key_messages_summary` TEXT (4-6 bullet points: what we emphasize in this sprint)
+- `success_criteria` JSONB array (qualitative indicators: "ha ezt látjuk, jó irányban vagyunk")
+- `risks_and_watchouts` JSONB array (2-4 points: what to watch for)
+
+**And** SprintPlanSchema is updated with all new fields
+**And** TypeScript types are regenerated
+**And** Existing sprints remain compatible (new fields nullable initially)
+
+**Prerequisites:** Story 5.1 (Phase 1 database schema)
+
+**Estimated Effort:** 2-3 points (1-2 days)
+
+---
+
+### Story 5.7: Sprint-Only AI Generation Endpoint
+
+As a **campaign manager**,
+I want **an AI endpoint that generates only sprint plans without content slots**,
+So that **I can create strategic execution phases first, then decide content timing separately**.
+
+**Acceptance Criteria:**
+
+**Given** I have a validated campaign structure
+**When** I POST to `/api/ai/campaign-sprints` with `{ campaignId }`
+**Then** Endpoint generates sprints only (no content_calendar in response)
+**And** Response format: `{ sprints: SprintPlan[] }` (content_calendar absent)
+**And** All sprints include enhanced metadata fields from Story 5.6
+**And** Sprint count follows guidelines:
+- 1-10 days → 1 sprint
+- 11-25 days → 2 sprints
+- 26-45 days → 3 sprints
+- 46+ days → 4-6 sprints
+**And** Sprint focus stages follow funnel progression (awareness → engagement → consideration → conversion)
+**And** Streaming progress shows sprint generation status
+**And** Response validates against enhanced SprintPlanSchema
+
+**Prerequisites:** Story 5.6 (Enhanced schema)
+
+**Estimated Effort:** 3-4 points (2-3 days)
+
+---
+
+### Story 5.8: Sprint-Specific Content Slot Generation
+
+As a **campaign manager**,
+I want **to generate content slots for a specific sprint when ready**,
+So that **I can plan content timing closer to execution date with sprint context**.
+
+**Acceptance Criteria:**
+
+**Given** I have a saved sprint with enhanced metadata
+**When** I POST to `/api/ai/campaign-sprints/[sprintId]/content-slots` with optional `{ weekly_post_volume?: {...} }`
+**Then** Endpoint generates content slots only for that sprint
+**And** Content slots use sprint's focus_stage, focus_segments, focus_topics, focus_channels, suggested_weekly_post_volume
+**And** Optional weekly_post_volume parameter allows overriding suggested volume
+**And** Response format: `{ content_slots: ContentSlot[] }`
+**And** All slot dates are within sprint date range
+**And** Slot constraints are enforced (max posts per day/channel, weekly totals)
+**And** Streaming progress shows content slot generation status
+
+**Prerequisites:** Story 5.7 (Sprint-only generation)
+
+**Estimated Effort:** 3-4 points (2-3 days)
+
+---
+
+### Story 5.9: UI Refactor - Two-Phase Model
+
+As a **campaign manager**,
+I want **a UI that separates sprint generation from content slot generation**,
+So that **I have control over when to generate content and can review sprints first**.
+
+**Acceptance Criteria:**
+
+**Given** I am on the campaign execution planner page
+**When** I view the sprints section
+**Then** I see two separate buttons:
+- "Sprintstruktúra generálása AI-val" (generates sprints only)
+- Per sprint: "Tartalomnaptár létrehozása ehhez a sprinthez" (generates content slots for that sprint)
+
+**And** Sprint timeline view shows enhanced sprint metadata:
+- Focus stage badge
+- Focus goals list
+- Primary/secondary segments and topics
+- Primary/secondary channels
+- Suggested weekly post volume (total, video, stories)
+- Narrative emphasis
+- Key messages summary
+- Success criteria
+- Risks and watchouts
+
+**And** I can click on a sprint to open sprint detail page (`/campaigns/[id]/sprints/[sprintId]`)
+**And** Sprint detail page shows:
+- Full sprint information with all enhanced metadata
+- "Tartalomnaptár generálása" button (generates content slots for this sprint)
+- Content calendar view (if slots already generated)
+- Edit sprint functionality
+
+**And** Content slots are shown per sprint in calendar view
+**And** Backward compatibility: existing `/api/ai/campaign-execution` endpoint still works (deprecated but functional)
+
+**Prerequisites:** Story 5.7 (Sprint-only generation), Story 5.8 (Sprint-specific content slots)
+
+**Estimated Effort:** 5-6 points (3-4 days)
+
+---
+
 ## Implementation Timeline - Epic 5
 
+**Phase 1 (Stories 5.1-5.5) - Initial Implementation:**
 **Total Story Points:** 31 points
-
 **Estimated Timeline:** 18-22 days (approximately 4-5 weeks with buffer)
 
-**Story Sequence:**
+**Phase 2 (Stories 5.6-5.9) - Two-Phase Refactor:**
+**Total Story Points:** 13-17 points
+**Estimated Timeline:** 8-12 days (approximately 2-3 weeks with buffer)
+
+**Phase 1 Story Sequence:**
 1. Story 5.1: Database Schema (must complete first - foundation, critical path)
 2. Story 5.2: AI Endpoint (depends on 5.1, critical path)
 3. Story 5.3: Preview UI (depends on 5.2, can start in parallel with 5.4)
 4. Story 5.4: Save API (depends on 5.1 and 5.2, can start in parallel with 5.3)
 5. Story 5.5: Edit UI (depends on 5.3 and 5.4)
 
+**Phase 2 Story Sequence:**
+6. Story 5.6: Enhanced Sprint Schema & Database Migration (foundation for refactor)
+7. Story 5.7: Sprint-Only AI Generation Endpoint (depends on 5.6)
+8. Story 5.8: Sprint-Specific Content Slot Generation (depends on 5.7)
+9. Story 5.9: UI Refactor - Two-Phase Model (depends on 5.7, can start in parallel with 5.8)
+
 **Notes:**
+**Phase 1:**
 - Story 5.1 is critical path - database foundation required for all other stories
 - Story 5.2 is critical path - AI endpoint required for preview and save
 - Stories 5.3 and 5.4 can work in parallel after 5.2 (UI and API)
@@ -1493,6 +1646,13 @@ So that **I can fine-tune the execution plan to match reality**.
 - AI prompt engineering requires careful iteration (Story 5.2)
 - Constraint enforcement is critical for realistic execution plans
 - Transaction support ensures data integrity (Story 5.4)
+
+**Phase 2:**
+- Story 5.6 enhances sprint schema - foundation for two-phase model
+- Story 5.7 creates sprint-only generation - separates strategic from tactical
+- Story 5.8 enables per-sprint content generation - user controls timing
+- Story 5.9 refactors UI - two separate buttons/workflows
+- Backward compatibility: existing `/api/ai/campaign-execution` remains functional (deprecated)
 - Detailed story breakdown: `docs/sprint-artifacts/epic-5-execution-planner-stories.md`
 
 ---
