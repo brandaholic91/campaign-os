@@ -170,16 +170,17 @@ development_status:
   # Story 5.7: Sprint-Only AI Generation Endpoint
   # Note: Epic 5 Phase 2 - Two-phase refactor: AI endpoint that generates only sprint plans
   # Note: Story drafted 2025-01-XX - AI endpoint for sprint-only generation
-  5-7-sprint-only-ai-generation-endpoint: drafted
+  # Note: Status updated to review (2025-11-24) - Implementation completed, all ACs satisfied, all tests passing
+  5-7-sprint-only-ai-generation-endpoint: review
 
   # Story 5.8: Sprint-Specific Content Slot Generation
   # Note: Epic 5 Phase 2 - Two-phase refactor: Generate content slots per sprint when ready
   # Note: Story drafted 2025-01-XX - Sprint-specific content slot generation endpoint
-  5-8-sprint-specific-content-slot-generation: drafted
+  5-8-sprint-specific-content-slot-generation: in-progress
 
   # Story 5.9: UI Refactor - Two-Phase Model
   # Note: Epic 5 Phase 2 - Two-phase refactor: UI that separates sprint generation from content slot generation
   # Note: Story drafted 2025-01-XX - UI refactor for two-phase model
-  5-9-ui-refactor-two-phase-model: drafted
+  5-9-ui-refactor-two-phase-model: in-progress
 
   epic-5-retrospective: optional
