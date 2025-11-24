@@ -314,3 +314,91 @@ export type StyleTone = z.infer<typeof StyleToneSchema>
 export type CTAFunnel = z.infer<typeof CTAFunnelSchema>
 export type ExtraFields = z.infer<typeof ExtraFieldsSchema>
 export type MessageStrategy = z.infer<typeof MessageStrategySchema>
+
+// Epic 5.0: Execution Planning Schemas
+
+// Helper for date validation (YYYY-MM-DD format)
+const dateStringSchema = () => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+
+// Sprint focus goal enum
+export const SprintFocusGoalTypeSchema = z.enum([
+  'awareness',
+  'engagement',
+  'consideration',
+  'conversion',
+  'mobilization'
+])
+
+// Sprint plan schema
+export const SprintPlanSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1, 'Sprint name must be at least 1 character'),
+  order: z.number().int().positive('Order must be a positive integer'),
+  start_date: dateStringSchema(),
+  end_date: dateStringSchema(),
+  focus_goal: SprintFocusGoalTypeSchema,
+  focus_description: z.string().min(10, 'Focus description must be at least 10 characters'),
+  focus_segments: z.array(z.string().uuid()).min(1, 'At least one focus segment required'),
+  focus_topics: z.array(z.string().uuid()).min(1, 'At least one focus topic required'),
+  focus_channels: z.array(z.string().min(1)).min(1, 'At least one focus channel required'),
+  success_indicators: z.array(z.any()).optional(),
+}).refine((data) => {
+  // Validate that end_date is after start_date
+  const start = new Date(data.start_date)
+  const end = new Date(data.end_date)
+  return end > start
+}, {
+  message: 'end_date must be after start_date',
+  path: ['end_date']
+})
+
+// Content objective enum
+export const ContentObjectiveSchema = z.enum([
+  'reach',
+  'engagement',
+  'traffic',
+  'lead',
+  'conversion',
+  'mobilization'
+])
+
+// Content type enum
+export const ContentTypeSchema = z.enum([
+  'short_video',
+  'story',
+  'static_image',
+  'carousel',
+  'live',
+  'long_post',
+  'email'
+])
+
+// Content slot schema
+export const ContentSlotSchema = z.object({
+  id: z.string().uuid(),
+  sprint_id: z.string().uuid(),
+  date: dateStringSchema(),
+  channel: z.string().min(1, 'Channel must be at least 1 character'),
+  slot_index: z.number().int().positive('Slot index must be a positive integer'),
+  primary_segment_id: z.string().uuid().optional(),
+  primary_topic_id: z.string().uuid().optional(),
+  objective: ContentObjectiveSchema,
+  content_type: ContentTypeSchema,
+  angle_hint: z.string().optional(),
+  notes: z.string().optional(),
+  status: z.enum(['planned', 'draft', 'published']).default('planned'),
+})
+
+// Execution plan schema (combines sprints and content calendar)
+export const ExecutionPlanSchema = z.object({
+  sprints: z.array(SprintPlanSchema).min(1, 'At least one sprint required').max(6, 'Maximum 6 sprints allowed'),
+  content_calendar: z.array(ContentSlotSchema).min(1, 'At least one content slot required'),
+})
+
+// TypeScript type exports
+export type SprintFocusGoalType = z.infer<typeof SprintFocusGoalTypeSchema>
+export type SprintPlan = z.infer<typeof SprintPlanSchema>
+export type ContentObjective = z.infer<typeof ContentObjectiveSchema>
+export type ContentType = z.infer<typeof ContentTypeSchema>
+export type ContentSlot = z.infer<typeof ContentSlotSchema>
+export type ExecutionPlan = z.infer<typeof ExecutionPlanSchema>

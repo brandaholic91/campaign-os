@@ -139,7 +139,7 @@ development_status:
 
   # Story 5.1: Database Schema for Execution Planning
   # Note: Story drafted 2025-11-27 - Database tables for sprints and content slots with proper relationships
-  5-1-database-schema-execution-planning: drafted
+  5-1-database-schema-execution-planning: in-progress
 
   # Story 5.2: Execution Planner AI Endpoint
   # Note: Story drafted 2025-11-27 - AI endpoint that generates sprint plans and content calendars from validated campaign structures
