@@ -127,9 +127,9 @@ export async function POST(req: NextRequest) {
               start_date: campaign.start_date || new Date().toISOString().split('T')[0],
               end_date: campaign.end_date || new Date().toISOString().split('T')[0],
               channels: channels.length > 0 ? channels : ['facebook', 'instagram'], // Fallback if no channels
-              budget_level: (campaign.budget_level as 'low' | 'medium' | 'high') || 'medium',
+              budget_level: 'medium', // Default budget level (budget_estimate available but no budget_level field in DB)
             },
-            structure: structure as CampaignStructure,
+            structure: structure as unknown as CampaignStructure,
           }
 
           // Generate execution plan with AI

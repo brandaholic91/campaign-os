@@ -39,6 +39,29 @@ export default async function SprintsPage({
     .select('*')
     .order('name', { ascending: true })
 
+  // Transform sprints to match SprintBoard type (null -> undefined for optional fields)
+  const transformedSprints = (sprints || []).map(sprint => ({
+    ...sprint,
+    status: sprint.status ?? undefined,
+    created_at: sprint.created_at ?? undefined,
+    updated_at: sprint.updated_at ?? undefined,
+  }))
+
+  // Transform tasks to match SprintBoard type (null -> undefined for optional fields)
+  const transformedTasks = (tasks || []).map(task => ({
+    ...task,
+    status: task.status ?? undefined,
+    created_at: task.created_at ?? undefined,
+    updated_at: task.updated_at ?? undefined,
+  }))
+
+  // Transform channels to match SprintBoard type (null -> undefined for optional fields)
+  const transformedChannels = (channels || []).map(channel => ({
+    ...channel,
+    created_at: channel.created_at ?? undefined,
+    updated_at: channel.updated_at ?? undefined,
+  }))
+
   return (
     <div className="max-w-[1800px] mx-auto w-full px-6 py-8 flex flex-col gap-8 animate-in slide-in-from-right duration-500 h-[calc(100vh-64px)]">
       {/* Header */}
@@ -60,9 +83,9 @@ export default async function SprintsPage({
 
       <SprintBoard
         campaignId={id}
-        sprints={sprints || []}
-        tasks={tasks || []}
-        channels={channels || []}
+        sprints={transformedSprints}
+        tasks={transformedTasks}
+        channels={transformedChannels}
       />
     </div>
   )

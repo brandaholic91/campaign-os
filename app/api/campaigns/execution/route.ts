@@ -335,11 +335,32 @@ async function saveExecutionPlan(
       // Delete in reverse order: content_slots, junction tables, sprints
       const db = supabase.schema('campaign_os')
       
-      await db.from('content_slots').delete().in('sprint_id', savedSprintIds).catch(() => {})
-      await db.from('sprint_segments').delete().in('sprint_id', savedSprintIds).catch(() => {})
-      await db.from('sprint_topics').delete().in('sprint_id', savedSprintIds).catch(() => {})
-      await db.from('sprint_channels').delete().in('sprint_id', savedSprintIds).catch(() => {})
-      await db.from('sprints').delete().in('id', savedSprintIds).catch(() => {})
+      // Safely delete (ignore errors during rollback)
+      try {
+        await db.from('content_slots').delete().in('sprint_id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
+      try {
+        await db.from('sprint_segments').delete().in('sprint_id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
+      try {
+        await db.from('sprint_topics').delete().in('sprint_id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
+      try {
+        await db.from('sprint_channels').delete().in('sprint_id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
+      try {
+        await db.from('sprints').delete().in('id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
     }
     
     throw error
@@ -364,7 +385,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Invalid execution plan',
-          details: validationResult.error.errors.map(e => ({
+          details: validationResult.error.issues.map((e: any) => ({
             path: e.path.join('.'),
             message: e.message,
           })),
