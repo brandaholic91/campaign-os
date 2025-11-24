@@ -2258,8 +2258,8 @@ Enhance the campaign structure data model with strategic metadata (funnel stages
 8. **Validation helper functions** - Completeness checking for all elements
 9. **UI enhancements** - Validation status indicators, checklist display
 
-**Out of Scope (Epic 4.1+):**
-- Actual sprint planner AI implementation (Epic 4.1)
+**Out of Scope (Epic 5+):**
+- Actual sprint planner AI implementation (Epic 5)
 - Content calendar AI generation (Epic 4.2)
 - Advanced prioritization algorithms
 - Multi-campaign strategic analysis
@@ -2728,4 +2728,205 @@ interface EnhancedNarrative {
 **AI Integration:**
 - `lib/ai/schemas.ts` - MODIFY to add new fields to schemas
 - `lib/ai/prompts/strategy-designer.ts` - MODIFY to include new field requirements and matrix rules
+
+---
+
+## Epic 5: Execution Planner - Sprint & Content Calendar AI
+
+**Date:** 2025-11-27
+**Epic:** Epic 5 - Execution Planner
+**Change Type:** AI-powered execution planning + database schema + UI
+**Development Context:** Building execution planner that generates sprints and content calendars from validated campaign structures
+
+---
+
+### Epic 5 Context
+
+**Epic 1-4 Foundation (Complete):**
+- ✅ Manual campaign management (CRUD)
+- ✅ AI-powered campaign structure generation (Epic 2)
+- ✅ Communication strategies (Epic 3.0)
+- ✅ Strategic metadata enhancement (Epic 4.0)
+- ✅ Validation checklist system (Epic 4.0)
+
+**Epic 5 Goal:**
+Build an AI-powered execution planner that generates sprint plans and content calendars from validated campaign structures. The planner creates 2-4 sprints based on campaign length and complexity, then generates content slots distributed evenly across sprints, respecting channel constraints and strategic priorities.
+
+---
+
+### Epic 5 Scope
+
+**In Scope:**
+1. **Database schema** - `sprints`, `sprint_segments`, `sprint_topics`, `sprint_channels`, `content_slots` tables
+2. **AI endpoint** - `POST /api/ai/campaign-execution` with streaming progress (SSE)
+3. **Execution plan preview UI** - Sprint list + content calendar view
+4. **Save execution plan API** - Transaction support with rollback
+5. **Edit & management UI** - Edit sprints/slots, delete, re-generate
+6. **Zod schema validation** - All execution plan data validated
+7. **Constraint enforcement** - Max posts per day/channel, max total per week
+
+**Out of Scope (Epic 6+):**
+- Content copy generation for slots
+- Advanced sprint optimization algorithms
+- Multi-campaign execution coordination
+- Execution analytics and reporting
+
+---
+
+### Epic 5 Source Tree Changes
+
+**New files for Epic 5:**
+
+```
+campaign-os/
+├── supabase/
+│   └── migrations/
+│       └── YYYYMMDD_execution_planning_schema.sql  # CREATE - sprints, content_slots tables
+├── app/
+│   └── api/
+│       ├── ai/
+│       │   └── campaign-execution/
+│       │       └── route.ts                         # CREATE - Execution planner AI endpoint
+│       └── campaigns/
+│           └── execution/
+│               └── route.ts                         # CREATE - Save execution plan API
+├── lib/
+│   ├── ai/
+│   │   ├── schemas.ts                               # MODIFY - Add SprintPlanSchema, ContentSlotSchema, ExecutionPlanSchema
+│   │   └── prompts/
+│   │       └── execution-planner.ts                 # CREATE - Execution planner prompt
+│   └── validation/
+│       └── execution-plan.ts                        # CREATE - Execution plan validation helpers
+└── components/
+    └── campaigns/
+        ├── ExecutionPlanner.tsx                     # CREATE - Main execution planner component
+        ├── SprintList.tsx                            # CREATE - Sprint list component
+        ├── ContentCalendar.tsx                       # CREATE - Content calendar component
+        └── ExecutionPlanEditor.tsx                  # CREATE - Edit execution plan component
+```
+
+**Modified files:**
+- `app/campaigns/[id]/page.tsx` - Add "Sprintek & Naptár" tab
+- `lib/ai/schemas.ts` - Add execution plan Zod schemas
+
+---
+
+### Epic 5 Technical Approach
+
+**Database Schema:**
+
+```sql
+-- Sprints table (junction tables for relationships)
+CREATE TABLE sprints (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  "order" INTEGER NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  focus_goal TEXT NOT NULL, -- enum: awareness, engagement, consideration, conversion, mobilization
+  focus_description TEXT,
+  success_indicators JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (end_date > start_date)
+);
+
+-- Junction tables
+CREATE TABLE sprint_segments (
+  sprint_id UUID NOT NULL REFERENCES sprints(id) ON DELETE CASCADE,
+  segment_id UUID NOT NULL REFERENCES segments(id) ON DELETE CASCADE,
+  PRIMARY KEY (sprint_id, segment_id)
+);
+
+CREATE TABLE sprint_topics (
+  sprint_id UUID NOT NULL REFERENCES sprints(id) ON DELETE CASCADE,
+  topic_id UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+  PRIMARY KEY (sprint_id, topic_id)
+);
+
+CREATE TABLE sprint_channels (
+  sprint_id UUID NOT NULL REFERENCES sprints(id) ON DELETE CASCADE,
+  channel_key TEXT NOT NULL,
+  PRIMARY KEY (sprint_id, channel_key)
+);
+
+-- Content slots table
+CREATE TABLE content_slots (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  sprint_id UUID NOT NULL REFERENCES sprints(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  channel TEXT NOT NULL,
+  slot_index INTEGER NOT NULL,
+  primary_segment_id UUID REFERENCES segments(id) ON DELETE SET NULL,
+  primary_topic_id UUID REFERENCES topics(id) ON DELETE SET NULL,
+  objective TEXT NOT NULL, -- enum: reach, engagement, traffic, lead, conversion, mobilization
+  content_type TEXT NOT NULL, -- enum: short_video, story, static_image, carousel, live, long_post, email
+  angle_hint TEXT,
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'planned', -- enum: planned, draft, published
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (date, channel, slot_index)
+);
+```
+
+**AI Endpoint:**
+- Streaming response (SSE) with progress updates
+- Soft gate validation (warns but doesn't block)
+- Priority-based slot generation (high → medium → experimental)
+- Post-processing constraint enforcement
+
+**Sprint Planning Logic:**
+- Flexible logic with guidelines (not rigid rules)
+- Sprint count based on campaign length + complexity
+- Sprint focus goals based on campaign goal_type + length
+
+**Content Slot Planning:**
+- Dynamic calculation with constraints
+- Per channel, per day limits (max 2, except Stories: 5)
+- Weekly total limits (budget-based)
+- Priority-based generation (high-importance pairs always get slots)
+
+---
+
+### Epic 5 Dependencies
+
+**External:**
+- Epic 4.0 complete (strategic metadata enhancement, validation checklist)
+- Epic 3.0 complete (message strategies, segment-topic matrix)
+- Epic 2 complete (LLM infrastructure, CopilotKit)
+
+**Internal:**
+- Epic 4.0 complete (all stories done, especially validation)
+- Database schema from Epic 1-4
+- Existing campaign structure generation (Story 2.2)
+
+---
+
+### Epic 5 Key Code Locations
+
+**Database:**
+- `supabase/migrations/YYYYMMDD_execution_planning_schema.sql` - Execution planning schema migration
+- `lib/supabase/types.ts` - Generated TypeScript types
+
+**AI Integration:**
+- `lib/ai/schemas.ts` - Execution plan Zod schemas (SprintPlanSchema, ContentSlotSchema, ExecutionPlanSchema)
+- `lib/ai/prompts/execution-planner.ts` - Execution planner prompt template
+- `app/api/ai/campaign-execution/route.ts` - Execution planner AI endpoint
+
+**API Endpoints:**
+- `/api/ai/campaign-execution` - Generate execution plan (streaming)
+- `/api/campaigns/execution` - Save execution plan
+
+**Frontend Components:**
+- `components/campaigns/ExecutionPlanner.tsx` - Main execution planner component
+- `components/campaigns/SprintList.tsx` - Sprint list component
+- `components/campaigns/ContentCalendar.tsx` - Content calendar component
+- `components/campaigns/ExecutionPlanEditor.tsx` - Edit execution plan component
+
+**Validation:**
+- `lib/validation/execution-plan.ts` - Execution plan validation helpers
+
+**Detailed story breakdown:** `docs/sprint-artifacts/epic-5-execution-planner-stories.md`
 

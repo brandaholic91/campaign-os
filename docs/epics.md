@@ -1019,8 +1019,8 @@ Enhance the campaign structure data model with strategic metadata (funnel stages
 - Validation helper functions for completeness checking
 - UI enhancements: validation status indicators, checklist display
 
-**Out of Scope (Epic 4.1+):**
-- Actual sprint planner AI implementation (Epic 4.1)
+**Out of Scope (Epic 5+):**
+- Actual sprint planner AI implementation (Epic 5)
 - Content calendar AI generation (Epic 4.2)
 - Advanced prioritization algorithms
 - Multi-campaign strategic analysis
@@ -1330,8 +1330,170 @@ So that **I can easily identify what needs to be completed before sprint plannin
 - All new fields are nullable initially for backward compatibility
 - Matrix validation rules are enforced but don't block saving (warnings only)
 - "Ready for Execution" is informational, not a hard gate
-- Epic 4.1 will implement actual sprint planner AI using this strategic data
+- Epic 5 will implement actual sprint planner AI using this strategic data
 - Epic 4.2 will implement content calendar AI generation using this strategic data
+
+---
+
+## Epic 5: Execution Planner - Sprint & Content Calendar AI
+
+**Slug:** campaign-os-epic5-execution-planner
+
+### Goal
+
+Build an AI-powered execution planner that generates sprint plans and content calendars from validated campaign structures. The planner creates 2-4 sprints based on campaign length and complexity, then generates content slots distributed evenly across sprints, respecting channel constraints and strategic priorities.
+
+### Scope
+
+**In Scope:**
+- Database schema: `sprints`, `sprint_segments`, `sprint_topics`, `sprint_channels`, `content_slots` tables
+- AI endpoint: `POST /api/ai/campaign-execution` with streaming progress
+- Execution plan preview UI (sprint list + content calendar view)
+- Save execution plan API with transaction support
+- Edit & management UI for sprints and content slots
+- Zod schema validation for all execution plan data
+- Constraint enforcement (max posts per day/channel, max total per week)
+
+**Out of Scope (Epic 6+):**
+- Content copy generation for slots (future epic)
+- Advanced sprint optimization algorithms
+- Multi-campaign execution coordination
+- Execution analytics and reporting
+
+### Success Criteria
+
+1. ✅ Users can generate execution plans from validated campaign structures
+2. ✅ AI generates 2-4 sprints based on campaign length and complexity
+3. ✅ AI generates content slots distributed evenly across sprints
+4. ✅ Content slots respect channel constraints and strategic priorities
+5. ✅ Execution plan can be previewed before saving
+6. ✅ Execution plan can be edited after saving
+7. ✅ All execution plan data validated against Zod schemas
+
+### Dependencies
+
+**External:**
+- Epic 4.0 complete (strategic metadata enhancement, validation checklist)
+- Epic 3.0 complete (message strategies, segment-topic matrix)
+- Epic 2 complete (LLM infrastructure, CopilotKit)
+
+**Internal:**
+- Epic 4.0 complete (all stories done, especially validation)
+- Database schema from Epic 1-4
+- Existing campaign structure generation (Story 2.2)
+
+---
+
+## Story Map - Epic 5
+
+```
+Database Foundation Layer
+├── Story 5.1: Database Schema for Execution Planning
+│   └── sprints, junction tables, content_slots, Zod schemas
+│
+AI Generation Layer
+├── Story 5.2: Execution Planner AI Endpoint
+│   └── POST /api/ai/campaign-execution, streaming, prompt engineering
+│
+User Experience Layer
+├── Story 5.3: Execution Plan Preview UI
+│   └── Sprint list, content calendar, progress feedback
+│
+Persistence Layer
+├── Story 5.4: Save Execution Plan API & Workflow
+│   └── POST /api/campaigns/execution, transaction, rollback
+│
+Management Layer
+└── Story 5.5: Execution Plan Edit & Management UI
+    └── Edit sprints/slots, delete, re-generate
+```
+
+---
+
+## Stories - Epic 5
+
+### Story 5.1: Database Schema for Execution Planning
+
+As a **developer**,
+I want **database tables for sprints and content slots with proper relationships**,
+So that **execution plans can be stored and managed in the database**.
+
+**Prerequisites:** Epic 4.0 complete (strategic metadata)
+
+**Estimated Effort:** 5 points (2-3 days)
+
+---
+
+### Story 5.2: Execution Planner AI Endpoint
+
+As a **campaign manager**,
+I want **an AI endpoint that generates sprint plans and content calendars from validated campaign structures**,
+So that **I can quickly create execution plans without manual planning**.
+
+**Prerequisites:** Story 5.1 (DB schema), Epic 2 complete (LLM infrastructure)
+
+**Estimated Effort:** 8 points (4-5 days, complex prompt engineering)
+
+---
+
+### Story 5.3: Execution Plan Preview UI
+
+As a **campaign manager**,
+I want **to preview the generated execution plan before saving**,
+So that **I can review sprints and content calendar before committing**.
+
+**Prerequisites:** Story 5.2 (AI endpoint)
+
+**Estimated Effort:** 5 points (3-4 days)
+
+---
+
+### Story 5.4: Save Execution Plan API & Workflow
+
+As a **campaign manager**,
+I want **to save the generated execution plan to the database**,
+So that **I can use it for campaign execution and editing**.
+
+**Prerequisites:** Story 5.1 (DB schema), Story 5.2 (AI endpoint)
+
+**Estimated Effort:** 5 points (3-4 days)
+
+---
+
+### Story 5.5: Execution Plan Edit & Management UI
+
+As a **campaign manager**,
+I want **to edit sprints and content slots after saving**,
+So that **I can fine-tune the execution plan to match reality**.
+
+**Prerequisites:** Story 5.3 (Preview UI), Story 5.4 (Save API)
+
+**Estimated Effort:** 8 points (4-5 days)
+
+---
+
+## Implementation Timeline - Epic 5
+
+**Total Story Points:** 31 points
+
+**Estimated Timeline:** 18-22 days (approximately 4-5 weeks with buffer)
+
+**Story Sequence:**
+1. Story 5.1: Database Schema (must complete first - foundation, critical path)
+2. Story 5.2: AI Endpoint (depends on 5.1, critical path)
+3. Story 5.3: Preview UI (depends on 5.2, can start in parallel with 5.4)
+4. Story 5.4: Save API (depends on 5.1 and 5.2, can start in parallel with 5.3)
+5. Story 5.5: Edit UI (depends on 5.3 and 5.4)
+
+**Notes:**
+- Story 5.1 is critical path - database foundation required for all other stories
+- Story 5.2 is critical path - AI endpoint required for preview and save
+- Stories 5.3 and 5.4 can work in parallel after 5.2 (UI and API)
+- Story 5.5 requires both 5.3 and 5.4 (edit functionality needs both UI and API)
+- AI prompt engineering requires careful iteration (Story 5.2)
+- Constraint enforcement is critical for realistic execution plans
+- Transaction support ensures data integrity (Story 5.4)
+- Detailed story breakdown: `docs/sprint-artifacts/epic-5-execution-planner-stories.md`
 
 ---
 
