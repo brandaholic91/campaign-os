@@ -82,6 +82,7 @@ const mockCampaignData = {
     segments: [{ id: '11111111-1111-1111-1111-111111111111', name: 'Test Segment' }],
     topics: [{ id: '22222222-2222-2222-2222-222222222222', name: 'Test Topic' }],
     narratives: [],
+    narrative_list: [],
   },
   error: null,
 }
@@ -136,7 +137,7 @@ describe('/api/ai/campaign-sprints/[sprintId]/content-slots', () => {
   it('should generate content slots for valid sprint', async () => {
     // Setup specific mocks for this test
     mockFrom.mockImplementation((table) => {
-      if (table === 'sprint_plans') {
+      if (table === 'sprints') {
         return {
           select: () => ({
             eq: () => ({
@@ -154,21 +155,21 @@ describe('/api/ai/campaign-sprints/[sprintId]/content-slots', () => {
           })
         }
       }
-      if (table === 'sprint_focus_segments') {
+      if (table === 'sprint_segments') {
         return {
           select: () => ({
             eq: () => Promise.resolve(mockFocusSegmentsData)
           })
         }
       }
-      if (table === 'sprint_focus_topics') {
+      if (table === 'sprint_topics') {
         return {
           select: () => ({
             eq: () => Promise.resolve(mockFocusTopicsData)
           })
         }
       }
-      if (table === 'sprint_focus_channels') {
+      if (table === 'sprint_channels') {
         return {
           select: () => ({
             eq: () => Promise.resolve(mockFocusChannelsData)
@@ -191,7 +192,7 @@ describe('/api/ai/campaign-sprints/[sprintId]/content-slots', () => {
 
   it('should return 404 when sprint not found', async () => {
     mockFrom.mockImplementation((table) => {
-      if (table === 'sprint_plans') {
+      if (table === 'sprints') {
         return {
           select: () => ({
             eq: () => ({
@@ -218,7 +219,7 @@ describe('/api/ai/campaign-sprints/[sprintId]/content-slots', () => {
   it('should accept weekly_post_volume override', async () => {
      // Setup specific mocks for this test (same as success case)
      mockFrom.mockImplementation((table) => {
-      if (table === 'sprint_plans') {
+      if (table === 'sprints') {
         return {
           select: () => ({
             eq: () => ({
@@ -236,14 +237,14 @@ describe('/api/ai/campaign-sprints/[sprintId]/content-slots', () => {
           })
         }
       }
-      if (table === 'sprint_focus_segments') {
+      if (table === 'sprint_segments') {
         return {
           select: () => ({
             eq: () => Promise.resolve(mockFocusSegmentsData)
           })
         }
       }
-      if (table === 'sprint_focus_topics') {
+      if (table === 'sprint_topics') {
         return {
           select: () => ({
             eq: () => Promise.resolve(mockFocusTopicsData)

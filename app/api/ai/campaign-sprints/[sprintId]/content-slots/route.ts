@@ -35,7 +35,7 @@ export async function POST(
 
     // 1. Fetch sprint with enhanced metadata
     const { data: sprint, error: sprintError } = await db
-      .from('sprint_plans')
+      .from('sprints')
       .select('*')
       .eq('id', sprintId)
       .single()
@@ -47,7 +47,7 @@ export async function POST(
     // 2. Fetch campaign structure
     const { data: campaign, error: campaignError } = await db
       .from('campaigns')
-      .select('*, goals(*), segments(*), topics(*), narratives(*)')
+      .select('*, goals(*), segments(*), topics(*), narrative_list:narratives(*)')
       .eq('id', sprint.campaign_id)
       .single()
 
@@ -58,7 +58,7 @@ export async function POST(
     // 3. Fetch sprint's related data (junction tables)
     // Fetch focus segments
     const { data: focusSegmentsData } = await db
-      .from('sprint_focus_segments')
+      .from('sprint_segments')
       .select('segment_id')
       .eq('sprint_id', sprintId)
     
@@ -69,7 +69,7 @@ export async function POST(
 
     // Fetch focus topics
     const { data: focusTopicsData } = await db
-      .from('sprint_focus_topics')
+      .from('sprint_topics')
       .select('topic_id')
       .eq('sprint_id', sprintId)
 
@@ -80,11 +80,11 @@ export async function POST(
 
     // Fetch focus channels
     const { data: focusChannelsData } = await db
-      .from('sprint_focus_channels')
-      .select('channel')
+      .from('sprint_channels')
+      .select('channel_key')
       .eq('sprint_id', sprintId)
     
-    const focusChannels = (focusChannelsData || []).map((d: any) => d.channel)
+    const focusChannels = (focusChannelsData || []).map((d: any) => d.channel_key)
 
     // Prepare context
     const plannerContext: ContentSlotPlannerContext = {
@@ -93,9 +93,9 @@ export async function POST(
         name: sprint.name,
         start_date: sprint.start_date,
         end_date: sprint.end_date,
-        focus_stage: sprint.focus_stage,
-        key_messages_summary: sprint.key_messages_summary,
-        suggested_weekly_post_volume: sprint.suggested_weekly_post_volume,
+        focus_stage: sprint.focus_stage || undefined,
+        key_messages_summary: sprint.key_messages_summary || undefined,
+        suggested_weekly_post_volume: sprint.suggested_weekly_post_volume as any,
       },
       campaign: {
         id: campaign.id,
@@ -104,10 +104,10 @@ export async function POST(
         primary_goal_type: campaign.primary_goal_type,
       },
       structure: {
-        goals: campaign.goals || [],
-        segments: campaign.segments || [],
-        topics: campaign.topics || [],
-        narratives: campaign.narratives || [],
+        goals: (campaign.goals || []) as any,
+        segments: (campaign.segments || []) as any,
+        topics: (campaign.topics || []) as any,
+        narratives: ((campaign as any).narrative_list || []) as any,
       },
       focus_segments: focusSegments,
       focus_topics: focusTopics,
@@ -189,8 +189,15 @@ export async function POST(
 
           // Enforce constraints
           // We need to mock an ExecutionPlan structure for the helper function
+          const mockSprint = {
+            ...sprint,
+            focus_segments: focusSegmentIds,
+            focus_topics: focusTopicIds,
+            focus_channels: focusChannels,
+          }
+
           const mockPlan: ExecutionPlan = {
-            sprints: [sprint], // Minimal sprint data needed
+            sprints: [mockSprint as any], // Minimal sprint data needed, cast to any to avoid DB vs Schema type mismatches
             content_calendar: validSlots,
           }
 
