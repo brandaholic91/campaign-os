@@ -151,6 +151,15 @@ export default function CampaignAIPage() {
     id: 'campaign-ai-generation'
   })
 
+  // Convert legacy enum values to current database enum values
+  const normalizeCampaignType = (type: string): string => {
+    const mapping: Record<string, string> = {
+      'brand_product': 'product_launch',
+      'ngo': 'ngo_issue',
+    }
+    return mapping[type] || type
+  }
+
   const handleSave = async (structure: any) => {
     if (!formData.name) {
       toast.error('Kérlek adj meg egy kampány nevet')
@@ -168,7 +177,7 @@ export default function CampaignAIPage() {
             description: formData.description,
             startDate: formData.startDate,
             endDate: formData.endDate,
-            campaignType: formData.type,
+            campaignType: normalizeCampaignType(formData.type),
             goalType: formData.goalType
           },
           structure,
@@ -211,7 +220,7 @@ export default function CampaignAIPage() {
           description: formData.description || '',
           startDate: formData.startDate,
           endDate: formData.endDate,
-          campaignType: formData.type,
+          campaignType: normalizeCampaignType(formData.type),
           goalType: formData.goalType,
           budgetEstimate: formData.budget === 'low' ? 0 : formData.budget === 'medium' ? 1000 : 5000
         },
@@ -536,8 +545,8 @@ export default function CampaignAIPage() {
                 Politikai – helyi ügy / issue kampány
               </SelectItem>
               <SelectItem value="brand_awareness">Márka – ismertségnövelő</SelectItem>
-              <SelectItem value="brand_product">Márka – termékbevezetés</SelectItem>
-              <SelectItem value="ngo">NGO – társadalmi ügy</SelectItem>
+              <SelectItem value="product_launch">Márka – termékbevezetés</SelectItem>
+              <SelectItem value="ngo_issue">NGO – társadalmi ügy</SelectItem>
               <SelectItem value="other">Egyéb</SelectItem>
             </SelectContent>
           </Select>

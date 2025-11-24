@@ -214,8 +214,8 @@ export function CampaignWizard({ onBack, onComplete }: CampaignWizardProps) {
                 Politikai – helyi ügy / issue kampány
               </SelectItem>
               <SelectItem value="brand_awareness">Márka – ismertségnövelő</SelectItem>
-              <SelectItem value="brand_product">Márka – termékbevezetés</SelectItem>
-              <SelectItem value="ngo">NGO – társadalmi ügy</SelectItem>
+              <SelectItem value="product_launch">Márka – termékbevezetés</SelectItem>
+              <SelectItem value="ngo_issue">NGO – társadalmi ügy</SelectItem>
               <SelectItem value="other">Egyéb</SelectItem>
             </SelectContent>
           </Select>

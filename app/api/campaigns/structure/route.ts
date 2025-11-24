@@ -3,6 +3,15 @@ import { createClient } from '@/lib/supabase/server'
 import { CampaignStructureSchema } from '@/lib/ai/schemas'
 import { z } from 'zod'
 
+// Convert legacy enum values to current database enum values
+const normalizeCampaignType = (type: string): string => {
+  const mapping: Record<string, string> = {
+    'brand_product': 'product_launch',
+    'ngo': 'ngo_issue',
+  }
+  return mapping[type] || type
+}
+
 const SaveStructureSchema = z.object({
   campaignId: z.string().optional(), // Optional: if provided, update existing campaign
   campaign: z.object({
@@ -36,7 +45,7 @@ export async function POST(req: NextRequest) {
           description: campaign.description,
           start_date: campaign.startDate,
           end_date: campaign.endDate,
-          campaign_type: campaign.campaignType as any,
+          campaign_type: normalizeCampaignType(campaign.campaignType) as any,
           primary_goal_type: campaign.goalType as any,
           narratives: structure.narratives || [],
           wizard_data: wizardData || null
@@ -83,7 +92,7 @@ export async function POST(req: NextRequest) {
           description: campaign.description,
           start_date: campaign.startDate,
           end_date: campaign.endDate,
-          campaign_type: campaign.campaignType as any,
+          campaign_type: normalizeCampaignType(campaign.campaignType) as any,
           primary_goal_type: campaign.goalType as any,
           status: 'planning',
           narratives: structure.narratives || [],
