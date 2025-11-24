@@ -115,16 +115,24 @@ export function SprintList({ sprints, campaignId, onSprintUpdate }: SprintListPr
         id: sprintPlan.id,
         campaign_id: campaignId,
         name: sprintPlan.name,
+        order: sprintPlan.order,
         start_date: sprintPlan.start_date,
         end_date: sprintPlan.end_date,
-        focus_goal: sprintPlan.focus_goal,
-        focus_description: sprintPlan.focus_description,
+        focus_goal: sprintPlan.focus_goal || 'awareness', // Default fallback for backward compatibility
+        focus_description: sprintPlan.focus_description || '', // Default fallback for backward compatibility
         focus_channels: sprintPlan.focus_channels as any,
+        success_indicators: sprintPlan.success_indicators as any,
         status: 'planned' as const,
         created_at: null, // null indicates this sprint is not yet saved to database
+        // Enhanced fields (Phase 2) - all optional with defaults
+        focus_stage: sprintPlan.focus_stage || null,
+        focus_goals: (sprintPlan.focus_goals || []) as any,
+        suggested_weekly_post_volume: sprintPlan.suggested_weekly_post_volume as any || null,
+        narrative_emphasis: (sprintPlan.narrative_emphasis || []) as any,
+        key_messages_summary: sprintPlan.key_messages_summary || null,
+        success_criteria: (sprintPlan.success_criteria || []) as any,
+        risks_and_watchouts: (sprintPlan.risks_and_watchouts || []) as any,
         updated_at: null,
-        order: sprintPlan.order,
-        success_indicators: sprintPlan.success_indicators as any || [],
         _focus_segments: sprintPlan.focus_segments, // Temporary field for unsaved sprints
         _focus_topics: sprintPlan.focus_topics, // Temporary field for unsaved sprints
       }
@@ -224,9 +232,9 @@ export function SprintList({ sprints, campaignId, onSprintUpdate }: SprintListPr
                       {sprint.name}
                     </h4>
                     <Badge
-                      className={`${focusGoalColors[sprint.focus_goal] || 'bg-gray-100 text-gray-700 border-gray-200'} border`}
+                      className={`${focusGoalColors[sprint.focus_goal || 'awareness'] || 'bg-gray-100 text-gray-700 border-gray-200'} border`}
                     >
-                      {focusGoalLabels[sprint.focus_goal] || sprint.focus_goal}
+                      {focusGoalLabels[sprint.focus_goal || 'awareness'] || sprint.focus_goal || 'awareness'}
                     </Badge>
                   </div>
 

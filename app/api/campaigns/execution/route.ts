@@ -200,11 +200,19 @@ async function saveExecutionPlan(
       order: sprint.order,
       start_date: sprint.start_date,
       end_date: sprint.end_date,
-      focus_goal: sprint.focus_goal,
-      focus_description: sprint.focus_description,
+      focus_goal: sprint.focus_goal || 'awareness', // Default to awareness if undefined
+      focus_description: sprint.focus_description || '', // Default to empty string if undefined
       focus_channels: sprint.focus_channels as any, // JSONB
       success_indicators: sprint.success_indicators as any, // JSONB
       status: 'planned' as const,
+      // Enhanced fields (Phase 2) - all optional
+      focus_stage: sprint.focus_stage,
+      focus_goals: sprint.focus_goals as any, // JSONB array
+      suggested_weekly_post_volume: sprint.suggested_weekly_post_volume as any, // JSONB object
+      narrative_emphasis: sprint.narrative_emphasis as any, // JSONB array
+      key_messages_summary: sprint.key_messages_summary,
+      success_criteria: sprint.success_criteria as any, // JSONB array
+      risks_and_watchouts: sprint.risks_and_watchouts as any, // JSONB array
     }))
     
     const { data: insertedSprints, error: sprintsError } = await db

@@ -320,7 +320,7 @@ export type MessageStrategy = z.infer<typeof MessageStrategySchema>
 // Helper for date validation (YYYY-MM-DD format)
 const dateStringSchema = () => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
 
-// Sprint focus goal enum
+// Sprint focus goal enum (legacy - kept for backward compatibility)
 export const SprintFocusGoalTypeSchema = z.enum([
   'awareness',
   'engagement',
@@ -329,19 +329,48 @@ export const SprintFocusGoalTypeSchema = z.enum([
   'mobilization'
 ])
 
-// Sprint plan schema
+// Enhanced Sprint focus stage enum (Phase 2)
+export const SprintFocusStageSchema = z.enum([
+  'awareness',
+  'engagement',
+  'consideration',
+  'conversion',
+  'mobilization'
+])
+
+// Suggested weekly post volume schema
+export const SuggestedWeeklyPostVolumeSchema = z.object({
+  total_posts_per_week: z.number().int().positive('Total posts per week must be positive'),
+  video_posts_per_week: z.number().int().nonnegative('Video posts per week must be non-negative'),
+  stories_per_week: z.number().int().nonnegative('Stories per week must be non-negative').optional(),
+})
+
+// Sprint plan schema (Enhanced with Phase 2 fields)
 export const SprintPlanSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1, 'Sprint name must be at least 1 character'),
   order: z.number().int().positive('Order must be a positive integer'),
   start_date: dateStringSchema(),
   end_date: dateStringSchema(),
-  focus_goal: SprintFocusGoalTypeSchema,
-  focus_description: z.string().min(10, 'Focus description must be at least 10 characters'),
+
+  // Legacy fields (Phase 1 - kept for backward compatibility)
+  focus_goal: SprintFocusGoalTypeSchema.optional(),
+  focus_description: z.string().min(10, 'Focus description must be at least 10 characters').optional(),
+  success_indicators: z.array(z.any()).optional(),
+
+  // Junction table fields (Phase 1)
   focus_segments: z.array(z.string().uuid()).min(1, 'At least one focus segment required'),
   focus_topics: z.array(z.string().uuid()).min(1, 'At least one focus topic required'),
   focus_channels: z.array(z.string().min(1)).min(1, 'At least one focus channel required'),
-  success_indicators: z.array(z.any()).optional(),
+
+  // Enhanced metadata fields (Phase 2 - all optional for backward compatibility)
+  focus_stage: SprintFocusStageSchema.optional(),
+  focus_goals: z.array(z.string().uuid()).min(1).max(3).optional(),
+  suggested_weekly_post_volume: SuggestedWeeklyPostVolumeSchema.optional(),
+  narrative_emphasis: z.array(z.string().uuid()).min(1).max(2).optional(),
+  key_messages_summary: z.string().min(20, 'Key messages summary must be at least 20 characters').optional(),
+  success_criteria: z.array(z.string()).min(1).optional(),
+  risks_and_watchouts: z.array(z.string()).min(2).max(4).optional(),
 }).refine((data) => {
   // Validate that end_date is after start_date
   const start = new Date(data.start_date)
@@ -397,7 +426,10 @@ export const ExecutionPlanSchema = z.object({
 
 // TypeScript type exports
 export type SprintFocusGoalType = z.infer<typeof SprintFocusGoalTypeSchema>
+export type SprintFocusStage = z.infer<typeof SprintFocusStageSchema>
+export type SuggestedWeeklyPostVolume = z.infer<typeof SuggestedWeeklyPostVolumeSchema>
 export type SprintPlan = z.infer<typeof SprintPlanSchema>
+export type EnhancedSprintPlan = z.infer<typeof SprintPlanSchema> // Alias for enhanced sprint plan
 export type ContentObjective = z.infer<typeof ContentObjectiveSchema>
 export type ContentType = z.infer<typeof ContentTypeSchema>
 export type ContentSlot = z.infer<typeof ContentSlotSchema>

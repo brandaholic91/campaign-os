@@ -673,12 +673,19 @@ export type Database = {
           focus_channels: Json | null
           focus_description: string
           focus_goal: string
+          focus_goals: Json | null
+          focus_stage: string | null
           id: string
+          key_messages_summary: string | null
           name: string
+          narrative_emphasis: Json | null
           order: number
+          risks_and_watchouts: Json | null
           start_date: string
           status: Database["public"]["Enums"]["sprint_status"] | null
+          success_criteria: Json | null
           success_indicators: Json | null
+          suggested_weekly_post_volume: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -688,12 +695,19 @@ export type Database = {
           focus_channels?: Json | null
           focus_description?: string
           focus_goal: string
+          focus_goals?: Json | null
+          focus_stage?: string | null
           id?: string
+          key_messages_summary?: string | null
           name: string
+          narrative_emphasis?: Json | null
           order?: number
+          risks_and_watchouts?: Json | null
           start_date: string
           status?: Database["public"]["Enums"]["sprint_status"] | null
+          success_criteria?: Json | null
           success_indicators?: Json | null
+          suggested_weekly_post_volume?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -703,12 +717,19 @@ export type Database = {
           focus_channels?: Json | null
           focus_description?: string
           focus_goal?: string
+          focus_goals?: Json | null
+          focus_stage?: string | null
           id?: string
+          key_messages_summary?: string | null
           name?: string
+          narrative_emphasis?: Json | null
           order?: number
+          risks_and_watchouts?: Json | null
           start_date?: string
           status?: Database["public"]["Enums"]["sprint_status"] | null
+          success_criteria?: Json | null
           success_indicators?: Json | null
+          suggested_weekly_post_volume?: Json | null
           updated_at?: string | null
         }
         Relationships: [

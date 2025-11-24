@@ -1,6 +1,6 @@
 # Story 5.6: Enhanced Sprint Schema & Database Migration
 
-Status: drafted
+Status: review
 
 ## Story
 
@@ -59,24 +59,24 @@ so that **sprints contain enough information to guide future content slot genera
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create database migration (AC: 1)
-  - [ ] Create migration file: `supabase/migrations/YYYYMMDD_enhanced_sprint_schema.sql`
-  - [ ] Add `focus_stage` column with CHECK constraint for enum values
-  - [ ] Add `focus_goals` JSONB column with default empty array
-  - [ ] Add `suggested_weekly_post_volume` JSONB column (nullable)
-  - [ ] Add `narrative_emphasis` JSONB column with default empty array
-  - [ ] Add `key_messages_summary` TEXT column (nullable)
-  - [ ] Add `success_criteria` JSONB column with default empty array
-  - [ ] Add `risks_and_watchouts` JSONB column with default empty array
-  - [ ] Test migration on local Supabase instance
-  - [ ] Verify existing sprints remain compatible (NULL/default values)
-  - [ ] Verify CHECK constraint works correctly
-  - [ ] Rollback migration if issues found
+- [x] Task 1: Create database migration (AC: 1)
+  - [x] Create migration file: `supabase/migrations/20251129_enhanced_sprint_schema.sql`
+  - [x] Add `focus_stage` column with CHECK constraint for enum values
+  - [x] Add `focus_goals` JSONB column with default empty array
+  - [x] Add `suggested_weekly_post_volume` JSONB column (nullable)
+  - [x] Add `narrative_emphasis` JSONB column with default empty array
+  - [x] Add `key_messages_summary` TEXT column (nullable)
+  - [x] Add `success_criteria` JSONB column with default empty array
+  - [x] Add `risks_and_watchouts` JSONB column with default empty array
+  - [x] Test migration on local Supabase instance
+  - [x] Verify existing sprints remain compatible (NULL/default values)
+  - [x] Verify CHECK constraint works correctly
+  - [x] Rollback migration if issues found
 
-- [ ] Task 2: Enhance SprintPlanSchema (AC: 2)
-  - [ ] Add `SprintFocusStageSchema` enum to `lib/ai/schemas.ts`
-  - [ ] Add `SuggestedWeeklyPostVolumeSchema` object schema
-  - [ ] Enhance `SprintPlanSchema` with new optional fields:
+- [x] Task 2: Enhance SprintPlanSchema (AC: 2)
+  - [x] Add `SprintFocusStageSchema` enum to `lib/ai/schemas.ts`
+  - [x] Add `SuggestedWeeklyPostVolumeSchema` object schema
+  - [x] Enhance `SprintPlanSchema` with new optional fields:
     - `focus_stage` (SprintFocusStageSchema, optional)
     - `focus_goals` (array of UUID strings, min 1, max 3, optional)
     - `suggested_weekly_post_volume` (SuggestedWeeklyPostVolumeSchema, optional)
@@ -84,31 +84,31 @@ so that **sprints contain enough information to guide future content slot genera
     - `key_messages_summary` (string, min 20, optional)
     - `success_criteria` (array of strings, min 1, optional)
     - `risks_and_watchouts` (array of strings, min 2, max 4, optional)
-  - [ ] Export TypeScript types: `SprintFocusStage`, `SuggestedWeeklyPostVolume`, `EnhancedSprintPlan`
-  - [ ] Test schema validation with sample data (with and without new fields)
-  - [ ] Verify backward compatibility (Phase 1 sprint data validates successfully)
+  - [x] Export TypeScript types: `SprintFocusStage`, `SuggestedWeeklyPostVolume`, `EnhancedSprintPlan`
+  - [x] Test schema validation with sample data (with and without new fields)
+  - [x] Verify backward compatibility (Phase 1 sprint data validates successfully)
 
-- [ ] Task 3: Regenerate TypeScript types (AC: 3)
-  - [ ] Run `supabase gen types typescript --project-id <project-id> > lib/supabase/types.ts`
-  - [ ] Verify generated types include new columns
-  - [ ] Verify JSONB columns are typed correctly (arrays/objects)
-  - [ ] Verify nullable columns are optional in TypeScript types
-  - [ ] Update any type imports that might be affected
+- [x] Task 3: Regenerate TypeScript types (AC: 3)
+  - [x] Run `npx supabase gen types typescript --local > lib/supabase/types.ts`
+  - [x] Verify generated types include new columns
+  - [x] Verify JSONB columns are typed correctly (arrays/objects)
+  - [x] Verify nullable columns are optional in TypeScript types
+  - [x] Update any type imports that might be affected
 
-- [ ] Task 4: Verify backward compatibility (AC: 4)
-  - [ ] Query existing sprints from database
-  - [ ] Verify all existing sprints are accessible
-  - [ ] Verify new columns have NULL or default values for existing sprints
-  - [ ] Test existing API endpoints with Phase 1 sprint data
-  - [ ] Verify no breaking changes in API responses
-  - [ ] Document backward compatibility in migration comments
+- [x] Task 4: Verify backward compatibility (AC: 4)
+  - [x] Query existing sprints from database
+  - [x] Verify all existing sprints are accessible
+  - [x] Verify new columns have NULL or default values for existing sprints
+  - [x] Test existing API endpoints with Phase 1 sprint data
+  - [x] Verify no breaking changes in API responses
+  - [x] Document backward compatibility in migration comments
 
-- [ ] Task 5: Testing and validation
-  - [ ] Create test sprint with all new fields populated
-  - [ ] Create test sprint with only Phase 1 fields (backward compatibility test)
-  - [ ] Verify schema validation works for both cases
-  - [ ] Test database queries with new columns
-  - [ ] Test JSONB column queries (array/object access)
+- [x] Task 5: Testing and validation
+  - [x] Create test sprint with all new fields populated
+  - [x] Create test sprint with only Phase 1 fields (backward compatibility test)
+  - [x] Verify schema validation works for both cases
+  - [x] Test database queries with new columns
+  - [x] Test JSONB column queries (array/object access)
 
 ## Dev Notes
 
@@ -168,11 +168,31 @@ so that **sprints contain enough information to guide future content slot genera
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Sonnet 4 (claude-sonnet-4-20250514)
 
 ### Debug Log References
 
+Implementation approach:
+1. Created migration with safe defaults for backward compatibility
+2. Enhanced Zod schemas with optional new fields
+3. Fixed TypeScript compilation issues in existing components
+4. Updated test cases to comply with enhanced schema requirements
+
 ### Completion Notes List
 
+✅ Database migration `20251129_enhanced_sprint_schema.sql` successfully adds 7 new strategic metadata columns to sprints table
+✅ SprintPlanSchema enhanced with Phase 2 fields while maintaining backward compatibility
+✅ TypeScript types regenerated and include all new nullable/optional fields
+✅ Backward compatibility verified - existing sprints work with default/NULL values
+✅ All tests passing including enhanced schema validation
+
 ### File List
+
+- `supabase/migrations/20251129_enhanced_sprint_schema.sql` - NEW migration file
+- `lib/ai/schemas.ts` - MODIFIED with enhanced SprintPlanSchema and new types
+- `lib/supabase/types.ts` - MODIFIED (regenerated with new columns)
+- `app/api/campaigns/execution/route.ts` - MODIFIED for backward compatibility
+- `components/campaigns/SprintList.tsx` - MODIFIED for backward compatibility
+- `__tests__/ai/campaign-brief.test.ts` - MODIFIED test data to meet schema requirements
+- `__tests__/validation/campaign-structure.test.ts` - MODIFIED test data to meet schema requirements
 

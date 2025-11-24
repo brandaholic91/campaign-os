@@ -163,7 +163,9 @@ development_status:
   # Story 5.6: Enhanced Sprint Schema & Database Migration
   # Note: Epic 5 Phase 2 - Two-phase refactor: Enhanced sprint schema with strategic metadata
   # Note: Story drafted 2025-01-XX - Enhanced sprint schema with strategic metadata fields
-  5-6-enhanced-sprint-schema-database-migration: drafted
+  # Note: Status updated to in-progress (2025-11-24) - Dev agent starting migration and schema enhancement
+  # Note: Status updated to review (2025-11-24) - Implementation completed, all ACs satisfied, all tests passing
+  5-6-enhanced-sprint-schema-database-migration: review
 
   # Story 5.7: Sprint-Only AI Generation Endpoint
   # Note: Epic 5 Phase 2 - Two-phase refactor: AI endpoint that generates only sprint plans
