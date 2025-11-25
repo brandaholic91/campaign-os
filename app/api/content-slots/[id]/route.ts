@@ -118,9 +118,9 @@ export async function PUT(
     if (body.channel !== undefined) updateData.channel = body.channel
     if (body.slot_index !== undefined) updateData.slot_index = body.slot_index
     if (body.primary_segment_id !== undefined)
-      updateData.primary_segment_id = body.primary_segment_id
+      updateData.primary_segment_id = body.primary_segment_id ?? undefined
     if (body.primary_topic_id !== undefined)
-      updateData.primary_topic_id = body.primary_topic_id
+      updateData.primary_topic_id = body.primary_topic_id ?? undefined
     if (body.objective !== undefined) updateData.objective = body.objective
     if (body.content_type !== undefined)
       updateData.content_type = body.content_type

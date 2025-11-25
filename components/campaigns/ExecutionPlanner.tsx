@@ -284,15 +284,25 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
     for (const slot of slotsToSave) {
       await db.from('content_slots').insert({
         sprint_id: sprintId,
+        campaign_id: slot.campaign_id,
         date: slot.date,
         channel: slot.channel,
         slot_index: slot.slot_index,
-        primary_segment_id: slot.primary_segment_id,
-        primary_topic_id: slot.primary_topic_id,
+        primary_segment_id: slot.primary_segment_id!,
+        primary_topic_id: slot.primary_topic_id!,
         objective: slot.objective,
         content_type: slot.content_type,
+        funnel_stage: slot.funnel_stage,
+        angle_type: slot.angle_type,
+        cta_type: slot.cta_type,
+        related_goal_ids: slot.related_goal_ids,
         angle_hint: slot.angle_hint,
         notes: slot.notes,
+        status: slot.status || 'planned',
+        secondary_segment_ids: slot.secondary_segment_ids || null,
+        secondary_topic_ids: slot.secondary_topic_ids || null,
+        time_of_day: slot.time_of_day || null,
+        tone_override: slot.tone_override || null,
       })
     }
   }

@@ -220,7 +220,10 @@ development_status:
 
   # Story 6.4: Content Draft AI Generator Endpoint
   # Note: Story drafted 2025-01-XX - AI endpoint for generating content drafts from slots
-  6-4-content-draft-ai-generator-endpoint: drafted
+  # Note: Status updated to ready-for-dev (2025-11-25) - Story context generated
+  # Note: Status updated to in-progress (2025-11-25) - Dev agent starting implementation
+  # Note: Status updated to review (2025-11-25) - All ACs completed, TypeScript build passing
+  6-4-content-draft-ai-generator-endpoint: review
 
   # Story 6.5: Slot & Draft UI Components
   # Note: Story drafted 2025-01-XX - UI components for slot management and draft creation

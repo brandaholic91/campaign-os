@@ -369,18 +369,28 @@ async function saveExecutionPlan(
     }
     
     // Step 3: Insert content slots
-    const slotInserts: ContentSlotInsert[] = executionPlan.content_calendar.map(slot => ({
+    const slotInserts = executionPlan.content_calendar.map(slot => ({
       sprint_id: sprintIdMap.get(slot.sprint_id)!,
+      campaign_id: slot.campaign_id, // Required field from Story 6.1
       date: slot.date,
       channel: slot.channel,
       slot_index: slot.slot_index,
-      primary_segment_id: slot.primary_segment_id || null,
-      primary_topic_id: slot.primary_topic_id || null,
+      primary_segment_id: slot.primary_segment_id!, // Required field (NOT NULL in database)
+      primary_topic_id: slot.primary_topic_id!, // Required field (NOT NULL in database)
       objective: slot.objective,
       content_type: slot.content_type,
+      funnel_stage: slot.funnel_stage, // Required field from Story 6.1
+      angle_type: slot.angle_type, // Required field from Story 6.1
+      cta_type: slot.cta_type, // Required field from Story 6.1
       angle_hint: slot.angle_hint || null,
       notes: slot.notes || null,
       status: slot.status || 'planned',
+      // Optional new fields from Story 6.1
+      secondary_segment_ids: slot.secondary_segment_ids || null,
+      secondary_topic_ids: slot.secondary_topic_ids || null,
+      related_goal_ids: slot.related_goal_ids || null,
+      time_of_day: slot.time_of_day || null,
+      tone_override: slot.tone_override || null,
     }))
     
     const { data: insertedSlots, error: slotsError } = await db
@@ -593,6 +603,7 @@ async function loadExecutionPlan(
     content_calendar: (contentSlots || []).map(slot => ({
       id: slot.id,
       sprint_id: slot.sprint_id,
+      campaign_id: slot.campaign_id, // Required field from Story 6.1
       date: slot.date,
       channel: slot.channel,
       slot_index: slot.slot_index,
@@ -600,9 +611,18 @@ async function loadExecutionPlan(
       primary_topic_id: slot.primary_topic_id || undefined,
       objective: slot.objective as any,
       content_type: slot.content_type as any,
+      funnel_stage: slot.funnel_stage as any, // Required field from Story 6.1
+      angle_type: slot.angle_type as any, // Required field from Story 6.1
+      cta_type: slot.cta_type as any, // Required field from Story 6.1
+      related_goal_ids: Array.isArray(slot.related_goal_ids) ? slot.related_goal_ids.filter((id): id is string => typeof id === 'string') : [], // Required field from Story 6.1
       angle_hint: slot.angle_hint || undefined,
       notes: slot.notes || undefined,
       status: (slot.status || 'planned') as any,
+      // Optional new fields from Story 6.1
+      secondary_segment_ids: Array.isArray(slot.secondary_segment_ids) ? slot.secondary_segment_ids.filter((id): id is string => typeof id === 'string') : undefined,
+      secondary_topic_ids: Array.isArray(slot.secondary_topic_ids) ? slot.secondary_topic_ids.filter((id): id is string => typeof id === 'string') : undefined,
+      time_of_day: (slot.time_of_day as any) || undefined,
+      tone_override: slot.tone_override || undefined,
     })),
   }
   

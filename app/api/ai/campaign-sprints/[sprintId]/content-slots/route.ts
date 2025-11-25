@@ -354,7 +354,7 @@ export async function POST(
                 funnel_stage: normalizeFunnelStage(slot.funnel_stage, sprint.focus_stage || 'awareness'),
                 related_goal_ids: Array.isArray(slot.related_goal_ids) && slot.related_goal_ids.length > 0
                   ? slot.related_goal_ids.filter((id: any) => typeof id === 'string' && uuidPattern.test(id))
-                  : (sprint.focus_goals && sprint.focus_goals.length > 0 ? sprint.focus_goals.slice(0, 2) : []),
+                  : (Array.isArray(sprint.focus_goals) && sprint.focus_goals.length > 0 ? sprint.focus_goals.slice(0, 2) : []),
                 angle_type: normalizeAngleType(slot.angle_type),
                 cta_type: normalizeCTAType(slot.cta_type),
                 // Optional new fields
