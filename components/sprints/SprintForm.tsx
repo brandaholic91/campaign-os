@@ -138,6 +138,7 @@ export default function SprintForm({
         status: 'planned',
         order: 1,
         key_messages_summary: '',
+        suggested_weekly_post_volume: null,
       }
     }
 
@@ -156,6 +157,7 @@ export default function SprintForm({
       status: initialData.status || 'planned',
       order: initialData.order || 1,
       key_messages_summary: (initialData.key_messages_summary as string) || '',
+      suggested_weekly_post_volume: (initialData.suggested_weekly_post_volume as { total_posts_per_week?: number; video_posts_per_week?: number; stories_per_week?: number } | null) || null,
     }
   }
 
@@ -630,6 +632,69 @@ export default function SprintForm({
           placeholder="Rövid összefoglaló a sprint kulcs üzeneteiről..."
           rows={3}
         />
+      </div>
+
+      <div className="space-y-4 border-t pt-4">
+        <Label className="text-base font-semibold">Ajánlott heti poszt mennyiség</Label>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="total_posts_per_week">Összes poszt/hét</Label>
+            <Input
+              id="total_posts_per_week"
+              type="number"
+              min="0"
+              value={formData.suggested_weekly_post_volume?.total_posts_per_week || ''}
+              onChange={(e) => {
+                setFormData({
+                  ...formData,
+                  suggested_weekly_post_volume: {
+                    ...formData.suggested_weekly_post_volume,
+                    total_posts_per_week: e.target.value ? parseInt(e.target.value) : undefined,
+                  } as { total_posts_per_week?: number; video_posts_per_week?: number; stories_per_week?: number },
+                })
+              }}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="video_posts_per_week">Videó posztok/hét</Label>
+            <Input
+              id="video_posts_per_week"
+              type="number"
+              min="0"
+              value={formData.suggested_weekly_post_volume?.video_posts_per_week || ''}
+              onChange={(e) => {
+                setFormData({
+                  ...formData,
+                  suggested_weekly_post_volume: {
+                    ...formData.suggested_weekly_post_volume,
+                    video_posts_per_week: e.target.value ? parseInt(e.target.value) : undefined,
+                  } as { total_posts_per_week?: number; video_posts_per_week?: number; stories_per_week?: number },
+                })
+              }}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="stories_per_week">Storyk/hét</Label>
+            <Input
+              id="stories_per_week"
+              type="number"
+              min="0"
+              value={formData.suggested_weekly_post_volume?.stories_per_week || ''}
+              onChange={(e) => {
+                setFormData({
+                  ...formData,
+                  suggested_weekly_post_volume: {
+                    ...formData.suggested_weekly_post_volume,
+                    stories_per_week: e.target.value ? parseInt(e.target.value) : undefined,
+                  } as { total_posts_per_week?: number; video_posts_per_week?: number; stories_per_week?: number },
+                })
+              }}
+              placeholder="0"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

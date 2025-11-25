@@ -516,6 +516,7 @@ async function loadExecutionPlan(
             success_criteria: successCriteria,
             risks_and_watchouts: risksAndWatchouts,
             key_messages_summary: sprint.key_messages_summary || undefined,
+            suggested_weekly_post_volume: sprint.suggested_weekly_post_volume || undefined,
           }
         }),
     content_calendar: (contentSlots || []).map(slot => ({
