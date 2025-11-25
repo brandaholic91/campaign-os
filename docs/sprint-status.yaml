@@ -184,4 +184,37 @@ development_status:
   # Note: Story drafted 2025-01-XX - UI refactor for two-phase model
   5-9-ui-refactor-two-phase-model: done
 
+  # Story 5.10: Sprint Plan Primary/Secondary Schema Implementation
+  # Note: Epic 5 Phase 2 - Two-phase refactor: Primary/secondary distinction for segments, topics, and channels
+  # Note: Story drafted 2025-01-XX - Sprint plan schema with primary/secondary focus areas
+  # Note: Extends Story 5.6 with priority-based junction tables and primary/secondary fields
+  5-10-sprint-plan-primary-secondary-schema: backlog
+
   epic-5-retrospective: optional
+
+  # Epic 6: Content Slot / Content Draft Szeparáció
+  # Note: Epic created 2025-01-XX - Refactor content slot and draft model into two-tier architecture
+  # Note: Tech context available in content-slot-draft-separation-plan.md
+  epic-6: contexted
+
+  # Story 6.1: ContentSlot Schema Enhancement & ContentDraft Table
+  # Note: Story drafted 2025-01-XX - Database migration for enhanced slots and new drafts table
+  6-1-content-slot-schema-enhancement-draft-table: drafted
+
+  # Story 6.2: Content Slot Planner Refactor (No Copy)
+  # Note: Story drafted 2025-01-XX - AI endpoint refactor to generate only slots without copy
+  6-2-content-slot-planner-refactor-no-copy: drafted
+
+  # Story 6.3: Content Draft API CRUD
+  # Note: Story drafted 2025-01-XX - CRUD API endpoints for content drafts
+  6-3-content-draft-api-crud: drafted
+
+  # Story 6.4: Content Draft AI Generator Endpoint
+  # Note: Story drafted 2025-01-XX - AI endpoint for generating content drafts from slots
+  6-4-content-draft-ai-generator-endpoint: drafted
+
+  # Story 6.5: Slot & Draft UI Components
+  # Note: Story drafted 2025-01-XX - UI components for slot management and draft creation
+  6-5-slot-draft-ui-components: drafted
+
+  epic-6-retrospective: optional
