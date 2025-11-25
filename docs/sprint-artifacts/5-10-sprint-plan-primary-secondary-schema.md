@@ -411,10 +411,10 @@ export const SprintPlanSchema = z.object({
   - [ ] Verify UI displays all relationships as primary (with option to edit)
   - [ ] Test migration path: old sprints can be edited to add secondary items
 
-- [ ] Task 11: Regenerate TypeScript Types
-  - [ ] Run `supabase gen types typescript` after migration
-  - [ ] Verify types include `priority` field in junction table types
-  - [ ] Update `lib/supabase/types.ts` if needed
+- [x] Task 11: Regenerate TypeScript Types
+  - [x] Run `supabase gen types typescript` after migration
+  - [x] Verify types include `priority` field in junction table types
+  - [x] Update `lib/supabase/types.ts` if needed
 
 - [ ] Task 12: Testing
   - [ ] Test schema validation: new fields accepted
