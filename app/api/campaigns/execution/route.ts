@@ -501,6 +501,24 @@ async function loadExecutionPlan(
             }
           }
           
+          // Normalize suggested_weekly_post_volume from JSONB to SuggestedWeeklyPostVolume type
+          let normalizedVolume: { total_posts_per_week: number; video_posts_per_week: number; stories_per_week?: number } | undefined = undefined
+          if (sprint.suggested_weekly_post_volume) {
+            const volume = sprint.suggested_weekly_post_volume
+            if (typeof volume === 'object' && volume !== null && !Array.isArray(volume)) {
+              // Check if it has the expected structure
+              if ('total_posts_per_week' in volume && 'video_posts_per_week' in volume) {
+                normalizedVolume = {
+                  total_posts_per_week: typeof volume.total_posts_per_week === 'number' ? volume.total_posts_per_week : Number(volume.total_posts_per_week) || 5,
+                  video_posts_per_week: typeof volume.video_posts_per_week === 'number' ? volume.video_posts_per_week : Number(volume.video_posts_per_week) || 1,
+                  stories_per_week: 'stories_per_week' in volume 
+                    ? (typeof volume.stories_per_week === 'number' ? volume.stories_per_week : Number(volume.stories_per_week) || undefined)
+                    : undefined,
+                }
+              }
+            }
+          }
+          
           return {
             id: sprint.id,
             name: sprint.name,
@@ -516,7 +534,7 @@ async function loadExecutionPlan(
             success_criteria: successCriteria,
             risks_and_watchouts: risksAndWatchouts,
             key_messages_summary: sprint.key_messages_summary || undefined,
-            suggested_weekly_post_volume: sprint.suggested_weekly_post_volume || undefined,
+            suggested_weekly_post_volume: normalizedVolume,
           }
         }),
     content_calendar: (contentSlots || []).map(slot => ({

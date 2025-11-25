@@ -636,30 +636,33 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
                             {/* Demográfiai Profil */}
                             {(segment.demographics || segment.demographic_profile) && (() => {
                               const demographics = segment.demographics || segment.demographic_profile || {}
-                              const demoObj = typeof demographics === 'object' && demographics !== null ? demographics : {}
+                              // Type guard: ensure it's an object (not array) and has the expected structure
+                              const demoObj = (typeof demographics === 'object' && demographics !== null && !Array.isArray(demographics))
+                                ? demographics as Record<string, unknown>
+                                : {}
                               return (
                                 <div className="space-y-2">
                                   <h4 className="text-sm font-semibold text-gray-700">Demográfiai Profil</h4>
                                   <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-2">
-                                    {demoObj.age_range && (
+                                    {!!demoObj.age_range && (
                                       <div>
                                         <span className="text-xs font-medium text-gray-500">Korosztály: </span>
                                         <span className="text-xs text-gray-700">{String(demoObj.age_range)}</span>
                                       </div>
                                     )}
-                                    {demoObj.location_type && (
+                                    {!!demoObj.location_type && (
                                       <div>
                                         <span className="text-xs font-medium text-gray-500">Lakóhely típusa: </span>
                                         <span className="text-xs text-gray-700">{String(demoObj.location_type)}</span>
                                       </div>
                                     )}
-                                    {demoObj.income_level && (
+                                    {!!demoObj.income_level && (
                                       <div>
                                         <span className="text-xs font-medium text-gray-500">Jövedelmi szint: </span>
                                         <span className="text-xs text-gray-700">{String(demoObj.income_level)}</span>
                                       </div>
                                     )}
-                                    {demoObj.other_demographics && (
+                                    {!!demoObj.other_demographics && (
                                       <div>
                                         <span className="text-xs font-medium text-gray-500">Egyéb: </span>
                                         <span className="text-xs text-gray-700">{String(demoObj.other_demographics)}</span>
@@ -673,7 +676,10 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
                             {/* Pszichográfiai Profil */}
                             {(segment.psychographics || segment.psychographic_profile) && (() => {
                               const psychographics = segment.psychographics || segment.psychographic_profile || {}
-                              const psychoObj = typeof psychographics === 'object' && psychographics !== null ? psychographics : {}
+                              // Type guard: ensure it's an object (not array) and has the expected structure
+                              const psychoObj = (typeof psychographics === 'object' && psychographics !== null && !Array.isArray(psychographics))
+                                ? psychographics as Record<string, unknown>
+                                : {}
                               return (
                                 <div className="space-y-2">
                                   <h4 className="text-sm font-semibold text-gray-700">Pszichográfiai Profil</h4>
@@ -733,7 +739,10 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
 
                             {/* Média Szokások */}
                             {segment.media_habits && (() => {
-                              const mediaHabits = typeof segment.media_habits === 'object' && segment.media_habits !== null ? segment.media_habits : {}
+                              // Type guard: ensure it's an object (not array) and has the expected structure
+                              const mediaHabits = (typeof segment.media_habits === 'object' && segment.media_habits !== null && !Array.isArray(segment.media_habits))
+                                ? segment.media_habits as Record<string, unknown>
+                                : {}
                               return (
                                 <div className="space-y-2">
                                   <h4 className="text-sm font-semibold text-gray-700">Média Szokások</h4>
@@ -762,7 +771,7 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
                                         </div>
                                       </div>
                                     )}
-                                    {mediaHabits.notes && (
+                                    {!!mediaHabits.notes && (
                                       <div>
                                         <span className="text-xs font-medium text-gray-500 block mb-1">Megjegyzések:</span>
                                         <p className="text-xs text-gray-700">{String(mediaHabits.notes)}</p>
@@ -775,18 +784,21 @@ export function SegmentManager({ campaignId }: SegmentManagerProps) {
 
                             {/* Példa Persona */}
                             {segment.example_persona && (() => {
-                              const persona = typeof segment.example_persona === 'object' && segment.example_persona !== null ? segment.example_persona : {}
+                              // Type guard: ensure it's an object (not array) and has the expected structure
+                              const persona = (typeof segment.example_persona === 'object' && segment.example_persona !== null && !Array.isArray(segment.example_persona))
+                                ? segment.example_persona as Record<string, unknown>
+                                : {}
                               return (
                                 <div className="space-y-2">
                                   <h4 className="text-sm font-semibold text-gray-700">Példa Persona</h4>
                                   <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-2">
-                                    {persona.name && (
+                                    {!!persona.name && (
                                       <div>
                                         <span className="text-xs font-medium text-gray-500">Név: </span>
                                         <span className="text-xs text-gray-700 font-semibold">{String(persona.name)}</span>
                                       </div>
                                     )}
-                                    {persona.one_sentence_story && (
+                                    {!!persona.one_sentence_story && (
                                       <div>
                                         <span className="text-xs font-medium text-gray-500 block mb-1">Egy mondatos történet:</span>
                                         <p className="text-xs text-gray-700 italic">"{String(persona.one_sentence_story)}"</p>

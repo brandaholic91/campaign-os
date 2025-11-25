@@ -27,6 +27,28 @@ type Sprint = Database['campaign_os']['Tables']['sprints']['Row'] & {
 type Segment = Database['campaign_os']['Tables']['segments']['Row']
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
 
+interface SprintFormData {
+  name: string
+  start_date: string
+  end_date: string
+  focus_goal: SprintFocusGoalType
+  focus_description: string
+  focus_segments: string[]
+  focus_topics: string[]
+  focus_channels: string[]
+  success_indicators: string[]
+  risks_and_watchouts: string[]
+  success_criteria: string[]
+  status: 'planned' | 'active' | 'closed'
+  order: number
+  key_messages_summary: string
+  suggested_weekly_post_volume: {
+    total_posts_per_week?: number
+    video_posts_per_week?: number
+    stories_per_week?: number
+  } | null
+}
+
 interface SprintFormProps {
   campaignId: string
   initialData?: Sprint
@@ -121,7 +143,7 @@ export default function SprintForm({
   }
 
   // Initialize formData directly from initialData or empty defaults
-  const getInitialFormData = () => {
+  const getInitialFormData = (): SprintFormData => {
     if (!initialData) {
       return {
         name: '',
@@ -161,7 +183,7 @@ export default function SprintForm({
     }
   }
 
-  const [formData, setFormData] = useState(getInitialFormData)
+  const [formData, setFormData] = useState<SprintFormData>(getInitialFormData)
 
   // Update formData immediately when initialData changes
   useEffect(() => {
