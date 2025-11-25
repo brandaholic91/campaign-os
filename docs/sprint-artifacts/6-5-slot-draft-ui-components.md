@@ -1,6 +1,6 @@
 # Story 6.5: Slot & Draft UI Components
 
-Status: drafted
+Status: ready-for-dev
 
 ## Story
 
@@ -278,7 +278,7 @@ so that **I can manage slot planning and draft creation in a clear workflow**.
 
 ### Context Reference
 
-<!-- Path(s) to story context XML will be added here by context workflow -->
+- docs/sprint-artifacts/6-5-slot-draft-ui-components.context.xml
 
 ### Agent Model Used
 

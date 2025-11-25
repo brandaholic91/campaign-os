@@ -1,0 +1,119 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>5</storyId>
+    <title>Slot & Draft UI Components</title>
+    <status>drafted</status>
+    <generatedAt>2025-01-02</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-5-slot-draft-ui-components.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>campaign manager</asA>
+    <iWant>enhanced UI for content slots and drafts</iWant>
+    <soThat>I can manage slot planning and draft creation in a clear workflow</soThat>
+    <tasks>
+      - Task 1: Update slot card component (AC: 1)
+      - Task 2: Create slot detail page (AC: 2, 3, 4)
+      - Task 3: Create AI draft generation modal (AC: 5)
+      - Task 4: Create draft preview modal (AC: 6)
+      - Task 5: Create draft edit form (AC: 7)
+      - Task 6: Create slot edit form (AC: 8)
+      - Task 7: Implement draft actions (AC: 10)
+      - Task 8: Add validation and error handling (AC: 9)
+      - Task 9: Test UI components (AC: 1-10)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    1. Slot cards show: Date, channel, content_type, Primary segment + topic (with labels), Objective, funnel_stage (with badges), Angle hint (truncated if long), Draft status badge (no draft / has draft / approved / published), Click to open slot detail page
+    2. Slot detail page opens at `/campaigns/[id]/sprints/[sprintId]/slots/[slotId]` with two-column layout: Left side: Slot metadata, Right side: Content Drafts section
+    3. Slot detail page left side shows: Basic info, Strategic binding, Creative direction, Production info, Actions (Edit slot, Delete slot)
+    4. Slot detail page right side shows: Content Drafts section header, "Tartalom generálása AI-jal" button (opens modal), Draft list (variants with preview cards), Each draft card shows variant name, preview (Hook + Body first 100 chars + CTA), Status badge, Actions (Preview, Edit, Approve, Reject, Delete)
+    5. AI generation modal opens with variant count selection (1-3, default: 1), Optional tone preference textarea, "Generálás" and Cancel buttons, AI generation starts with streaming progress, Generated drafts appear in draft list as they're created, Modal closes when all drafts generated
+    6. Draft preview modal opens showing: Full content (Hook + Body + CTA formatted nicely), Visual idea (full text), Alt text suggestion (if present), Length hint, tone notes (if present), Actions (Approve, Reject, Edit, Generate New Variant, Delete)
+    7. Draft edit form opens (inline or modal) with: Hook (textarea), Body (large textarea), CTA copy (textarea), Visual idea (textarea), Alt text suggestion (textarea, optional), Length hint, tone notes (optional textareas), Save and Cancel buttons
+    8. Slot edit form includes: Basic info section (Date, channel, content_type, time_of_day), Strategic binding section (Primary/secondary segments/topics, Related goals, Funnel stage, Objective), Creative direction section (Angle type, Angle hint, CTA type, Tone override), Production info section (Asset requirements, Owner, Notes), Save and Cancel buttons
+    9. All forms validate required fields, UI shows validation errors clearly (red borders, error messages), Backward compatibility: existing slots without new fields still display correctly (show "Nincs megadva" for missing fields)
+    10. Draft actions work: Approve (updates status to 'approved'), Reject (updates status to 'rejected'), Delete (confirms deletion), Generate New Variant (opens AI generation modal for this slot)
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="Epic 6: Content Slot / Content Draft Szeparáció" snippet="Refaktoráljuk a content slot és content draft modellt két szintű architektúrára: Content Slot = taktikai 'helyfoglalás' a naptárban, Content Draft = konkrét tartalom (szöveg, vizuál brief, hook, CTA)." />
+      <doc path="docs/epics.md" title="Epic Breakdown" section="Epic 6: Content Slot / Content Draft Szeparáció" snippet="Story 6.5: Slot & Draft UI Components - Enhanced UI for content slots and drafts with slot detail page, draft management, AI generation modal, and draft preview/edit forms." />
+      <doc path="docs/sprint-artifacts/6-5-slot-draft-ui-components.md" title="Story 6.5" section="Dev Notes" snippet="UI Components: Follow existing component patterns from components/campaigns/. Form Handling: Use React Hook Form or similar. API Calls: Use fetch or existing API client. State Management: Use React state or existing state management. Routing: Use Next.js App Router." />
+    </docs>
+    <code>
+      <artifact path="components/campaigns/ContentCalendar.tsx" kind="component" symbol="ContentCalendar" lines="1-525" reason="Existing slot card component that needs to be updated with draft status badge and new fields display" />
+      <artifact path="components/campaigns/ExecutionPlanner.tsx" kind="component" symbol="ExecutionPlanner" lines="1-446" reason="Reference component for two-phase model UI patterns and API integration patterns" />
+      <artifact path="app/api/content-slots/[slotId]/drafts/route.ts" kind="api-endpoint" symbol="GET/POST /api/content-slots/[slotId]/drafts" lines="1-133" reason="API endpoints for fetching and creating drafts for a slot - used in slot detail page" />
+      <artifact path="app/api/content-drafts/[draftId]/route.ts" kind="api-endpoint" symbol="GET/PUT/DELETE /api/content-drafts/[draftId]" lines="1-196" reason="API endpoints for fetching, updating, and deleting individual drafts - used in draft preview and edit forms" />
+      <artifact path="app/api/content-slots/[id]/route.ts" kind="api-endpoint" symbol="PUT/DELETE /api/content-slots/[id]" lines="1-184" reason="API endpoint for updating and deleting content slots - used in slot edit form" />
+      <artifact path="app/api/ai/content-slots/[slotId]/drafts/route.ts" kind="api-endpoint" symbol="POST /api/ai/content-slots/[slotId]/drafts" lines="1-388" reason="AI endpoint for generating content drafts with streaming - used in AI generation modal" />
+      <artifact path="components/campaigns/ContentSlotEditForm.tsx" kind="component" symbol="ContentSlotEditForm" lines="1-500" reason="Existing slot edit form component that needs to be enhanced with new fields from Story 6.1" />
+    </code>
+    <dependencies>
+      <node>
+        <package name="next" version="^16.0.3" />
+        <package name="react" version="^19.2.0" />
+        <package name="react-dom" version="^19.2.0" />
+        <package name="@radix-ui/react-dialog" version="^1.1.15" />
+        <package name="@radix-ui/react-select" version="^2.0.0" />
+        <package name="@radix-ui/react-checkbox" version="^1.3.3" />
+        <package name="react-hook-form" version="^7.66.1" />
+        <package name="@hookform/resolvers" version="^5.2.2" />
+        <package name="zod" version="^4.1.12" />
+        <package name="sonner" version="^2.0.7" />
+        <package name="lucide-react" version="^0.554.0" />
+        <package name="date-fns" version="^4.1.0" />
+        <package name="@supabase/supabase-js" version="^2.84.0" />
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - UI Components: Follow existing component patterns from components/campaigns/
+    - Form Handling: Use React Hook Form or similar (if used in project)
+    - API Calls: Use fetch or existing API client
+    - State Management: Use React state or existing state management
+    - Routing: Use Next.js App Router
+    - Backward Compatibility: Existing slots without new fields must still display correctly (show "Nincs megadva" for missing fields)
+    - Validation: All forms must validate required fields and show validation errors clearly (red borders, error messages)
+    - Responsive Design: UI must work on mobile, tablet, and desktop
+    - Error Handling: Handle API errors (404, 400, 500) and show error messages to user
+    - Streaming: AI generation modal must support Server-Sent Events (SSE) streaming for progress updates
+  </constraints>
+
+  <interfaces>
+    <interface name="GET /api/content-slots/[slotId]/drafts" kind="REST endpoint" signature="GET /api/content-slots/[slotId]/drafts → { drafts: ContentDraft[] }" path="app/api/content-slots/[slotId]/drafts/route.ts" />
+    <interface name="POST /api/content-slots/[slotId]/drafts" kind="REST endpoint" signature="POST /api/content-slots/[slotId]/drafts { variant_name?, status, hook, body, cta_copy, visual_idea, ... } → { draft: ContentDraft }" path="app/api/content-slots/[slotId]/drafts/route.ts" />
+    <interface name="GET /api/content-drafts/[draftId]" kind="REST endpoint" signature="GET /api/content-drafts/[draftId] → { draft: ContentDraft }" path="app/api/content-drafts/[draftId]/route.ts" />
+    <interface name="PUT /api/content-drafts/[draftId]" kind="REST endpoint" signature="PUT /api/content-drafts/[draftId] { status?, hook?, body?, cta_copy?, visual_idea?, ... } → { draft: ContentDraft }" path="app/api/content-drafts/[draftId]/route.ts" />
+    <interface name="DELETE /api/content-drafts/[draftId]" kind="REST endpoint" signature="DELETE /api/content-drafts/[draftId] → { success: true }" path="app/api/content-drafts/[draftId]/route.ts" />
+    <interface name="PUT /api/content-slots/[id]" kind="REST endpoint" signature="PUT /api/content-slots/[id] { date?, channel?, primary_segment_id?, primary_topic_id?, objective?, content_type?, funnel_stage?, angle_type?, cta_type?, ... } → ContentSlot" path="app/api/content-slots/[id]/route.ts" />
+    <interface name="POST /api/ai/content-slots/[slotId]/drafts" kind="REST endpoint (SSE)" signature="POST /api/ai/content-slots/[slotId]/drafts { variant_count?: number, tone_preference?: string } → SSE stream with progress events and final { drafts: ContentDraft[] }" path="app/api/ai/content-slots/[slotId]/drafts/route.ts" />
+    <interface name="ContentDraftSchema" kind="Zod schema" signature="ContentDraftSchema: z.object({ slot_id, variant_name?, status, hook, body, cta_copy, visual_idea, alt_text_suggestion?, length_hint?, tone_notes?, used_segment_id?, used_topic_id?, used_goal_ids?, created_by })" path="lib/ai/schemas.ts" />
+  </interfaces>
+
+  <tests>
+    <standards>
+      Test all UI components render correctly. Test all user interactions (click, form submit, etc.). Test API integration (success and error cases). Test validation. Test backward compatibility. Test responsive design. Manual testing approach for now (Vitest/Playwright planned for future).
+    </standards>
+    <locations>
+      __tests__/ directory for unit tests (planned). Manual testing in browser DevTools for now.
+    </locations>
+    <ideas>
+      <test ac="1">Test slot cards display correctly with all new fields (primary segment/topic, objective, funnel_stage, angle hint, draft status badge). Test click handler opens slot detail page.</test>
+      <test ac="2,3,4">Test slot detail page loads and displays slot metadata correctly. Test draft list fetches and displays drafts. Test "Tartalom generálása AI-jal" button opens modal.</test>
+      <test ac="5">Test AI generation modal opens with variant count selection. Test streaming progress updates. Test generated drafts appear in draft list. Test modal closes when all drafts generated.</test>
+      <test ac="6">Test draft preview modal opens and displays full draft content. Test action buttons (Approve, Reject, Edit, Generate New Variant, Delete) work correctly.</test>
+      <test ac="7">Test draft edit form opens and allows editing all fields. Test validation (min lengths: hook: 10, body: 50, cta_copy: 5, visual_idea: 20). Test save and cancel buttons.</test>
+      <test ac="8">Test slot edit form includes all new fields. Test validation for required fields. Test save and cancel buttons.</test>
+      <test ac="9">Test form validation shows errors clearly (red borders, error messages). Test backward compatibility (slots without new fields display "Nincs megadva").</test>
+      <test ac="10">Test draft actions: Approve updates status to 'approved', Reject updates status to 'rejected', Delete confirms and removes draft, Generate New Variant opens AI generation modal.</test>
+    </ideas>
+  </tests>
+</story-context>
+

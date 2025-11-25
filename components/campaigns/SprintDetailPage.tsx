@@ -40,6 +40,7 @@ const focusGoalColors: Record<string, string> = {
 export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps) {
   const router = useRouter()
   const [sprint, setSprint] = useState<SprintPlan | null>(null)
+  const [rawSprint, setRawSprint] = useState<Sprint | null>(null)
   const [contentSlots, setContentSlots] = useState<ContentSlot[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isGeneratingContent, setIsGeneratingContent] = useState(false)
@@ -141,6 +142,8 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
           return
         }
 
+        setRawSprint(sprintData)
+
         // Load junction table data (segments, topics, channels)
         const { data: sprintSegments } = await db
           .from('sprint_segments')
@@ -197,16 +200,27 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
           const contentSlots: ContentSlot[] = slots.map(slot => ({
             id: slot.id,
             sprint_id: slot.sprint_id,
+            campaign_id: slot.campaign_id,
             date: slot.date,
             channel: slot.channel,
             slot_index: slot.slot_index,
             primary_segment_id: slot.primary_segment_id || undefined,
             primary_topic_id: slot.primary_topic_id || undefined,
+            secondary_segment_ids: (slot.secondary_segment_ids as any as string[]) || undefined,
+            secondary_topic_ids: (slot.secondary_topic_ids as any as string[]) || undefined,
+            related_goal_ids: (slot.related_goal_ids as any as string[]) || [],
             objective: slot.objective as any,
             content_type: slot.content_type as any,
+            funnel_stage: slot.funnel_stage as any,
+            angle_type: slot.angle_type as any,
+            cta_type: slot.cta_type as any,
+            time_of_day: slot.time_of_day as any,
             angle_hint: slot.angle_hint || undefined,
             notes: slot.notes || undefined,
             status: (slot.status as any) || 'planned',
+            tone_override: slot.tone_override || undefined,
+            asset_requirements: (slot.asset_requirements as any as string[]) || undefined,
+            owner: slot.owner || undefined,
           }))
           setContentSlots(contentSlots)
         }
@@ -331,16 +345,27 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
       const contentSlots: ContentSlot[] = slots.map(slot => ({
         id: slot.id,
         sprint_id: slot.sprint_id,
+        campaign_id: slot.campaign_id,
         date: slot.date,
         channel: slot.channel,
         slot_index: slot.slot_index,
         primary_segment_id: slot.primary_segment_id || undefined,
         primary_topic_id: slot.primary_topic_id || undefined,
+        secondary_segment_ids: (slot.secondary_segment_ids as any as string[]) || undefined,
+        secondary_topic_ids: (slot.secondary_topic_ids as any as string[]) || undefined,
+        related_goal_ids: (slot.related_goal_ids as any as string[]) || [],
         objective: slot.objective as any,
         content_type: slot.content_type as any,
+        funnel_stage: slot.funnel_stage as any,
+        angle_type: slot.angle_type as any,
+        cta_type: slot.cta_type as any,
+        time_of_day: slot.time_of_day as any,
         angle_hint: slot.angle_hint || undefined,
         notes: slot.notes || undefined,
         status: (slot.status as any) || 'planned',
+        tone_override: slot.tone_override || undefined,
+        asset_requirements: (slot.asset_requirements as any as string[]) || undefined,
+        owner: slot.owner || undefined,
       }))
       setContentSlots(contentSlots)
     }
@@ -548,7 +573,7 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
       </div>
 
       {/* Edit Form Dialog */}
-      {isEditingSettings && sprint && (
+      {isEditingSettings && rawSprint && (
         <Dialog open={true} onOpenChange={() => setIsEditingSettings(false)}>
           <DialogContent>
             <DialogHeader>
@@ -556,7 +581,7 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
             </DialogHeader>
             <SprintForm
               campaignId={campaignId}
-              initialData={sprint as any}
+              initialData={rawSprint as any}
               onSuccess={() => {
                 setIsEditingSettings(false)
                 window.location.reload()

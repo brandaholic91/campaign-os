@@ -3,15 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 import { ContentDraftSchema } from '@/lib/ai/schemas'
 
 /**
- * GET /api/content-slots/[slotId]/drafts
+ * GET /api/content-slots/[id]/drafts
  * Returns all content drafts for a given content slot, ordered by created_at DESC
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ slotId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { slotId } = await params
+    const { id } = await params
+    const slotId = id
 
     if (!slotId) {
       return NextResponse.json({ error: 'slotId is required' }, { status: 400 })
@@ -45,21 +46,22 @@ export async function GET(
 
     return NextResponse.json({ drafts: drafts || [] })
   } catch (error) {
-    console.error('GET /api/content-slots/[slotId]/drafts error:', error)
+    console.error('GET /api/content-slots/[id]/drafts error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
 /**
- * POST /api/content-slots/[slotId]/drafts
+ * POST /api/content-slots/[id]/drafts
  * Creates a new content draft for a given content slot
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ slotId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { slotId } = await params
+    const { id } = await params
+    const slotId = id
 
     if (!slotId) {
       return NextResponse.json({ error: 'slotId is required' }, { status: 400 })
@@ -127,7 +129,7 @@ export async function POST(
 
     return NextResponse.json({ draft }, { status: 201 })
   } catch (error) {
-    console.error('POST /api/content-slots/[slotId]/drafts error:', error)
+    console.error('POST /api/content-slots/[id]/drafts error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

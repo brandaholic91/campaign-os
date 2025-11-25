@@ -227,6 +227,7 @@ development_status:
 
   # Story 6.5: Slot & Draft UI Components
   # Note: Story drafted 2025-01-XX - UI components for slot management and draft creation
-  6-5-slot-draft-ui-components: drafted
+  # Note: Status updated to ready-for-dev (2025-01-02) - Story context generated
+  6-5-slot-draft-ui-components: ready-for-dev
 
   epic-6-retrospective: optional
