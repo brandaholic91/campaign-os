@@ -22,48 +22,45 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(true)
 
   // Check campaign readiness and load existing sprints and content from database
   useEffect(() => {
-    async function checkReadiness() {
+    async function loadData() {
+      setIsLoading(true)
+      
       try {
-        // Use the same API endpoint as the dashboard to ensure consistent normalization
-        const response = await fetch(`/api/campaigns/${campaignId}/structure`)
-        
-        if (!response.ok) {
-          console.error('Failed to fetch campaign structure')
-          return
-        }
+        // Load execution plan and check readiness in parallel
+        const [executionResponse, structureResponse] = await Promise.all([
+          fetch(`/api/campaigns/execution?campaign_id=${campaignId}`),
+          fetch(`/api/campaigns/${campaignId}/structure`)
+        ])
 
-        const structure = await response.json()
-
-        if (!structure) return
-
-        // Use the same validation function with properly normalized structure
-        const readiness = isReadyForExecution(structure)
-        setIsReady(readiness.ready)
-      } catch (err) {
-        console.error('Error checking readiness:', err)
-      }
-    }
-    
-    async function loadExistingData() {
-      try {
-        const response = await fetch(`/api/campaigns/execution?campaign_id=${campaignId}`)
-        if (response.ok) {
-          const savedPlan = await response.json()
+        // Load existing execution plan
+        if (executionResponse.ok) {
+          const savedPlan = await executionResponse.json()
           if (savedPlan) {
             setSprints(savedPlan.sprints || [])
             setContentSlots(savedPlan.content_calendar || [])
           }
         }
+
+        // Check readiness
+        if (structureResponse.ok) {
+          const structure = await structureResponse.json()
+          if (structure) {
+            const readiness = isReadyForExecution(structure)
+            setIsReady(readiness.ready)
+          }
+        }
       } catch (err) {
-        console.error('Error loading existing execution plan:', err)
+        console.error('Error loading data:', err)
+      } finally {
+        setIsLoading(false)
       }
     }
     
-    checkReadiness()
-    loadExistingData()
+    loadData()
   }, [campaignId])
 
   const handleGenerateSprints = async () => {
@@ -316,8 +313,18 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
 
   return (
     <div className="space-y-6">
+      {/* Loading State */}
+      {isLoading && (
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
+            <p className="text-sm font-medium text-gray-900">Betöltés...</p>
+          </div>
+        </div>
+      )}
+
       {/* Generate Sprint Structure Button Section */}
-      {sprints.length === 0 && (
+      {!isLoading && sprints.length === 0 && (
         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft">
           <div className="flex items-center justify-between">
             <div className="flex-1">
@@ -396,7 +403,7 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
       )}
 
       {/* Sprint List with Per-Sprint Content Generation */}
-      {sprints.length > 0 && (
+      {!isLoading && sprints.length > 0 && (
         <div className="space-y-6">
           <SprintList 
             sprints={sprints} 
