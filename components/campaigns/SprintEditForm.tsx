@@ -322,7 +322,7 @@ export function SprintEditForm({
 
       // If sprint is not saved yet and doesn't exist, use POST to create it, otherwise use PUT to update
       const shouldUsePost = isUnsavedSprint && !sprintExists
-      const url = shouldUsePost ? '/api/sprints' : `/api/sprints/${sprint.id}`
+      const url = '/api/sprints'
       const method = shouldUsePost ? 'POST' : 'PUT'
       
       const requestBody: any = {
@@ -349,6 +349,9 @@ export function SprintEditForm({
         requestBody.id = sprint.id // Use the existing ID from SprintPlan
         requestBody.order = sprint.order || 1
         requestBody.status = 'planned'
+      } else {
+        // For PUT, include the sprint ID in the body
+        requestBody.id = sprint.id
       }
 
       const response = await fetch(url, {

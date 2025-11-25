@@ -156,6 +156,7 @@ export async function POST(request: Request) {
       risks_and_watchouts: body.risks_and_watchouts || [],
       success_criteria: body.success_criteria || [],
       key_messages_summary: body.key_messages_summary || null,
+      suggested_weekly_post_volume: body.suggested_weekly_post_volume || null,
       status: body.status || 'planned',
     }
 
@@ -264,6 +265,7 @@ export async function PUT(request: Request) {
       risks_and_watchouts: body.risks_and_watchouts !== undefined ? body.risks_and_watchouts : null,
       success_criteria: body.success_criteria !== undefined ? body.success_criteria : null,
       key_messages_summary: body.key_messages_summary !== undefined ? body.key_messages_summary : null,
+      suggested_weekly_post_volume: body.suggested_weekly_post_volume !== undefined ? body.suggested_weekly_post_volume : null,
       status: body.status,
       updated_at: new Date().toISOString(),
     }
