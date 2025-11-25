@@ -404,20 +404,70 @@ export const ContentTypeSchema = z.enum([
   'email'
 ])
 
-// Content slot schema
+// Funnel stage enum (reused from SprintFocusStageSchema)
+export const FunnelStageSchema = SprintFocusStageSchema;
+
+// Time of day enum
+export const TimeOfDaySchema = z.enum(['morning', 'midday', 'evening', 'unspecified']).optional();
+
+// Angle type enum
+export const AngleTypeSchema = z.enum(['story', 'proof', 'how_to', 'comparison', 'behind_the_scenes', 'testimonial', 'other']);
+
+// CTA type enum
+export const CTATypeSchema = z.enum(['soft_info', 'learn_more', 'signup', 'donate', 'attend_event', 'share', 'comment']);
+
+// Content slot status enum (updated values)
+export const ContentSlotStatusSchema = z.enum(['planned', 'scheduled', 'cancelled']);
+
+// Content draft status enum
+export const ContentDraftStatusSchema = z.enum(['draft', 'approved', 'rejected', 'published']);
+
+// Content slot schema (enhanced with new fields)
 export const ContentSlotSchema = z.object({
   id: z.string().uuid(),
   sprint_id: z.string().uuid(),
+  campaign_id: z.string().uuid(),
   date: dateStringSchema(),
   channel: z.string().min(1, 'Channel must be at least 1 character'),
   slot_index: z.number().int().positive('Slot index must be a positive integer'),
   primary_segment_id: z.string().uuid().optional(),
   primary_topic_id: z.string().uuid().optional(),
+  time_of_day: TimeOfDaySchema,
+  secondary_segment_ids: z.array(z.string().uuid()).max(2, 'Maximum 2 secondary segments allowed').optional(),
+  secondary_topic_ids: z.array(z.string().uuid()).max(2, 'Maximum 2 secondary topics allowed').optional(),
+  related_goal_ids: z.array(z.string().uuid()).min(1, 'At least 1 related goal required').max(2, 'Maximum 2 related goals allowed'),
   objective: ContentObjectiveSchema,
   content_type: ContentTypeSchema,
+  funnel_stage: FunnelStageSchema,
+  angle_type: AngleTypeSchema,
   angle_hint: z.string().optional(),
+  cta_type: CTATypeSchema,
+  tone_override: z.string().optional(),
+  asset_requirements: z.array(z.string()).optional(),
+  owner: z.string().optional(),
   notes: z.string().optional(),
-  status: z.enum(['planned', 'draft', 'published']).default('planned'),
+  status: ContentSlotStatusSchema.default('planned'),
+})
+
+// Content draft schema
+export const ContentDraftSchema = z.object({
+  id: z.string().uuid().optional(),
+  slot_id: z.string().uuid(),
+  variant_name: z.string().optional(),
+  status: ContentDraftStatusSchema.default('draft'),
+  hook: z.string().min(10, 'Hook must be at least 10 characters'),
+  body: z.string().min(50, 'Body must be at least 50 characters'),
+  cta_copy: z.string().min(5, 'CTA copy must be at least 5 characters'),
+  visual_idea: z.string().min(20, 'Visual idea must be at least 20 characters'),
+  alt_text_suggestion: z.string().optional(),
+  length_hint: z.string().optional(),
+  tone_notes: z.string().optional(),
+  used_segment_id: z.string().uuid().optional(),
+  used_topic_id: z.string().uuid().optional(),
+  used_goal_ids: z.array(z.string().uuid()).optional(),
+  created_by: z.enum(['ai', 'human']).default('ai'),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 })
 
 // Execution plan schema (combines sprints and content calendar)
@@ -434,5 +484,12 @@ export type SprintPlan = z.infer<typeof SprintPlanSchema>
 export type EnhancedSprintPlan = z.infer<typeof SprintPlanSchema> // Alias for enhanced sprint plan
 export type ContentObjective = z.infer<typeof ContentObjectiveSchema>
 export type ContentType = z.infer<typeof ContentTypeSchema>
+export type FunnelStage = z.infer<typeof FunnelStageSchema>
+export type TimeOfDay = z.infer<typeof TimeOfDaySchema>
+export type AngleType = z.infer<typeof AngleTypeSchema>
+export type CTAType = z.infer<typeof CTATypeSchema>
+export type ContentSlotStatus = z.infer<typeof ContentSlotStatusSchema>
+export type ContentDraftStatus = z.infer<typeof ContentDraftStatusSchema>
 export type ContentSlot = z.infer<typeof ContentSlotSchema>
+export type ContentDraft = z.infer<typeof ContentDraftSchema>
 export type ExecutionPlan = z.infer<typeof ExecutionPlanSchema>

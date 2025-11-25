@@ -199,7 +199,10 @@ development_status:
 
   # Story 6.1: ContentSlot Schema Enhancement & ContentDraft Table
   # Note: Story drafted 2025-01-XX - Database migration for enhanced slots and new drafts table
-  6-1-content-slot-schema-enhancement-draft-table: drafted
+  # Note: Status updated to ready-for-dev (2025-01-XX) - Story context generated
+  # Note: Status updated to in-progress (2025-01-XX) - Dev agent starting implementation
+  # Note: Status updated to review (2025-01-XX) - All tasks completed, migration executed, schemas updated, types regenerated
+  6-1-content-slot-schema-enhancement-draft-table: review
 
   # Story 6.2: Content Slot Planner Refactor (No Copy)
   # Note: Story drafted 2025-01-XX - AI endpoint refactor to generate only slots without copy
