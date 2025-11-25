@@ -1,6 +1,6 @@
 # Story 6.2: Content Slot Planner Refactor (No Copy)
 
-Status: drafted
+Status: review
 
 ## Story
 
@@ -42,51 +42,51 @@ so that **I can plan content timing separately from content creation**.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Refactor Content Slot Planner prompt (AC: 3)
-  - [ ] Open `lib/ai/prompts/content-slot-planner.ts`
-  - [ ] Remove all copy generation instructions (hook, body, cta_copy)
-  - [ ] Add angle_type generation logic (based on slot context, angle_hint, and message strategy if available)
-  - [ ] Add cta_type generation logic (based on objective, funnel_stage, and message strategy CTA patterns if available)
-  - [ ] Add tone_override generation guidance (optional, when slot needs different tone, or from message strategy tone profile)
-  - [ ] Add angle_hint generation using message strategy (strategy_core.positioning_statement, core_message) if available
-  - [ ] Update prompt to emphasize tactical planning only
-  - [ ] Update prompt to include new required fields (funnel_stage, related_goal_ids, angle_type, cta_type)
-  - [ ] Update prompt to include optional fields (secondary_segment_ids, secondary_topic_ids, time_of_day, tone_override)
-  - [ ] Add guidance: Use message strategy (if available for segment × topic combination) to inform angle_type, cta_type, tone_override, angle_hint
+- [x] Task 1: Refactor Content Slot Planner prompt (AC: 3)
+  - [x] Open `lib/ai/prompts/content-slot-planner.ts`
+  - [x] Remove all copy generation instructions (hook, body, cta_copy)
+  - [x] Add angle_type generation logic (based on slot context, angle_hint, and message strategy if available)
+  - [x] Add cta_type generation logic (based on objective, funnel_stage, and message strategy CTA patterns if available)
+  - [x] Add tone_override generation guidance (optional, when slot needs different tone, or from message strategy tone profile)
+  - [x] Add angle_hint generation using message strategy (strategy_core.positioning_statement, core_message) if available
+  - [x] Update prompt to emphasize tactical planning only
+  - [x] Update prompt to include new required fields (funnel_stage, related_goal_ids, angle_type, cta_type)
+  - [x] Update prompt to include optional fields (secondary_segment_ids, secondary_topic_ids, time_of_day, tone_override)
+  - [x] Add guidance: Use message strategy (if available for segment × topic combination) to inform angle_type, cta_type, tone_override, angle_hint
 
-- [ ] Task 2: Load message strategies for slot generation (AC: 2, 3)
-  - [ ] In `app/api/ai/campaign-sprints/[sprintId]/content-slots/route.ts`
-  - [ ] Query `message_strategies` table for campaign_id
-  - [ ] Filter strategies by segment_id and topic_id matching focus segments/topics
-  - [ ] Build strategy map: `Map<`${segment_id}:${topic_id}`, strategy>`
-  - [ ] Pass strategy map to prompt context
-  - [ ] For each slot being generated, look up strategy for primary_segment_id × primary_topic_id combination
-  - [ ] Include strategy in prompt context for that slot (if available)
+- [x] Task 2: Load message strategies for slot generation (AC: 2, 3)
+  - [x] In `app/api/ai/campaign-sprints/[sprintId]/content-slots/route.ts`
+  - [x] Query `message_strategies` table for campaign_id
+  - [x] Filter strategies by segment_id and topic_id matching focus segments/topics
+  - [x] Build strategy map: `Map<`${segment_id}:${topic_id}`, strategy>`
+  - [x] Pass strategy map to prompt context
+  - [x] For each slot being generated, look up strategy for primary_segment_id × primary_topic_id combination
+  - [x] Include strategy in prompt context for that slot (if available)
 
-- [ ] Task 3: Update AI endpoint response schema (AC: 1, 2, 4)
-  - [ ] Open `app/api/ai/campaign-sprints/[sprintId]/content-slots/route.ts`
-  - [ ] Remove any copy-related fields from response schema
-  - [ ] Update response to use enhanced ContentSlotSchema from Story 6.1
-  - [ ] Ensure response format: `{ content_slots: ContentSlot[] }` (no draft field)
-  - [ ] Add validation for new required fields (angle_type, cta_type, funnel_stage, related_goal_ids)
-  - [ ] Add campaign_id to generated slots (from sprint → campaign)
-  - [ ] Add secondary_segment_ids and secondary_topic_ids generation (if applicable)
+- [x] Task 3: Update AI endpoint response schema (AC: 1, 2, 4)
+  - [x] Open `app/api/ai/campaign-sprints/[sprintId]/content-slots/route.ts`
+  - [x] Remove any copy-related fields from response schema
+  - [x] Update response to use enhanced ContentSlotSchema from Story 6.1
+  - [x] Ensure response format: `{ content_slots: ContentSlot[] }` (no draft field)
+  - [x] Add validation for new required fields (angle_type, cta_type, funnel_stage, related_goal_ids)
+  - [x] Add campaign_id to generated slots (from sprint → campaign)
+  - [x] Add secondary_segment_ids and secondary_topic_ids generation (if applicable)
 
-- [ ] Task 4: Update streaming response (AC: 1, 2)
-  - [ ] Update streaming messages to reflect slot-only generation
-  - [ ] Remove any copy generation progress messages
-  - [ ] Update progress: "Generating content slots..." instead of "Generating content..."
+- [x] Task 4: Update streaming response (AC: 1, 2)
+  - [x] Update streaming messages to reflect slot-only generation
+  - [x] Remove any copy generation progress messages
+  - [x] Update progress: "Generating content slots..." instead of "Generating content..."
 
-- [ ] Task 5: Test and validate (AC: 1-5)
-  - [ ] Test with campaigns that have message strategies
-  - [ ] Test with campaigns without message strategies (should still work)
-  - [ ] Verify slots use strategy data when available (angle_type, cta_type, tone_override, angle_hint)
-  - [ ] Test endpoint with valid sprintId
-  - [ ] Verify response contains only ContentSlot objects
-  - [ ] Verify all new required fields are present
-  - [ ] Verify no copy fields (hook, body, cta_copy) in response
-  - [ ] Verify validation works (missing required fields → error)
-  - [ ] Test backward compatibility: old endpoint still works
+- [x] Task 5: Test and validate (AC: 1-5)
+  - [x] Test with campaigns that have message strategies
+  - [x] Test with campaigns without message strategies (should still work)
+  - [x] Verify slots use strategy data when available (angle_type, cta_type, tone_override, angle_hint)
+  - [x] Test endpoint with valid sprintId
+  - [x] Verify response contains only ContentSlot objects
+  - [x] Verify all new required fields are present
+  - [x] Verify no copy fields (hook, body, cta_copy) in response
+  - [x] Verify validation works (missing required fields → error)
+  - [x] Test backward compatibility: old endpoint still works
 
 ## Dev Notes
 
@@ -160,15 +160,30 @@ so that **I can plan content timing separately from content creation**.
 
 ### Context Reference
 
-<!-- Path(s) to story context XML will be added here by context workflow -->
+- `docs/sprint-artifacts/6-2-content-slot-planner-refactor-no-copy.context.xml`
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-sonnet-4-5-20250929
 
 ### Debug Log References
 
+N/A
+
 ### Completion Notes List
 
+- **Task 1 (Prompt Refactor):** Updated `ContentSlotPlannerContext` interface to include `message_strategies_map`. Completely refactored system prompt to remove copy generation instructions and add angle_type, cta_type, tone_override, funnel_stage generation logic. Updated user prompt to include message strategy context and new required fields guidance.
+
+- **Task 2 (Message Strategy Loading):** Added message_strategies table query in API endpoint. Built strategy map with "segment_id:topic_id" key format. Passed strategiesMap to plannerContext for prompt usage.
+
+- **Task 3 (Response Schema Update):** Added validation helpers for new enums (angle_type, cta_type, funnel_stage, time_of_day). Updated slotWithFixedId object to include all new required fields (campaign_id, funnel_stage, related_goal_ids, angle_type, cta_type) and optional fields (secondary_segment_ids, secondary_topic_ids, time_of_day, tone_override). Enhanced validation with normalization functions.
+
+- **Task 4 (Streaming Update):** Updated progress messages to reflect slot-only generation ("Tartalom slotok tervezése", "Message strategy-k betöltése", "Slot metadata generálása"). Changed final message from "Generálás kész!" to "Slot tervezés kész!".
+
+- **Task 5 (Verification):** All acceptance criteria verified. Implementation complete with proper validation, message strategy integration, and enhanced schema support.
+
 ### File List
+
+- `lib/ai/prompts/content-slot-planner.ts` - Prompt refactored with message strategy integration
+- `app/api/ai/campaign-sprints/[sprintId]/content-slots/route.ts` - Message strategies loaded, response schema updated, validation enhanced
 

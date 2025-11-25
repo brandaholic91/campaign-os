@@ -88,6 +88,26 @@ export async function POST(
     
     const focusChannels = (focusChannelsData || []).map((d: any) => d.channel_key)
 
+    // 4. Query message strategies for campaign
+    const { data: messageStrategies } = await db
+      .from('message_strategies')
+      .select('*')
+      .eq('campaign_id', campaign.id)
+
+    // Build strategy map: "segment_id:topic_id" -> strategy
+    const strategiesMap: { [key: string]: any } = {}
+    if (messageStrategies && messageStrategies.length > 0) {
+      for (const strategy of messageStrategies) {
+        const key = `${strategy.segment_id}:${strategy.topic_id}`
+        strategiesMap[key] = {
+          strategy_core: strategy.strategy_core,
+          style_tone: strategy.style_tone,
+          cta_funnel: strategy.cta_funnel,
+          extra_fields: strategy.extra_fields
+        }
+      }
+    }
+
     // Prepare context
     const plannerContext: ContentSlotPlannerContext = {
       sprint: {
@@ -115,6 +135,7 @@ export async function POST(
       focus_topics: focusTopics,
       focus_channels: focusChannels,
       volume_override: weekly_post_volume,
+      message_strategies_map: strategiesMap,
     }
 
     // Create SSE stream
@@ -124,7 +145,9 @@ export async function POST(
         try {
           sendSSE(controller, 'progress', { message: 'Sprint kontextus betöltése...' })
           sendSSE(controller, 'progress', { message: 'Fókusz területek elemzése...' })
-          sendSSE(controller, 'progress', { message: `Tartalom slotok generálása a(z) "${sprint.name}" sprinthez...` })
+          sendSSE(controller, 'progress', { message: 'Message strategy-k betöltése...' })
+          sendSSE(controller, 'progress', { message: `Tartalom slotok tervezése a(z) "${sprint.name}" sprinthez...` })
+          sendSSE(controller, 'progress', { message: 'Slot metadata generálása (angle_type, cta_type, funnel_stage)...' })
 
           const provider = getAIProvider()
           const model = process.env.AI_MODEL || 'gpt-4o'
@@ -193,15 +216,27 @@ export async function POST(
           
           // Valid objective values
           const validObjectives = ['reach', 'engagement', 'traffic', 'lead', 'conversion', 'mobilization']
-          
+
           // Valid content types
           const validContentTypes = ['short_video', 'story', 'static_image', 'carousel', 'live', 'long_post', 'email']
-          
+
+          // Valid angle types
+          const validAngleTypes = ['story', 'proof', 'how_to', 'comparison', 'behind_the_scenes', 'testimonial', 'other']
+
+          // Valid CTA types
+          const validCTATypes = ['soft_info', 'learn_more', 'signup', 'donate', 'attend_event', 'share', 'comment']
+
+          // Valid funnel stages
+          const validFunnelStages = ['awareness', 'engagement', 'consideration', 'conversion', 'mobilization']
+
+          // Valid time of day values
+          const validTimeOfDay = ['morning', 'midday', 'evening', 'unspecified']
+
           // Helper to normalize objective values
           const normalizeObjective = (obj: unknown): string | undefined => {
             if (typeof obj !== 'string') return undefined
             const normalized = obj.toLowerCase().trim()
-            
+
             // Handle common variations
             if (normalized.includes('engagement')) {
               if (normalized.includes('mutual') || normalized.includes('community')) {
@@ -214,9 +249,41 @@ export async function POST(
             if (normalized.includes('lead') || normalized.includes('capture')) return 'lead'
             if (normalized.includes('conversion') || normalized.includes('purchase')) return 'conversion'
             if (normalized.includes('mobilization') || normalized.includes('action')) return 'mobilization'
-            
+
             // Direct match
             if (validObjectives.includes(normalized)) return normalized
+            return undefined
+          }
+
+          // Helper to normalize angle_type
+          const normalizeAngleType = (val: unknown): string => {
+            if (typeof val !== 'string') return 'other'
+            const normalized = val.toLowerCase().trim().replace(/[-_]/g, '_')
+            if (validAngleTypes.includes(normalized)) return normalized
+            return 'other'
+          }
+
+          // Helper to normalize cta_type
+          const normalizeCTAType = (val: unknown): string => {
+            if (typeof val !== 'string') return 'learn_more'
+            const normalized = val.toLowerCase().trim().replace(/[-_]/g, '_')
+            if (validCTATypes.includes(normalized)) return normalized
+            return 'learn_more'
+          }
+
+          // Helper to normalize funnel_stage
+          const normalizeFunnelStage = (val: unknown, fallback: string = 'awareness'): string => {
+            if (typeof val !== 'string') return fallback
+            const normalized = val.toLowerCase().trim()
+            if (validFunnelStages.includes(normalized)) return normalized
+            return fallback
+          }
+
+          // Helper to normalize time_of_day
+          const normalizeTimeOfDay = (val: unknown): string | undefined => {
+            if (typeof val !== 'string') return undefined
+            const normalized = val.toLowerCase().trim()
+            if (validTimeOfDay.includes(normalized)) return normalized
             return undefined
           }
 
@@ -267,12 +334,13 @@ export async function POST(
               }
 
               const slotWithFixedId = {
-                id: (slot.id && typeof slot.id === 'string' && uuidPattern.test(slot.id)) 
-                  ? slot.id 
+                id: (slot.id && typeof slot.id === 'string' && uuidPattern.test(slot.id))
+                  ? slot.id
                   : randomUUID(),
                 sprint_id: (slot.sprint_id && typeof slot.sprint_id === 'string' && uuidPattern.test(slot.sprint_id))
                   ? slot.sprint_id
                   : sprintId,
+                campaign_id: campaign.id,
                 date: slot.date,
                 channel: slot.channel,
                 slot_index: typeof slot.slot_index === 'number' ? slot.slot_index : parseInt(String(slot.slot_index || '1'), 10),
@@ -282,6 +350,22 @@ export async function POST(
                 primary_topic_id: (slot.primary_topic_id && typeof slot.primary_topic_id === 'string' && uuidPattern.test(slot.primary_topic_id))
                   ? slot.primary_topic_id
                   : undefined,
+                // New required fields from Story 6.1
+                funnel_stage: normalizeFunnelStage(slot.funnel_stage, sprint.focus_stage || 'awareness'),
+                related_goal_ids: Array.isArray(slot.related_goal_ids) && slot.related_goal_ids.length > 0
+                  ? slot.related_goal_ids.filter((id: any) => typeof id === 'string' && uuidPattern.test(id))
+                  : (sprint.focus_goals && sprint.focus_goals.length > 0 ? sprint.focus_goals.slice(0, 2) : []),
+                angle_type: normalizeAngleType(slot.angle_type),
+                cta_type: normalizeCTAType(slot.cta_type),
+                // Optional new fields
+                secondary_segment_ids: Array.isArray(slot.secondary_segment_ids)
+                  ? slot.secondary_segment_ids.filter((id: any) => typeof id === 'string' && uuidPattern.test(id)).slice(0, 2)
+                  : undefined,
+                secondary_topic_ids: Array.isArray(slot.secondary_topic_ids)
+                  ? slot.secondary_topic_ids.filter((id: any) => typeof id === 'string' && uuidPattern.test(id)).slice(0, 2)
+                  : undefined,
+                time_of_day: normalizeTimeOfDay(slot.time_of_day),
+                tone_override: normalizeOptionalString(slot.tone_override),
                 objective: normalizedObjective,
                 content_type: normalizedContentType,
                 status: slot.status || 'planned',
@@ -345,7 +429,7 @@ export async function POST(
             console.warn('Constraint warnings:', warnings)
           }
 
-          sendSSE(controller, 'progress', { message: 'Generálás kész!' })
+          sendSSE(controller, 'progress', { message: 'Slot tervezés kész!' })
           sendSSE(controller, 'done', { content_slots: finalPlan.content_calendar })
           controller.close()
 
