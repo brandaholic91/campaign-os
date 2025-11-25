@@ -469,7 +469,8 @@ export default function SprintForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="max-w-7xl mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
         <div className="bg-destructive/15 text-destructive px-4 py-2 rounded-md text-sm">
           {error}
@@ -910,7 +911,7 @@ export default function SprintForm({
         </div>
       </div>
 
-      <div className="flex justify-between pt-4">
+      <div className="flex justify-between pt-4 pb-6">
         {initialData ? (
           <Button
             type="button"
@@ -933,5 +934,6 @@ export default function SprintForm({
         </div>
       </div>
     </form>
+    </div>
   )
 }
