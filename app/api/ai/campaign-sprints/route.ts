@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isReadyForExecution } from '@/lib/validation/campaign-structure'
 import { SprintPlanSchema, CampaignStructure } from '@/lib/ai/schemas'
 import { SPRINT_PLANNER_SYSTEM_PROMPT, SPRINT_PLANNER_USER_PROMPT, SprintPlannerContext } from '@/lib/ai/prompts/sprint-planner'
+import { fetchCampaignStructure } from '@/lib/campaign/structure'
 import { randomUUID } from 'crypto'
 
 export const maxDuration = 120 // 2 minutes for sprint generation
@@ -94,32 +95,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'campaignId is required' }, { status: 400 })
     }
 
-    // Load campaign structure from database (same as execution planner)
+    // Load campaign structure from database using the proper fetch function
+    // This ensures narratives include primary_goal_ids and primary_topic_ids from junction tables
+    const structure = await fetchCampaignStructure(campaignId)
+
+    if (!structure) {
+      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+    }
+
+    // Fetch campaign metadata and channels
     const supabase = await createClient()
     const db = supabase.schema('campaign_os')
 
-    // Fetch campaign with all related data
     const { data: campaign, error: campaignError } = await db
       .from('campaigns')
-      .select('*, goals(*), segments(*), topics(*), narratives(*)')
+      .select('id, name, campaign_type, primary_goal_type, start_date, end_date')
       .eq('id', campaignId)
       .single()
 
     if (campaignError || !campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
     }
-
-    // Fetch segment_topic_matrix
-    const segmentIds = (campaign.segments || []).map((s: any) => s.id)
-    const topicIds = (campaign.topics || []).map((t: any) => t.id)
-
-    const { data: matrixEntries } = segmentIds.length > 0 && topicIds.length > 0
-      ? await db
-          .from('segment_topic_matrix')
-          .select('*')
-          .in('segment_id', segmentIds)
-          .in('topic_id', topicIds)
-      : { data: [] }
 
     // Fetch campaign channels
     const { data: campaignChannels } = await db
@@ -131,24 +127,6 @@ export async function POST(req: NextRequest) {
       .map((cc: any) => cc.channels?.name)
       .filter((name: string | undefined): name is string => !!name)
 
-    // Transform matrix entries to match schema format
-    const segmentTopicMatrix = (matrixEntries || []).map((entry: any) => ({
-      segment_id: entry.segment_id,
-      topic_id: entry.topic_id,
-      importance: entry.importance,
-      role: entry.role,
-      summary: entry.summary,
-    }))
-
-    // Check validation status (soft gate - doesn't block)
-    const structure = {
-      goals: campaign.goals || [],
-      segments: campaign.segments || [],
-      topics: campaign.topics || [],
-      narratives: campaign.narratives || [],
-      segment_topic_matrix: segmentTopicMatrix,
-    }
-
     const readiness = isReadyForExecution(structure as any)
     if (!readiness.ready) {
       return NextResponse.json({
@@ -159,8 +137,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate campaign duration and sprint count
-    const startDate = new Date(campaign.start_date)
-    const endDate = new Date(campaign.end_date)
+    const startDate = new Date(campaign.start_date!)
+    const endDate = new Date(campaign.end_date!)
     const campaignDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
     const sprintCount = calculateSprintCount(campaignDurationDays)
     const sprintDateRanges = calculateSprintDateRanges(campaign.start_date, campaign.end_date, sprintCount)
@@ -304,11 +282,28 @@ export async function POST(req: NextRequest) {
               ? validFocusTopics
               : [Array.from(validTopicIds)[0]]
 
+            // Helper to normalize array fields that AI might return as strings
+            const normalizeArrayField = (field: any): string[] => {
+              if (!field) return []
+              if (Array.isArray(field)) {
+                return field.filter(item => typeof item === 'string').map(item => String(item))
+              }
+              if (typeof field === 'string') {
+                return field.trim() ? [field.trim()] : []
+              }
+              return []
+            }
+
             return {
               ...sprint,
               id: sprintId,
               focus_segments: finalFocusSegments,
               focus_topics: finalFocusTopics,
+              // Normalize array fields that might come as strings from AI
+              risks_and_watchouts: normalizeArrayField(sprint.risks_and_watchouts),
+              success_criteria: normalizeArrayField(sprint.success_criteria),
+              narrative_emphasis: normalizeArrayField(sprint.narrative_emphasis),
+              focus_goals: normalizeArrayField(sprint.focus_goals),
             }
           })
 
@@ -320,7 +315,23 @@ export async function POST(req: NextRequest) {
               validatedSprints.push(validatedSprint)
             } catch (validationError) {
               console.error(`Sprint ${i + 1} validation error:`, validationError)
-              throw new Error(`Sprint ${i + 1} validation failed: ${validationError instanceof Error ? validationError.message : 'Unknown error'}`)
+              // Format Zod validation errors more clearly
+              let errorMsg = 'Unknown validation error'
+              if (validationError instanceof Error) {
+                errorMsg = validationError.message
+              } else if (typeof validationError === 'object' && validationError !== null) {
+                // Handle Zod errors
+                const zodError = validationError as any
+                if (zodError.errors && Array.isArray(zodError.errors)) {
+                  const issues = zodError.errors.map((err: any) => 
+                    `${err.path?.join('.') || 'root'}: ${err.message || 'invalid'}`
+                  ).join('; ')
+                  errorMsg = `Validation failed: ${issues}`
+                } else {
+                  errorMsg = JSON.stringify(validationError)
+                }
+              }
+              throw new Error(`Sprint ${i + 1} validation failed: ${errorMsg}`)
             }
           }
 
@@ -336,8 +347,10 @@ export async function POST(req: NextRequest) {
           controller.close()
         } catch (error) {
           console.error('Sprint planner error:', error)
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
           sendSSE(controller, 'error', {
-            message: error instanceof Error ? error.message : 'Unknown error',
+            error: errorMessage,
+            message: errorMessage, // Also include message for backward compatibility
           })
           controller.close()
         }

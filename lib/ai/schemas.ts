@@ -421,7 +421,7 @@ export const ContentSlotSchema = z.object({
 // Execution plan schema (combines sprints and content calendar)
 export const ExecutionPlanSchema = z.object({
   sprints: z.array(SprintPlanSchema).min(1, 'At least one sprint required').max(6, 'Maximum 6 sprints allowed'),
-  content_calendar: z.array(ContentSlotSchema).min(1, 'At least one content slot required'),
+  content_calendar: z.array(ContentSlotSchema).min(0, 'Content calendar can be empty').default([]), // Optional: can be empty for sprint-only plans
 })
 
 // TypeScript type exports

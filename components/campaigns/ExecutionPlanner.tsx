@@ -85,7 +85,25 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
       })
 
       if (!response.ok) {
-        throw new Error('Hiba történt a sprint generálás során')
+        // Try to read error message from response body
+        let errorMessage = 'Hiba történt a sprint generálás során'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || errorMessage
+          if (errorData.issues && Array.isArray(errorData.issues)) {
+            const issuesText = errorData.issues
+              .map((issue: { type?: string; element?: string; issue?: string } | string) => {
+                if (typeof issue === 'string') return `- ${issue}`
+                return `- [${issue.type || 'unknown'}] ${issue.element || 'unknown'}: ${issue.issue || 'No details'}`
+              })
+              .join('\n')
+            errorMessage += `\n\nProblémák:\n${issuesText}`
+          }
+        } catch (parseError) {
+          // If parsing fails, use status text
+          errorMessage = `HTTP ${response.status}: ${response.statusText || errorMessage}`
+        }
+        throw new Error(errorMessage)
       }
 
       // Set up SSE connection
@@ -117,13 +135,15 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
                 toast.warning(data.message || 'Figyelmeztetés')
               } else if (data.type === 'done') {
                 // Save generated sprints to database
-                await saveSprints(data.data.sprints)
-                setSprints(data.data.sprints)
+                // The SSE sends { type: 'done', sprints: [...] } format
+                const sprints = data.sprints || data.data?.sprints || []
+                await saveSprints(sprints)
+                setSprints(sprints)
                 setProgress('')
                 setIsGeneratingSprints(false)
                 toast.success('Sprint struktúra sikeresen generálva')
               } else if (data.type === 'error') {
-                throw new Error(data.error || 'Ismeretlen hiba')
+                throw new Error(data.error || data.message || 'Ismeretlen hiba')
               }
             } catch (parseError) {
               console.error('Error parsing SSE data:', parseError)
@@ -152,7 +172,25 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
       })
 
       if (!response.ok) {
-        throw new Error('Hiba történt a tartalomnaptár generálás során')
+        // Try to read error message from response body
+        let errorMessage = 'Hiba történt a tartalomnaptár generálás során'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || errorMessage
+          if (errorData.issues && Array.isArray(errorData.issues)) {
+            const issuesText = errorData.issues
+              .map((issue: { type?: string; element?: string; issue?: string } | string) => {
+                if (typeof issue === 'string') return `- ${issue}`
+                return `- [${issue.type || 'unknown'}] ${issue.element || 'unknown'}: ${issue.issue || 'No details'}`
+              })
+              .join('\n')
+            errorMessage += `\n\nProblémák:\n${issuesText}`
+          }
+        } catch (parseError) {
+          // If parsing fails, use status text
+          errorMessage = `HTTP ${response.status}: ${response.statusText || errorMessage}`
+        }
+        throw new Error(errorMessage)
       }
 
       // Set up SSE connection
@@ -184,14 +222,16 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
                 toast.warning(data.message || 'Figyelmeztetés')
               } else if (data.type === 'done') {
                 // Save generated content slots to database
-                await saveContentSlots(sprintId, data.data.content_slots)
+                // The SSE sends { type: 'done', content_slots: [...] } format
+                const contentSlots = data.content_slots || data.data?.content_slots || []
+                await saveContentSlots(sprintId, contentSlots)
                 // Reload all content slots from database
                 await loadContentSlots()
                 setProgress('')
                 setGeneratingContentFor(null)
                 toast.success('Tartalomnaptár sikeresen generálva')
               } else if (data.type === 'error') {
-                throw new Error(data.error || 'Ismeretlen hiba')
+                throw new Error(data.error || data.message || 'Ismeretlen hiba')
               }
             } catch (parseError) {
               console.error('Error parsing SSE data:', parseError)
@@ -223,7 +263,16 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error || 'Hiba történt a sprint mentés során')
+      let errorMessage = errorData.error || 'Hiba történt a sprint mentés során'
+      if (errorData.details && Array.isArray(errorData.details)) {
+        const detailsText = errorData.details
+          .map((detail: { path?: string; message?: string }) => 
+            detail.path ? `${detail.path}: ${detail.message || 'invalid'}` : detail.message || 'invalid'
+          )
+          .join('\n')
+        errorMessage += `\n\nRészletek:\n${detailsText}`
+      }
+      throw new Error(errorMessage)
     }
   }
 
@@ -331,7 +380,7 @@ export function ExecutionPlanner({ campaignId }: ExecutionPlannerProps) {
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-900 mb-2">{error}</p>
+              <p className="text-sm font-medium text-red-900 mb-2 whitespace-pre-line">{error}</p>
               <Button
                 variant="outline"
                 size="sm"
