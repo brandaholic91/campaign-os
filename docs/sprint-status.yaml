@@ -213,7 +213,10 @@ development_status:
 
   # Story 6.3: Content Draft API CRUD
   # Note: Story drafted 2025-01-XX - CRUD API endpoints for content drafts
-  6-3-content-draft-api-crud: drafted
+  # Note: Status updated to ready-for-dev (2025-01-02) - Story context generated
+  # Note: Status updated to in-progress (2025-11-25) - Dev agent starting CRUD API implementation
+  # Note: Status updated to review (2025-11-25) - All tasks completed, CRUD endpoints implemented with validation
+  6-3-content-draft-api-crud: review
 
   # Story 6.4: Content Draft AI Generator Endpoint
   # Note: Story drafted 2025-01-XX - AI endpoint for generating content drafts from slots
