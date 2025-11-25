@@ -1,6 +1,6 @@
 # Story 5.7: Sprint-Only AI Generation Endpoint
 
-Status: review
+Status: done
 
 ## Story
 

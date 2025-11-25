@@ -1,6 +1,6 @@
 # Story 5.3: Execution Plan Preview UI
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -95,7 +95,7 @@ so that **I can review sprints and content calendar before committing**.
   - [x] Display loading state (button disabled, spinner)
   - [x] Parse and display progress events in real-time
   - [x] Display final execution plan when complete
-  - [ ] Test streaming with various campaign structures
+  - [x] Test streaming with various campaign structures
 
 - [x] Task 3: Create SprintList component (AC: 3)
   - [x] Create `components/campaigns/SprintList.tsx`
@@ -105,7 +105,7 @@ so that **I can review sprints and content calendar before committing**.
   - [x] Order sprints by `order` field
   - [x] Implement expandable sprint details
   - [x] Create timeline view (vertical list)
-  - [ ] Test with various sprint configurations
+  - [x] Test with various sprint configurations
 
 - [x] Task 4: Create ContentCalendar component (AC: 4)
   - [x] Create `components/campaigns/ContentCalendar.tsx`
@@ -115,7 +115,7 @@ so that **I can review sprints and content calendar before committing**.
   - [x] Display slot details: date, channel, segment, topic, objective, content type, angle hint
   - [x] Implement color-coding by objective
   - [x] Make calendar scrollable and responsive
-  - [ ] Test with various content slot configurations
+  - [x] Test with various content slot configurations
 
 - [x] Task 5: Implement preview actions (AC: 5)
   - [x] Add "Mentés" button (primary)
@@ -124,7 +124,7 @@ so that **I can review sprints and content calendar before committing**.
   - [x] Implement save handler (placeholder for Story 5.4 API)
   - [x] Implement regenerate handler with confirmation dialog
   - [x] Implement cancel handler (closes preview)
-  - [ ] Test all action buttons
+  - [x] Test all action buttons
 
 - [x] Task 6: Implement error handling (AC: 6)
   - [x] Handle network errors
@@ -132,15 +132,15 @@ so that **I can review sprints and content calendar before committing**.
   - [x] Handle validation errors
   - [x] Display user-friendly error messages (Hungarian)
   - [x] Add "Újrapróbálás" button on error
-  - [ ] Test error scenarios
+  - [x] Test error scenarios
 
-- [ ] Task 7: Testing (AC: 1-6)
-  - [ ] Write unit tests for SprintList component
-  - [ ] Write unit tests for ContentCalendar component
-  - [ ] Write integration tests for preview UI
-  - [ ] Test responsive design (mobile, tablet, desktop)
-  - [ ] Test error handling scenarios
-  - [ ] Test streaming progress updates
+- [x] Task 7: Testing (AC: 1-6)
+  - [x] Write unit tests for SprintList component
+  - [x] Write unit tests for ContentCalendar component
+  - [x] Write integration tests for preview UI
+  - [x] Test responsive design (mobile, tablet, desktop)
+  - [x] Test error handling scenarios
+  - [x] Test streaming progress updates
 
 ## Dev Notes
 

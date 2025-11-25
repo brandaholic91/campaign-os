@@ -139,49 +139,49 @@ development_status:
 
   # Story 5.1: Database Schema for Execution Planning
   # Note: Story drafted 2025-11-27 - Database tables for sprints and content slots with proper relationships
-  5-1-database-schema-execution-planning: in-progress
+  5-1-database-schema-execution-planning: done
 
   # Story 5.2: Execution Planner AI Endpoint
   # Note: Story drafted 2025-11-27 - AI endpoint that generates sprint plans and content calendars from validated campaign structures
   # Note: Status updated to in-progress (2025-11-28) - Implementation completed, testing pending
-  5-2-execution-planner-ai-endpoint: in-progress
+  5-2-execution-planner-ai-endpoint: done
 
   # Story 5.3: Execution Plan Preview UI
   # Note: Story drafted 2025-11-27 - Preview UI for generated execution plan before saving
-  5-3-execution-plan-preview-ui: in-progress
+  5-3-execution-plan-preview-ui: done
 
   # Story 5.4: Save Execution Plan API & Workflow
   # Note: Story drafted 2025-11-27 - Save execution plan to database with transaction support
   # Note: Status updated to review (2025-11-28) - Implementation completed by Dev Agent
-  5-4-save-execution-plan-api: in-progress
+  5-4-save-execution-plan-api: done
 
   # Story 5.5: Execution Plan Edit & Management UI
   # Note: Story drafted 2025-11-27 - Edit sprints and content slots after saving
   # Note: Status updated to in-progress (2025-11-28) - Dev agent starting implementation
-  5-5-execution-plan-edit-management-ui: in-progress
+  5-5-execution-plan-edit-management-ui: done
 
   # Story 5.6: Enhanced Sprint Schema & Database Migration
   # Note: Epic 5 Phase 2 - Two-phase refactor: Enhanced sprint schema with strategic metadata
   # Note: Story drafted 2025-01-XX - Enhanced sprint schema with strategic metadata fields
   # Note: Status updated to in-progress (2025-11-24) - Dev agent starting migration and schema enhancement
   # Note: Status updated to review (2025-11-24) - Implementation completed, all ACs satisfied, all tests passing
-  5-6-enhanced-sprint-schema-database-migration: review
+  5-6-enhanced-sprint-schema-database-migration: done
 
   # Story 5.7: Sprint-Only AI Generation Endpoint
   # Note: Epic 5 Phase 2 - Two-phase refactor: AI endpoint that generates only sprint plans
   # Note: Story drafted 2025-01-XX - AI endpoint for sprint-only generation
   # Note: Status updated to review (2025-11-24) - Implementation completed, all ACs satisfied, all tests passing
-  5-7-sprint-only-ai-generation-endpoint: review
+  5-7-sprint-only-ai-generation-endpoint: done
 
   # Story 5.8: Sprint-Specific Content Slot Generation
   # Note: Epic 5 Phase 2 - Two-phase refactor: Generate content slots per sprint when ready
   # Note: Story drafted 2025-01-XX - Sprint-specific content slot generation endpoint
   # Note: Status updated to review (2025-11-24) - Implementation completed, all ACs satisfied, all tests passing
-  5-8-sprint-specific-content-slot-generation: review
+  5-8-sprint-specific-content-slot-generation: done
 
   # Story 5.9: UI Refactor - Two-Phase Model
   # Note: Epic 5 Phase 2 - Two-phase refactor: UI that separates sprint generation from content slot generation
   # Note: Story drafted 2025-01-XX - UI refactor for two-phase model
-  5-9-ui-refactor-two-phase-model: in-progress
+  5-9-ui-refactor-two-phase-model: done
 
   epic-5-retrospective: optional

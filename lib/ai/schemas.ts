@@ -370,7 +370,7 @@ export const SprintPlanSchema = z.object({
   narrative_emphasis: z.array(z.string().uuid()).min(1).max(2).optional(),
   key_messages_summary: z.string().min(20, 'Key messages summary must be at least 20 characters').optional(),
   success_criteria: z.array(z.string()).min(1).optional(),
-  risks_and_watchouts: z.array(z.string()).min(2).max(4).optional(),
+  risks_and_watchouts: z.array(z.string()).min(1).max(4).optional(),
 }).refine((data) => {
   // Validate that end_date is after start_date
   const start = new Date(data.start_date)

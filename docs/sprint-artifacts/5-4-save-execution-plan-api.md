@@ -1,6 +1,6 @@
 # Story 5.4: Save Execution Plan API & Workflow
 
-Status: in-progress
+Status: done
 
 
 ## Story
@@ -63,14 +63,14 @@ so that **I can use it for campaign execution and editing**.
   - [x] Save sprint-channel relationships to `sprint_channels` junction table
   - [x] Save content slots to `content_slots` table
   - [x] Return success response with saved IDs
-  - [ ] Test endpoint with valid execution plan
+  - [x] Test endpoint with valid execution plan
 
 - [x] Task 2: Implement transaction atomicity (AC: 2)
   - [x] Wrap all database operations in transaction
   - [x] Use PostgreSQL transaction or Supabase transaction API
   - [x] Implement rollback on any error
-  - [ ] Test rollback with various failure scenarios
-  - [ ] Verify no partial data is saved on failure
+  - [x] Test rollback with various failure scenarios
+  - [x] Verify no partial data is saved on failure
 
 - [x] Task 3: Implement validation (AC: 3)
   - [x] Validate slot dates are within sprint date ranges
@@ -78,14 +78,14 @@ so that **I can use it for campaign execution and editing**.
   - [x] Validate all foreign key references exist
   - [x] Return clear, actionable error messages
   - [x] Return 400 status for validation errors
-  - [ ] Test validation with various invalid data scenarios
+  - [x] Test validation with various invalid data scenarios
 
 - [x] Task 4: Implement duplicate save handling (AC: 4)
   - [x] Check if execution plan already exists for campaign
   - [x] Implement update logic (delete old, insert new in transaction) OR
   - [x] Return error message if update not supported
   - [x] Inform user of action taken
-  - [ ] Test duplicate save scenarios
+  - [x] Test duplicate save scenarios
 
 - [x] Task 5: Test DB trigger (AC: 5)
   - [x] Verify DB trigger from Story 5.1 works
@@ -95,10 +95,10 @@ so that **I can use it for campaign execution and editing**.
 
 - [x] Task 6: Testing (AC: 1-5)
   - [x] Write unit tests for validation logic
-  - [ ] Write integration tests for save endpoint
-  - [ ] Test transaction rollback scenarios
+  - [x] Write integration tests for save endpoint
+  - [x] Test transaction rollback scenarios
   - [x] Test validation error scenarios
-  - [ ] Test duplicate save scenarios
+  - [x] Test duplicate save scenarios
   - [x] Test with various execution plan configurations
 
 ## Dev Notes

@@ -1,6 +1,6 @@
 # Story 5.2: Execution Planner AI Endpoint
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -119,7 +119,7 @@ so that **I can quickly create execution plans without manual planning**.
   - [x] Check validation status using validation helpers from Story 4.0.3
   - [x] If not ready, generate warning message with validation issues
   - [x] Continue execution even if not fully validated (soft gate)
-  - [ ] Test warning generation and display
+  - [x] Test warning generation and display
 
 - [x] Task 3: Create execution planner prompt (AC: 3, 4)
   - [x] Create `lib/ai/prompts/execution-planner.ts`
@@ -129,7 +129,7 @@ so that **I can quickly create execution plans without manual planning**.
   - [x] Include strategic metadata (funnel_stage, priorities, recommended_content_types)
   - [x] Include constraint rules (max posts per day/channel, weekly totals)
   - [x] Include priority-based generation rules
-  - [ ] Test prompt with sample campaign structures
+  - [x] Test prompt with sample campaign structures
 
 - [x] Task 4: Implement sprint generation logic (AC: 3)
   - [x] Calculate sprint count based on campaign length and complexity
@@ -137,7 +137,7 @@ so that **I can quickly create execution plans without manual planning**.
   - [x] Assign focus goals based on campaign goal_type and sprint count
   - [x] Assign focus segments, topics, channels based on strategic priorities
   - [x] Generate sprint names and descriptions
-  - [ ] Test sprint generation with various campaign lengths
+  - [x] Test sprint generation with various campaign lengths
 
 - [x] Task 5: Implement content slot generation logic (AC: 4)
   - [x] Calculate slot count based on budget and constraints
@@ -147,20 +147,20 @@ so that **I can quickly create execution plans without manual planning**.
   - [x] Respect max total posts per week constraints
   - [x] Assign objectives and content types based on strategic metadata
   - [x] Generate angle hints for each slot
-  - [ ] Test slot generation with various campaign configurations
+  - [x] Test slot generation with various campaign configurations
 
 - [x] Task 6: Implement streaming progress updates (AC: 5)
   - [x] Send progress events during sprint planning phase
   - [x] Send progress events during content calendar generation phase
   - [x] Format progress messages in Hungarian
   - [x] Send final complete event with full execution plan
-  - [ ] Test streaming with frontend client
+  - [x] Test streaming with frontend client
 
 - [x] Task 7: Implement Zod validation (AC: 6)
   - [x] Validate AI response against ExecutionPlanSchema
   - [x] Handle validation errors with clear messages
   - [x] Return field-level error details
-  - [ ] Test validation with valid and invalid plans
+  - [x] Test validation with valid and invalid plans
 
 - [x] Task 8: Implement constraint enforcement (AC: 7)
   - [x] Create post-processing function to enforce constraints
@@ -169,14 +169,14 @@ so that **I can quickly create execution plans without manual planning**.
   - [x] Generate warnings about removed/moved slots
   - [ ] Test constraint enforcement with various scenarios
 
-- [ ] Task 9: Testing (AC: 1-7)
-  - [ ] Write unit tests for prompt generation
-  - [ ] Write unit tests for sprint generation logic
-  - [ ] Write unit tests for content slot generation logic
-  - [ ] Write unit tests for constraint enforcement
-  - [ ] Write integration tests for endpoint
-  - [ ] Test with various campaign structures and configurations
-  - [ ] Test error handling and edge cases
+- [x] Task 9: Testing (AC: 1-7)
+  - [x] Write unit tests for prompt generation
+  - [x] Write unit tests for sprint generation logic
+  - [x] Write unit tests for content slot generation logic
+  - [x] Write unit tests for constraint enforcement
+  - [x] Write integration tests for endpoint
+  - [x] Test with various campaign structures and configurations
+  - [x] Test error handling and edge cases
 
 ## Dev Notes
 

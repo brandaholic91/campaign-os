@@ -69,17 +69,124 @@ export function SprintEditForm({
   const isUnsavedSprint = sprint.created_at === null
   const sprintWithExtras = sprint as Sprint & { _focus_segments?: string[], _focus_topics?: string[] }
 
-  const [formData, setFormData] = useState({
-    name: sprint.name || '',
-    start_date: sprint.start_date ? sprint.start_date.split('T')[0] : '',
-    end_date: sprint.end_date ? sprint.end_date.split('T')[0] : '',
-    focus_goal: (sprint.focus_goal as SprintFocusGoalType) || 'awareness',
-    focus_description: (sprint.focus_description as string) || '',
-    focus_segments: (isUnsavedSprint && sprintWithExtras._focus_segments) ? sprintWithExtras._focus_segments : [] as string[],
-    focus_topics: (isUnsavedSprint && sprintWithExtras._focus_topics) ? sprintWithExtras._focus_topics : [] as string[],
-    focus_channels: (sprint.focus_channels as string[]) || [],
-    success_indicators: (sprint.success_indicators as any[]) || [],
+  // Helper to parse JSON fields from database
+  const parseJsonField = (field: any, defaultValue: any[] = []): any[] => {
+    // Handle null, undefined
+    if (field === null || field === undefined) {
+      return defaultValue
+    }
+    
+    // If it's already an array, process and return it
+    if (Array.isArray(field)) {
+      // Filter out null/undefined items, but keep empty strings
+      return field
+        .filter(item => item !== null && item !== undefined)
+        .map(item => {
+          if (typeof item === 'string') return item
+          if (typeof item === 'number' || typeof item === 'boolean') return String(item)
+          // For objects, try to stringify them or get a meaningful string
+          if (typeof item === 'object') {
+            // If object has a 'value' or 'text' property, use that
+            if ('value' in item && typeof item.value === 'string') return item.value
+            if ('text' in item && typeof item.text === 'string') return item.text
+            // Otherwise stringify
+            try {
+              return JSON.stringify(item)
+            } catch {
+              return String(item)
+            }
+          }
+          return String(item)
+        })
+    }
+    
+    // If it's a string, try to parse it as JSON first
+    if (typeof field === 'string') {
+      if (!field.trim()) return defaultValue
+      try {
+        const parsed = JSON.parse(field)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .filter(item => item !== null && item !== undefined)
+            .map(item => typeof item === 'string' ? item : String(item))
+        }
+        return defaultValue
+      } catch {
+        // If parsing fails, treat as single string item
+        return [field]
+      }
+    }
+    
+    // For other types (number, boolean), convert to string array
+    if (typeof field === 'number' || typeof field === 'boolean') {
+      return [String(field)]
+    }
+    
+    return defaultValue
+  }
+
+  const [formData, setFormData] = useState(() => {
+    // Initial state - parse all fields from sprint prop
+    const initialData = {
+      name: sprint.name || '',
+      start_date: sprint.start_date ? sprint.start_date.split('T')[0] : '',
+      end_date: sprint.end_date ? sprint.end_date.split('T')[0] : '',
+      focus_goal: (sprint.focus_goal as SprintFocusGoalType) || 'awareness',
+      focus_description: (sprint.focus_description as string) || '',
+      focus_segments: (isUnsavedSprint && sprintWithExtras._focus_segments) ? sprintWithExtras._focus_segments : [] as string[],
+      focus_topics: (isUnsavedSprint && sprintWithExtras._focus_topics) ? sprintWithExtras._focus_topics : [] as string[],
+      focus_channels: (sprint.focus_channels as string[]) || [],
+      success_indicators: parseJsonField(sprint.success_indicators, []),
+      success_criteria: parseJsonField(sprint.success_criteria, []),
+      risks_and_watchouts: parseJsonField(sprint.risks_and_watchouts, []),
+      key_messages_summary: (sprint.key_messages_summary as string) || '',
+      order: sprint.order || 1,
+      status: sprint.status || 'planned',
+    }
+    
+    console.log('🔵 SprintEditForm initial state:', {
+      sprintId: sprint.id,
+      isUnsavedSprint,
+      rawData: {
+        success_indicators: sprint.success_indicators,
+        success_criteria: sprint.success_criteria,
+        risks_and_watchouts: sprint.risks_and_watchouts,
+        key_messages_summary: sprint.key_messages_summary,
+      },
+      parsedData: {
+        success_indicators: initialData.success_indicators,
+        success_criteria: initialData.success_criteria,
+        risks_and_watchouts: initialData.risks_and_watchouts,
+        key_messages_summary: initialData.key_messages_summary,
+      },
+    })
+    
+    return initialData
   })
+
+  // Update formData when sprint prop changes (especially for unsaved sprints from AI generation)
+  useEffect(() => {
+    // For unsaved sprints (from AI generation), update all fields from sprint prop
+    if (isUnsavedSprint) {
+      const newFormData = {
+        name: sprint.name || '',
+        start_date: sprint.start_date ? sprint.start_date.split('T')[0] : '',
+        end_date: sprint.end_date ? sprint.end_date.split('T')[0] : '',
+        focus_goal: (sprint.focus_goal as SprintFocusGoalType) || 'awareness',
+        focus_description: (sprint.focus_description as string) || '',
+        focus_segments: sprintWithExtras._focus_segments || [],
+        focus_topics: sprintWithExtras._focus_topics || [],
+        focus_channels: (sprint.focus_channels as string[]) || [],
+        success_indicators: parseJsonField(sprint.success_indicators, []),
+        success_criteria: parseJsonField(sprint.success_criteria, []),
+        risks_and_watchouts: parseJsonField(sprint.risks_and_watchouts, []),
+        key_messages_summary: (sprint.key_messages_summary as string) || '',
+        order: sprint.order || 1,
+        status: sprint.status || 'planned',
+      }
+      setFormData(newFormData)
+    }
+  }, [sprint.id, sprint.success_indicators, sprint.success_criteria, sprint.risks_and_watchouts, sprint.key_messages_summary, isUnsavedSprint, sprintWithExtras._focus_segments, sprintWithExtras._focus_topics])
 
   // Load segments, topics, and existing sprint relationships
   useEffect(() => {
@@ -121,19 +228,24 @@ export function SprintEditForm({
           .select('topic_id')
           .eq('sprint_id', sprint.id)
 
-        if (sprintSegments) {
-          setFormData(prev => ({
-            ...prev,
-            focus_segments: sprintSegments.map(s => s.segment_id),
-          }))
-        }
+        const { data: sprintChannels } = await db
+          .from('sprint_channels')
+          .select('channel_key')
+          .eq('sprint_id', sprint.id)
 
-        if (sprintTopics) {
-          setFormData(prev => ({
-            ...prev,
-            focus_topics: sprintTopics.map(t => t.topic_id),
-          }))
-        }
+        // Update formData with junction table relationships and all fields from database
+        setFormData(prev => ({
+          ...prev,
+          focus_segments: (sprintSegments || []).map(s => s.segment_id),
+          focus_topics: (sprintTopics || []).map(t => t.topic_id),
+          focus_channels: (sprintChannels || []).map(c => c.channel_key),
+          // Also update JSON fields from database if they exist
+          success_indicators: parseJsonField(sprint.success_indicators, prev.success_indicators),
+          success_criteria: parseJsonField(sprint.success_criteria, prev.success_criteria),
+          risks_and_watchouts: parseJsonField(sprint.risks_and_watchouts, prev.risks_and_watchouts),
+          key_messages_summary: (sprint.key_messages_summary as string) || prev.key_messages_summary,
+          order: sprint.order || prev.order,
+        }))
       }
 
       // Load channels (from campaign_channels or use default list)
@@ -220,6 +332,11 @@ export function SprintEditForm({
         focus_topics: formData.focus_topics,
         focus_channels: formData.focus_channels,
         success_indicators: formData.success_indicators,
+        success_criteria: formData.success_criteria,
+        risks_and_watchouts: formData.risks_and_watchouts,
+        key_messages_summary: formData.key_messages_summary || null,
+        order: formData.order,
+        status: formData.status,
       }
 
       // For POST, include campaign_id and use the existing sprint ID
@@ -463,7 +580,7 @@ export function SprintEditForm({
             {formData.success_indicators.map((indicator, index) => (
               <div key={index} className="flex gap-2">
                 <Input
-                  value={indicator}
+                  value={typeof indicator === 'string' ? indicator : ''}
                   onChange={(e) =>
                     handleSuccessIndicatorChange(index, e.target.value)
                   }
@@ -487,6 +604,141 @@ export function SprintEditForm({
             >
               + Sikermutató hozzáadása
             </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Sikerkritériumok</Label>
+            {formData.success_criteria.map((criterion, index) => (
+              <div key={index} className="flex gap-2">
+                <Input
+                  value={typeof criterion === 'string' ? criterion : ''}
+                  onChange={(e) => {
+                    const newCriteria = [...formData.success_criteria]
+                    newCriteria[index] = e.target.value
+                    setFormData(prev => ({ ...prev, success_criteria: newCriteria }))
+                  }}
+                  placeholder="Sikerkritérium..."
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      success_criteria: prev.success_criteria.filter((_, i) => i !== index),
+                    }))
+                  }}
+                >
+                  Törlés
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  success_criteria: [...prev.success_criteria, ''],
+                }))
+              }}
+            >
+              + Sikerkritérium hozzáadása
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Kockázatok és figyelendő pontok</Label>
+            {formData.risks_and_watchouts.map((risk, index) => (
+              <div key={index} className="flex gap-2">
+                <Input
+                  value={typeof risk === 'string' ? risk : ''}
+                  onChange={(e) => {
+                    const newRisks = [...formData.risks_and_watchouts]
+                    newRisks[index] = e.target.value
+                    setFormData(prev => ({ ...prev, risks_and_watchouts: newRisks }))
+                  }}
+                  placeholder="Kockázat vagy figyelendő pont..."
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      risks_and_watchouts: prev.risks_and_watchouts.filter((_, i) => i !== index),
+                    }))
+                  }}
+                >
+                  Törlés
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  risks_and_watchouts: [...prev.risks_and_watchouts, ''],
+                }))
+              }}
+            >
+              + Kockázat hozzáadása
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="key_messages_summary">Kulcs üzenetek összefoglalója</Label>
+            <Textarea
+              id="key_messages_summary"
+              value={formData.key_messages_summary}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  key_messages_summary: e.target.value,
+                })
+              }
+              placeholder="Rövid összefoglaló a sprint kulcs üzeneteiről..."
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="order">Sprint sorrendje</Label>
+              <Input
+                id="order"
+                type="number"
+                min="1"
+                value={formData.order}
+                onChange={(e) =>
+                  setFormData({ ...formData, order: parseInt(e.target.value) || 1 })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="status">Státusz</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value: any) =>
+                  setFormData({ ...formData, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="planned">Planned</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter>

@@ -467,34 +467,57 @@ async function loadExecutionPlan(
     channelMap.get(sc.sprint_id)!.push(sc.channel_key)
   })
   
-  // Transform to ExecutionPlan format
-  const executionPlan: ExecutionPlan = {
-    sprints: sprints.map(sprint => {
-      // Normalize success_indicators to array
-      let successIndicators: any[] = []
-      if (sprint.success_indicators) {
-        if (Array.isArray(sprint.success_indicators)) {
-          successIndicators = sprint.success_indicators
-        } else {
-          // If it's not an array, wrap it
-          successIndicators = [sprint.success_indicators]
-        }
-      }
-      
-      return {
-        id: sprint.id,
-        name: sprint.name,
-        order: sprint.order || 1,
-        start_date: sprint.start_date,
-        end_date: sprint.end_date,
-        focus_goal: sprint.focus_goal as any,
-        focus_description: sprint.focus_description || '',
-        focus_segments: segmentMap.get(sprint.id) || [],
-        focus_topics: topicMap.get(sprint.id) || [],
-        focus_channels: channelMap.get(sprint.id) || (sprint.focus_channels as string[] || []),
-        success_indicators: successIndicators,
-      }
-    }),
+      // Transform to ExecutionPlan format
+      const executionPlan: ExecutionPlan = {
+        sprints: sprints.map(sprint => {
+          // Normalize success_indicators to array
+          let successIndicators: any[] = []
+          if (sprint.success_indicators) {
+            if (Array.isArray(sprint.success_indicators)) {
+              successIndicators = sprint.success_indicators
+            } else {
+              // If it's not an array, wrap it
+              successIndicators = [sprint.success_indicators]
+            }
+          }
+          
+          // Normalize success_criteria to array
+          let successCriteria: any[] = []
+          if (sprint.success_criteria) {
+            if (Array.isArray(sprint.success_criteria)) {
+              successCriteria = sprint.success_criteria
+            } else {
+              successCriteria = [sprint.success_criteria]
+            }
+          }
+          
+          // Normalize risks_and_watchouts to array
+          let risksAndWatchouts: any[] = []
+          if (sprint.risks_and_watchouts) {
+            if (Array.isArray(sprint.risks_and_watchouts)) {
+              risksAndWatchouts = sprint.risks_and_watchouts
+            } else {
+              risksAndWatchouts = [sprint.risks_and_watchouts]
+            }
+          }
+          
+          return {
+            id: sprint.id,
+            name: sprint.name,
+            order: sprint.order || 1,
+            start_date: sprint.start_date,
+            end_date: sprint.end_date,
+            focus_goal: sprint.focus_goal as any,
+            focus_description: sprint.focus_description || '',
+            focus_segments: segmentMap.get(sprint.id) || [],
+            focus_topics: topicMap.get(sprint.id) || [],
+            focus_channels: channelMap.get(sprint.id) || (sprint.focus_channels as string[] || []),
+            success_indicators: successIndicators,
+            success_criteria: successCriteria,
+            risks_and_watchouts: risksAndWatchouts,
+            key_messages_summary: sprint.key_messages_summary || undefined,
+          }
+        }),
     content_calendar: (contentSlots || []).map(slot => ({
       id: slot.id,
       sprint_id: slot.sprint_id,

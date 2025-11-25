@@ -1,6 +1,6 @@
 # Story 5.8: Sprint-Specific Content Slot Generation
 
-Status: review
+Status: done
 
 ## Story
 

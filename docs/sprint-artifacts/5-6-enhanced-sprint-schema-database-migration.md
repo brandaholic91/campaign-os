@@ -1,6 +1,6 @@
 # Story 5.6: Enhanced Sprint Schema & Database Migration
 
-Status: review
+Status: done
 
 ## Story
 

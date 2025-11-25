@@ -1,6 +1,6 @@
 # Story 5.5: Execution Plan Edit & Management UI
 
-Status: in-progress
+Status: done
 
 
 ## Story
@@ -91,7 +91,7 @@ so that **I can fine-tune the execution plan to match reality**.
   - [x] Implement save handler (PUT `/api/sprints/[id]`)
   - [x] Validate related content slots after sprint date changes
   - [x] Show warning if slots need to be moved/deleted
-  - [ ] Test sprint editing with various scenarios
+  - [x] Test sprint editing with various scenarios
 
 - [x] Task 2: Create content slot edit form (AC: 2)
   - [x] Create `components/campaigns/ContentSlotEditForm.tsx`
@@ -100,14 +100,14 @@ so that **I can fine-tune the execution plan to match reality**.
   - [x] Implement save handler (PUT `/api/content-slots/[id]`)
   - [x] Validate date is within sprint range
   - [x] Validate no duplicate slot_index per (date, channel)
-  - [ ] Test slot editing with various scenarios
+  - [x] Test slot editing with various scenarios
 
 - [x] Task 3: Implement delete functionality (AC: 3)
   - [x] Add "Törlés" button to sprint and slot components
   - [x] Create confirmation dialog component
   - [x] Implement delete handler (DELETE `/api/sprints/[id]` or `/api/content-slots/[id]`)
   - [x] Verify CASCADE delete works correctly
-  - [ ] Test deletion with various scenarios
+  - [x] Test deletion with various scenarios
 
 - [x] Task 4: Implement re-generate functionality (AC: 4)
   - [x] Add "Újragenerálás" button to execution plan view
@@ -115,22 +115,22 @@ so that **I can fine-tune the execution plan to match reality**.
   - [x] Implement delete old plan logic
   - [x] Call Story 5.2 AI endpoint to generate new plan
   - [x] Show preview (Story 5.3)
-  - [ ] Test re-generation flow
+  - [x] Test re-generation flow
 
-- [ ] Task 5: Implement bulk operations (AC: 5, optional)
-  - [ ] Add multi-select to content calendar
-  - [ ] Add bulk actions menu (delete, status change, channel change)
-  - [ ] Implement bulk delete with confirmation
-  - [ ] Implement bulk status change
-  - [ ] Implement bulk channel change
-  - [ ] Test bulk operations
+- [x] Task 5: Implement bulk operations (AC: 5, optional)
+  - [x] Add multi-select to content calendar
+  - [x] Add bulk actions menu (delete, status change, channel change)
+  - [x] Implement bulk delete with confirmation
+  - [x] Implement bulk status change
+  - [x] Implement bulk channel change
+  - [x] Test bulk operations
 
 - [x] Task 6: Implement validation feedback (AC: 6)
   - [x] Add inline validation to edit forms
   - [x] Display validation errors below fields
   - [x] Disable save button when form is invalid
   - [x] Show clear, actionable error messages
-  - [ ] Test validation feedback with various invalid inputs
+  - [x] Test validation feedback with various invalid inputs
 
 - [x] Task 7: Create API endpoints for edit/delete (AC: 1, 2, 3)
   - [x] Create PUT `/api/sprints/[id]/route.ts`
@@ -138,15 +138,15 @@ so that **I can fine-tune the execution plan to match reality**.
   - [x] Create DELETE `/api/sprints/[id]/route.ts`
   - [x] Create DELETE `/api/content-slots/[id]/route.ts`
   - [x] Implement validation in endpoints
-  - [ ] Test all endpoints
+  - [x] Test all endpoints
 
-- [ ] Task 8: Testing (AC: 1-6)
-  - [ ] Write unit tests for edit forms
-  - [ ] Write unit tests for delete functionality
-  - [ ] Write integration tests for edit/delete workflows
-  - [ ] Test validation feedback
-  - [ ] Test bulk operations (if implemented)
-  - [ ] Test re-generation flow
+- [x] Task 8: Testing (AC: 1-6)
+  - [x] Write unit tests for edit forms
+  - [x] Write unit tests for delete functionality
+  - [x] Write integration tests for edit/delete workflows
+  - [x] Test validation feedback
+  - [x] Test bulk operations (if implemented)
+  - [x] Test re-generation flow
 
 ## Dev Notes
 

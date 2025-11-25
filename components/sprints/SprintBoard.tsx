@@ -40,20 +40,14 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useRouter } from 'next/navigation'
+import { Database } from '@/lib/supabase/types'
 
 // Local type definitions for sprints, tasks, and channels
-// These tables may not exist in the database schema yet
-type Sprint = {
-  id: string
-  campaign_id: string
-  name: string
-  start_date: string
-  end_date: string
-  focus_goal?: string | null
-  focus_channels?: any
-  status?: string
-  created_at?: string
-  updated_at?: string
+type Sprint = Database['campaign_os']['Tables']['sprints']['Row'] & {
+  focus_segments?: string[]
+  focus_topics?: string[]
+  focus_channels?: string[]
+  success_indicators?: any[]
 }
 
 type Task = {
@@ -513,7 +507,7 @@ export default function SprintBoard({
 
       {/* Sprint Dialog */}
       <Dialog open={isSprintDialogOpen} onOpenChange={setIsSprintDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingSprint ? 'Edit Sprint' : 'Create Sprint'}

@@ -294,14 +294,23 @@ export async function POST(req: NextRequest) {
               return []
             }
 
+            // Helper for optional fields that should be undefined if empty (to pass validation)
+            const normalizeOptionalArrayField = (field: any): string[] | undefined => {
+              const normalized = normalizeArrayField(field)
+              // If empty array, return undefined to make the field optional
+              return normalized.length > 0 ? normalized : undefined
+            }
+
             return {
               ...sprint,
               id: sprintId,
               focus_segments: finalFocusSegments,
               focus_topics: finalFocusTopics,
               // Normalize array fields that might come as strings from AI
-              risks_and_watchouts: normalizeArrayField(sprint.risks_and_watchouts),
-              success_criteria: normalizeArrayField(sprint.success_criteria),
+              // For optional fields with min requirements, return undefined if empty
+              success_indicators: normalizeArrayField(sprint.success_indicators), // Always return array, even if empty
+              risks_and_watchouts: normalizeOptionalArrayField(sprint.risks_and_watchouts),
+              success_criteria: normalizeOptionalArrayField(sprint.success_criteria),
               narrative_emphasis: normalizeArrayField(sprint.narrative_emphasis),
               focus_goals: normalizeArrayField(sprint.focus_goals),
             }

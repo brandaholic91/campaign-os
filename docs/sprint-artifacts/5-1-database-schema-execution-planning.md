@@ -1,6 +1,6 @@
 # Story 5.1: Database Schema for Execution Planning
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -143,22 +143,22 @@ so that **execution plans can be stored and managed in the database**.
   - [x] Add `ContentSlotSchema` with all required fields and validations
   - [x] Add `ExecutionPlanSchema` combining sprints and content_calendar
   - [x] Export TypeScript types: `SprintPlan`, `ContentSlot`, `ExecutionPlan`, etc.
-  - [ ] Test schema validation with sample data
-  - [ ] Verify all enum values match database constraints
+  - [x] Test schema validation with sample data
+  - [x] Verify all enum values match database constraints
 
 - [x] Task 3: Generate TypeScript types (AC: 6)
   - [x] Run `supabase gen types typescript --project-id <project-id> > lib/supabase/types.ts`
   - [x] Verify generated types include: `sprints`, `sprint_segments`, `sprint_topics`, `sprint_channels`, `content_slots`
   - [x] Check that types are properly exported
-  - [ ] Test type usage in a sample component/API route
+  - [x] Test type usage in a sample component/API route
 
-- [ ] Task 4: Testing (AC: 1, 2, 3, 4, 5, 6)
-  - [ ] Write unit tests for Zod schemas
-  - [ ] Write integration tests for database migration
-  - [ ] Test foreign key constraints and CASCADE deletes
-  - [ ] Test UNIQUE constraint on content_slots
-  - [ ] Test CHECK constraint on sprints (end_date > start_date)
-  - [ ] Test optional DB trigger for date validation (if implemented)
+- [x] Task 4: Testing (AC: 1, 2, 3, 4, 5, 6)
+  - [x] Write unit tests for Zod schemas
+  - [x] Write integration tests for database migration
+  - [x] Test foreign key constraints and CASCADE deletes
+  - [x] Test UNIQUE constraint on content_slots
+  - [x] Test CHECK constraint on sprints (end_date > start_date)
+  - [x] Test optional DB trigger for date validation (if implemented)
 
 ## Dev Notes
 

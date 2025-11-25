@@ -230,11 +230,34 @@ export async function POST(req: NextRequest) {
               ? validFocusTopics 
               : [Array.from(validTopicIds)[0]]
             
+            // Helper to normalize array fields that AI might return as strings
+            const normalizeArrayField = (field: any): string[] => {
+              if (!field) return []
+              if (Array.isArray(field)) {
+                return field.filter(item => typeof item === 'string').map(item => String(item))
+              }
+              if (typeof field === 'string') {
+                return field.trim() ? [field.trim()] : []
+              }
+              return []
+            }
+
+            // Helper for optional fields that should be undefined if empty (to pass validation)
+            const normalizeOptionalArrayField = (field: any): string[] | undefined => {
+              const normalized = normalizeArrayField(field)
+              // If empty array, return undefined to make the field optional
+              return normalized.length > 0 ? normalized : undefined
+            }
+            
             return {
               ...sprint,
               id: sprintId,
               focus_segments: finalFocusSegments,
               focus_topics: finalFocusTopics,
+              // Normalize optional array fields - return undefined if empty to pass validation
+              success_indicators: normalizeArrayField(sprint.success_indicators), // Always return array, even if empty
+              risks_and_watchouts: normalizeOptionalArrayField(sprint.risks_and_watchouts),
+              success_criteria: normalizeOptionalArrayField(sprint.success_criteria),
             }
           })
 
