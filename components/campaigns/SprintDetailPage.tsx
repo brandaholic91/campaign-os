@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SprintPlan, ContentSlot } from '@/lib/ai/schemas'
 import { ContentCalendar } from './ContentCalendar'
-import { SprintEditForm } from './SprintEditForm'
+import SprintForm from '../sprints/SprintForm'
 import { ArrowLeft, Calendar, Target, Users, MessageSquare, Radio, Edit, Plus, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
@@ -47,7 +48,80 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
   const [segmentNames, setSegmentNames] = useState<Record<string, string>>({})
   const [topicNames, setTopicNames] = useState<Record<string, string>>({})
 
+  const getSegmentLabel = (id: string) => segmentNames[id] || id
+  const getTopicLabel = (id: string) => topicNames[id] || id
+
+  const renderFocusSplit = (
+    title: string,
+    primaryItems: string[],
+    secondaryItems: string[],
+    labelFn: (value: string) => string
+  ) => (
+    <div>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        {title}
+      </p>
+      <div className="space-y-2 text-xs text-gray-600">
+        <div>
+          <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-1">Fő {title.toLowerCase()}</p>
+          <div className="flex flex-wrap gap-2">
+            {primaryItems.length > 0 ? (
+              primaryItems.map((item) => (
+                <Badge
+                  key={`${title}-primary-${item}`}
+                  variant="outline"
+                  className="text-xs font-semibold text-primary-700 border-primary-200/70 bg-primary-50"
+                >
+                  {labelFn(item)}
+                </Badge>
+              ))
+            ) : (
+              <span className="text-gray-400">Nincs megadva</span>
+            )}
+          </div>
+        </div>
+        <div>
+          <p className="text-[11px] text-gray-500 uppercase tracking-wide mb-1">Kiegészítő {title.toLowerCase()}</p>
+          <div className="flex flex-wrap gap-2">
+            {secondaryItems.length > 0 ? (
+              secondaryItems.map((item) => (
+                <Badge
+                  key={`${title}-secondary-${item}`}
+                  variant="outline"
+                  className="text-xs text-slate-600 border-slate-200/80 bg-slate-50"
+                >
+                  {labelFn(item)}
+                </Badge>
+              ))
+            ) : (
+              <span className="text-gray-400">Nem került megadásra</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   // Load sprint data and content slots
+  const categorizeByPriority = (
+    rows: { priority: string | null; [key: string]: string | null }[] = [],
+    keyField: string
+  ) => {
+    const primary: string[] = []
+    const secondary: string[] = []
+    rows.forEach((row) => {
+      const value = row[keyField]
+      if (!value) return
+      const priority = row.priority === 'secondary' ? 'secondary' : 'primary'
+      if (priority === 'secondary') {
+        secondary.push(value)
+      } else {
+        primary.push(value)
+      }
+    })
+    return { primary, secondary }
+  }
+
   useEffect(() => {
     async function loadSprintData() {
       try {
@@ -70,18 +144,22 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
         // Load junction table data (segments, topics, channels)
         const { data: sprintSegments } = await db
           .from('sprint_segments')
-          .select('segment_id')
+          .select('segment_id, priority')
           .eq('sprint_id', sprintId)
 
         const { data: sprintTopics } = await db
           .from('sprint_topics')
-          .select('topic_id')
+          .select('topic_id, priority')
           .eq('sprint_id', sprintId)
 
         const { data: sprintChannels } = await db
           .from('sprint_channels')
-          .select('channel_key')
+          .select('channel_key, priority')
           .eq('sprint_id', sprintId)
+
+        const segmentPriority = categorizeByPriority(sprintSegments || [], 'segment_id')
+        const topicPriority = categorizeByPriority(sprintTopics || [], 'topic_id')
+        const channelPriority = categorizeByPriority(sprintChannels || [], 'channel_key')
 
         // Convert to SprintPlan format
         const sprintPlan: SprintPlan = {
@@ -92,9 +170,12 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
           end_date: sprintData.end_date,
           focus_goal: (sprintData.focus_goal as any) || undefined,
           focus_description: sprintData.focus_description || undefined,
-          focus_segments: sprintSegments?.map(s => s.segment_id) || [],
-          focus_topics: sprintTopics?.map(t => t.topic_id) || [],
-          focus_channels: sprintChannels?.map(c => c.channel_key) || [],
+          focus_segments_primary: segmentPriority.primary,
+          focus_segments_secondary: segmentPriority.secondary,
+          focus_topics_primary: topicPriority.primary,
+          focus_topics_secondary: topicPriority.secondary,
+          focus_channels_primary: channelPriority.primary,
+          focus_channels_secondary: channelPriority.secondary,
           focus_stage: (sprintData.focus_stage as any) || undefined,
           focus_goals: sprintData.focus_goals as string[] || undefined,
           suggested_weekly_post_volume: sprintData.suggested_weekly_post_volume as any || undefined,
@@ -131,8 +212,8 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
         }
 
         // Load segment and topic names
-        const segmentIds = sprintPlan.focus_segments
-        const topicIds = sprintPlan.focus_topics
+        const segmentIds = [...(sprintPlan.focus_segments_primary || []), ...(sprintPlan.focus_segments_secondary || [])]
+        const topicIds = [...(sprintPlan.focus_topics_primary || []), ...(sprintPlan.focus_topics_secondary || [])]
 
         if (segmentIds.length > 0) {
           const { data: segments } = await db
@@ -288,6 +369,13 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
   const startDate = new Date(sprint.start_date)
   const endDate = new Date(sprint.end_date)
 
+  const segmentsPrimary = sprint.focus_segments_primary ?? []
+  const segmentsSecondary = sprint.focus_segments_secondary ?? []
+  const topicsPrimary = sprint.focus_topics_primary ?? []
+  const topicsSecondary = sprint.focus_topics_secondary ?? []
+  const channelsPrimary = sprint.focus_channels_primary ?? []
+  const channelsSecondary = sprint.focus_channels_secondary ?? []
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -325,15 +413,15 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Users className="w-4 h-4" />
-                    <span>{sprint.focus_segments.length} szegmens</span>
+                    <span>{segmentsPrimary.length + segmentsSecondary.length} szegmens</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <MessageSquare className="w-4 h-4" />
-                    <span>{sprint.focus_topics.length} téma</span>
+                    <span>{topicsPrimary.length + topicsSecondary.length} téma</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Radio className="w-4 h-4" />
-                    <span>{sprint.focus_channels.length} csatorna</span>
+                    <span>{channelsPrimary.length + channelsSecondary.length} csatorna</span>
                   </div>
                 </div>
               </div>
@@ -397,45 +485,10 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
               Fókusz Területek
             </h3>
 
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Szegmensek
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {sprint.focus_segments.map(segId => (
-                    <Badge key={segId} variant="outline" className="text-xs">
-                      {segmentNames[segId] || segId}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Témák
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {sprint.focus_topics.map(topicId => (
-                    <Badge key={topicId} variant="outline" className="text-xs">
-                      {topicNames[topicId] || topicId}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Csatornák
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {sprint.focus_channels.map(channel => (
-                    <Badge key={channel} variant="outline" className="text-xs">
-                      {channel}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
+            <div className="space-y-6">
+              {renderFocusSplit('Szegmensek', segmentsPrimary, segmentsSecondary, getSegmentLabel)}
+              {renderFocusSplit('Témák', topicsPrimary, topicsSecondary, getTopicLabel)}
+              {renderFocusSplit('Csatornák', channelsPrimary, channelsSecondary, (value) => value)}
             </div>
           </div>
         </div>
@@ -496,16 +549,22 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
 
       {/* Edit Form Dialog */}
       {isEditingSettings && sprint && (
-        <SprintEditForm
-          sprint={sprint as any}
-          campaignId={campaignId}
-          onSuccess={() => {
-            setIsEditingSettings(false)
-            // Reload sprint data
-            window.location.reload()
-          }}
-          onCancel={() => setIsEditingSettings(false)}
-        />
+        <Dialog open={true} onOpenChange={() => setIsEditingSettings(false)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Sprint szerkesztése</DialogTitle>
+            </DialogHeader>
+            <SprintForm
+              campaignId={campaignId}
+              initialData={sprint as any}
+              onSuccess={() => {
+                setIsEditingSettings(false)
+                window.location.reload()
+              }}
+              onCancel={() => setIsEditingSettings(false)}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

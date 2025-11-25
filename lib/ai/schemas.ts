@@ -353,19 +353,21 @@ export const SprintPlanSchema = z.object({
   start_date: dateStringSchema(),
   end_date: dateStringSchema(),
 
-  // Legacy fields (Phase 1 - kept for backward compatibility)
+  // Legacy metadata (Phase 1 - still optional for compatibility)
   focus_goal: SprintFocusGoalTypeSchema.optional(),
   focus_description: z.string().min(10, 'Focus description must be at least 10 characters').optional(),
   success_indicators: z.array(z.any()).optional(),
 
-  // Junction table fields (Phase 1)
-  focus_segments: z.array(z.string().uuid()).min(1, 'At least one focus segment required'),
-  focus_topics: z.array(z.string().uuid()).min(1, 'At least one focus topic required'),
-  focus_channels: z.array(z.string().min(1)).min(1, 'At least one focus channel required'),
+  // Enhanced focus data (Phase 2 requirements)
+  focus_stage: SprintFocusStageSchema,
+  focus_goals: z.array(z.string().uuid()).min(1).max(3),
+  focus_segments_primary: z.array(z.string().uuid()).min(1, 'At least one primary focus segment required').max(2, 'Maximum two primary focus segments allowed'),
+  focus_segments_secondary: z.array(z.string().uuid()).max(2, 'Maximum two secondary focus segments allowed').optional(),
+  focus_topics_primary: z.array(z.string().uuid()).min(2, 'At least two primary focus topics required').max(3, 'Maximum three primary focus topics allowed'),
+  focus_topics_secondary: z.array(z.string().uuid()).min(2, 'At least two secondary focus topics required').max(4, 'Maximum four secondary focus topics allowed').optional(),
+  focus_channels_primary: z.array(z.string().min(1, 'Channel key must be at least one character')).min(2, 'At least two primary focus channels required').max(3, 'Maximum three primary focus channels allowed'),
+  focus_channels_secondary: z.array(z.string().min(1, 'Channel key must be at least one character')).optional(),
 
-  // Enhanced metadata fields (Phase 2 - all optional for backward compatibility)
-  focus_stage: SprintFocusStageSchema.optional(),
-  focus_goals: z.array(z.string().uuid()).min(1).max(3).optional(),
   suggested_weekly_post_volume: SuggestedWeeklyPostVolumeSchema.optional(),
   narrative_emphasis: z.array(z.string().uuid()).min(1).max(2).optional(),
   key_messages_summary: z.string().min(20, 'Key messages summary must be at least 20 characters').optional(),

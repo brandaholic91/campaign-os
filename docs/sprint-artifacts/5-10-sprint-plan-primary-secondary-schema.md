@@ -1,6 +1,6 @@
 # Story 5.10: Sprint Plan Primary/Secondary Schema Implementation
 
-Status: drafted
+Status: in-progress
 
 **Epic:** Epic 5 - Execution Planning  
 **Story ID:** 5.10  
@@ -304,52 +304,52 @@ export const SprintPlanSchema = z.object({
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Update SprintPlanSchema (AC: 1)
-  - [ ] Modify `lib/ai/schemas.ts` - Update `SprintPlanSchema` (lines 349-382)
-  - [ ] Remove legacy fields: `focus_segments`, `focus_topics`, `focus_channels`
-  - [ ] Add `focus_stage` as required field (not optional)
-  - [ ] Add `focus_segments_primary`: array of 1-2 segment IDs (required)
-  - [ ] Add `focus_segments_secondary`: array of 0-2 segment IDs (optional)
-  - [ ] Add `focus_topics_primary`: array of 2-3 topic IDs (required)
-  - [ ] Add `focus_topics_secondary`: array of 2-4 topic IDs (optional)
-  - [ ] Add `focus_channels_primary`: array of 2-3 channel keys (required)
-  - [ ] Add `focus_channels_secondary`: array of 0-N channel keys (optional)
-  - [ ] Enforce min/max validation constraints
+- [x] Task 1: Update SprintPlanSchema (AC: 1)
+  - [x] Modify `lib/ai/schemas.ts` - Update `SprintPlanSchema` (lines 349-382)
+  - [x] Remove legacy fields: `focus_segments`, `focus_topics`, `focus_channels`
+  - [x] Add `focus_stage` as required field (not optional)
+  - [x] Add `focus_segments_primary`: array of 1-2 segment IDs (required)
+  - [x] Add `focus_segments_secondary`: array of 0-2 segment IDs (optional)
+  - [x] Add `focus_topics_primary`: array of 2-3 topic IDs (required)
+  - [x] Add `focus_topics_secondary`: array of 2-4 topic IDs (optional)
+  - [x] Add `focus_channels_primary`: array of 2-3 channel keys (required)
+  - [x] Add `focus_channels_secondary`: array of 0-N channel keys (optional)
+  - [x] Enforce min/max validation constraints
   - [ ] Test schema validation with valid/invalid data
 
-- [ ] Task 2: Database Migration (AC: 2)
-  - [ ] Create new migration file in `supabase/migrations/`
-  - [ ] Add `priority` column to `sprint_segments` table (TEXT, DEFAULT 'primary')
-  - [ ] Add `priority` column to `sprint_topics` table (TEXT, DEFAULT 'primary')
-  - [ ] Add `priority` column to `sprint_channels` table (TEXT, DEFAULT 'primary')
-  - [ ] Add CHECK constraints: priority IN ('primary', 'secondary')
-  - [ ] Migrate existing records: SET priority = 'primary' WHERE priority IS NULL
-  - [ ] Ensure migration is idempotent (safe to run multiple times)
+- [x] Task 2: Database Migration (AC: 2)
+  - [x] Create new migration file in `supabase/migrations/`
+  - [x] Add `priority` column to `sprint_segments` table (TEXT, DEFAULT 'primary')
+  - [x] Add `priority` column to `sprint_topics` table (TEXT, DEFAULT 'primary')
+  - [x] Add `priority` column to `sprint_channels` table (TEXT, DEFAULT 'primary')
+  - [x] Add CHECK constraints: priority IN ('primary', 'secondary')
+  - [x] Migrate existing records: SET priority = 'primary' WHERE priority IS NULL
+  - [x] Ensure migration is idempotent (safe to run multiple times)
   - [ ] Test migration on staging database
 
-- [ ] Task 3: Update API GET Endpoint (AC: 3)
-  - [ ] Modify `app/api/sprints/route.ts` - GET handler
-  - [ ] Query junction tables with priority field
-  - [ ] Group relationships by priority (primary vs secondary)
-  - [ ] Return `focus_segments_primary` and `focus_segments_secondary` arrays
-  - [ ] Return `focus_topics_primary` and `focus_topics_secondary` arrays
-  - [ ] Return `focus_channels_primary` and `focus_channels_secondary` arrays
-  - [ ] Handle backward compatibility: if priority is NULL, treat as 'primary'
-  - [ ] Return empty arrays (not null) if no secondary relationships exist
+- [x] Task 3: Update API GET Endpoint (AC: 3)
+  - [x] Modify `app/api/sprints/route.ts` - GET handler
+  - [x] Query junction tables with priority field
+  - [x] Group relationships by priority (primary vs secondary)
+  - [x] Return `focus_segments_primary` and `focus_segments_secondary` arrays
+  - [x] Return `focus_topics_primary` and `focus_topics_secondary` arrays
+  - [x] Return `focus_channels_primary` and `focus_channels_secondary` arrays
+  - [x] Handle backward compatibility: if priority is NULL, treat as 'primary'
+  - [x] Return empty arrays (not null) if no secondary relationships exist
   - [ ] Test GET endpoint with existing sprints (backward compatibility)
   - [ ] Test GET endpoint with new sprints (primary/secondary)
 
-- [ ] Task 4: Update API POST Endpoint (AC: 4)
-  - [ ] Modify `app/api/sprints/route.ts` - POST handler
-  - [ ] Accept `focus_segments_primary` and `focus_segments_secondary` in request body
-  - [ ] Accept `focus_topics_primary` and `focus_topics_secondary` in request body
-  - [ ] Accept `focus_channels_primary` and `focus_channels_secondary` in request body
-  - [ ] Validate min/max constraints:
+- [x] Task 4: Update API POST Endpoint (AC: 4)
+  - [x] Modify `app/api/sprints/route.ts` - POST handler
+  - [x] Accept `focus_segments_primary` and `focus_segments_secondary` in request body
+  - [x] Accept `focus_topics_primary` and `focus_topics_secondary` in request body
+  - [x] Accept `focus_channels_primary` and `focus_channels_secondary` in request body
+  - [x] Validate min/max constraints:
     - `focus_segments_primary`: min 1, max 2
     - `focus_topics_primary`: min 2, max 3
     - `focus_channels_primary`: min 2, max 3
-  - [ ] Create sprint in `sprints` table
-  - [ ] Insert junction table records with correct priority:
+  - [x] Create sprint in `sprints` table
+  - [x] Insert junction table records with correct priority:
     - `sprint_segments`: primary items with `priority = 'primary'`
     - `sprint_segments`: secondary items with `priority = 'secondary'`
     - `sprint_topics`: primary items with `priority = 'primary'`
@@ -359,49 +359,49 @@ export const SprintPlanSchema = z.object({
   - [ ] Test POST endpoint with valid data
   - [ ] Test POST endpoint validation (min/max constraints)
 
-- [ ] Task 5: Update API PUT Endpoint (AC: 5)
-  - [ ] Modify `app/api/sprints/route.ts` - PUT handler
-  - [ ] Accept updated primary/secondary fields in request body
-  - [ ] Delete old junction table records for this sprint
-  - [ ] Insert new junction table records with correct priority
-  - [ ] Enforce same validation rules as POST
+- [x] Task 5: Update API PUT Endpoint (AC: 5)
+  - [x] Modify `app/api/sprints/route.ts` - PUT handler
+  - [x] Accept updated primary/secondary fields in request body
+  - [x] Delete old junction table records for this sprint
+  - [x] Insert new junction table records with correct priority
+  - [x] Enforce same validation rules as POST
   - [ ] Test PUT endpoint with existing sprint
   - [ ] Test PUT endpoint validation
 
-- [ ] Task 6: Verify AI Generation Endpoint (AC: 6)
-  - [ ] Check `app/api/ai/campaign-sprints/route.ts`
-  - [ ] Verify AI prompt already includes primary/secondary fields (no changes needed)
-  - [ ] Verify generated sprints include primary/secondary fields
-  - [ ] Verify validation passes with new SprintPlanSchema
+- [x] Task 6: Verify AI Generation Endpoint (AC: 6)
+  - [x] Check `app/api/ai/campaign-sprints/route.ts`
+  - [x] Verify AI prompt already includes primary/secondary fields (no changes needed)
+  - [x] Verify generated sprints include primary/secondary fields
+  - [x] Verify validation passes with new SprintPlanSchema
   - [ ] Test AI generation endpoint with validated campaign structure
 
-- [ ] Task 7: Update Execution Plan Save (AC: 7)
-  - [ ] Modify `app/api/campaigns/execution/route.ts`
-  - [ ] Update save logic to handle primary/secondary fields
-  - [ ] Create junction table records with priority field
+- [x] Task 7: Update Execution Plan Save (AC: 7)
+  - [x] Modify `app/api/campaigns/execution/route.ts`
+  - [x] Update save logic to handle primary/secondary fields
+  - [x] Create junction table records with priority field
   - [ ] Test execution plan save with sprints containing primary/secondary fields
 
-- [ ] Task 8: Update Frontend Forms (AC: 8)
-  - [ ] Modify `components/sprints/SprintForm.tsx`
-  - [ ] Modify `components/campaigns/SprintEditForm.tsx`
-  - [ ] Add separate sections for:
+-- [x] Task 8: Update Frontend Forms (AC: 8)
+  - [x] Modify `components/sprints/SprintForm.tsx`
+  - [x] Modify `components/campaigns/SprintEditForm.tsx`
+  - [x] Add separate sections for:
     - Primary segments (1-2 selection, required)
     - Secondary segments (0-2 selection, optional)
     - Primary topics (2-3 selection, required)
     - Secondary topics (2-4 selection, optional)
     - Primary channels (2-3 selection, required)
     - Secondary channels (optional)
-  - [ ] Add form validation for min/max constraints
-  - [ ] Add clear labels: "Fő szegmensek", "Kiegészítő szegmensek", "Fő témák", "Kiegészítő témák", "Fő csatornák", "Kiegészítő csatornák"
+  - [x] Add form validation for min/max constraints
+  - [x] Add clear labels: "Fő szegmensek", "Kiegészítő szegmensek", "Fő témák", "Kiegészítő témák", "Fő csatornák", "Kiegészítő csatornák"
   - [ ] Test form validation
   - [ ] Test form submission
 
-- [ ] Task 9: Update Frontend Display (AC: 9)
-  - [ ] Modify `components/sprints/SprintBoard.tsx`
-  - [ ] Modify `components/campaigns/SprintDetailPage.tsx`
-  - [ ] Display primary items: bold, primary color
-  - [ ] Display secondary items: normal weight, secondary color
-  - [ ] Add clear labels: "Fő szegmensek", "Kiegészítő szegmensek", stb.
+-- [x] Task 9: Update Frontend Display (AC: 9)
+  - [x] Modify `components/sprints/SprintBoard.tsx`
+  - [x] Modify `components/campaigns/SprintDetailPage.tsx`
+  - [x] Display primary items: bold, primary color
+  - [x] Display secondary items: normal weight, secondary color
+  - [x] Add clear labels: "Fő szegmensek", "Kiegészítő szegmensek", stb.
   - [ ] Test visual distinction between primary and secondary items
 
 - [ ] Task 10: Backward Compatibility (AC: 10)
@@ -513,7 +513,7 @@ export const SprintPlanSchema = z.object({
 
 ### Context Reference
 
-<!-- Path(s) to story context XML will be added here by context workflow -->
+- docs/sprint-artifacts/5-10-sprint-plan-primary-secondary-schema.context.xml
 
 ### Agent Model Used
 
@@ -523,9 +523,25 @@ export const SprintPlanSchema = z.object({
 
 ### Completion Notes List
 
+- 2025-11-25: Backend schema/migration/API changes plus frontend SprintForm/SprintBoard/SprintDetailPage now display és editálja a primary/secondary mezőket magyar címkékkel.
+
 ### File List
+
+- `lib/ai/schemas.ts`
+- `supabase/migrations/20251130_add_sprint_priority_columns.sql`
+- `app/api/sprints/route.ts`
+- `app/api/ai/campaign-sprints/route.ts`
+- `app/api/campaigns/execution/route.ts`
+- `app/api/ai/campaign-execution/route.ts`
+- `lib/supabase/types.ts`
+- `docs/sprint-status.yaml`
+- `components/sprints/SprintForm.tsx`
+- `components/sprints/SprintBoard.tsx`
+- `components/campaigns/SprintDetailPage.tsx`
+- `components/campaigns/SprintList.tsx`
 
 ## Change Log
 
-- 2025-11-25: Story drafted with Status, Tasks, Dev Notes, Dev Agent Record sections
+- 2025-11-25: Story status moved to in-progress; backend schema/migration/API scopes implemented per AC1–AC7 and documented.
+- 2025-11-25: Frontend SprintForm/SprintBoard/SprintDetailPage/SprintList frissítve primary/secondary UI-val és validációval; story dokumentáció frissítve.
 

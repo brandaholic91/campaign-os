@@ -40,6 +40,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/types'
 
 // Local type definitions for sprints, tasks, and channels
@@ -172,6 +173,8 @@ export default function SprintBoard({
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [segmentNames, setSegmentNames] = useState<Record<string, string>>({})
+  const [topicNames, setTopicNames] = useState<Record<string, string>>({})
   // Optimistic updates: track task status changes locally
   const [optimisticTasks, setOptimisticTasks] = useState<Map<string, TaskStatus>>(new Map())
   // Prevent hydration mismatch by only rendering DndContext on client
@@ -201,6 +204,43 @@ export default function SprintBoard({
   }, [sprints, selectedSprintId])
 
   const currentSprint = sprints.find((s) => s.id === selectedSprintId)
+
+  const getSegmentLabel = (id: string) => segmentNames[id] || id
+  const getTopicLabel = (id: string) => topicNames[id] || id
+
+  const primarySegments = currentSprint
+    ? (currentSprint as any).focus_segments_primary ?? currentSprint.focus_segments ?? []
+    : []
+  const secondarySegments = currentSprint
+    ? (currentSprint as any).focus_segments_secondary ?? []
+    : []
+  const primaryTopics = currentSprint
+    ? (currentSprint as any).focus_topics_primary ?? currentSprint.focus_topics ?? []
+    : []
+  const secondaryTopics = currentSprint
+    ? (currentSprint as any).focus_topics_secondary ?? []
+    : []
+  const primaryChannels = currentSprint
+    ? (currentSprint as any).focus_channels_primary ?? currentSprint.focus_channels ?? []
+    : []
+  const secondaryChannels = currentSprint
+    ? (currentSprint as any).focus_channels_secondary ?? []
+    : []
+
+  const renderBadges = (
+    items: string[],
+    labelFn: (value: string) => string,
+    isPrimary = true
+  ) =>
+    items.map((item) => (
+      <Badge
+        key={item}
+        variant="outline"
+        className={`text-xs ${isPrimary ? 'font-semibold text-primary-700 border-primary-200/70 bg-primary-50' : 'text-slate-600 border-slate-200/80 bg-slate-50'}`}
+      >
+        {labelFn(item)}
+      </Badge>
+    ))
   // Apply optimistic updates to tasks
   const sprintTasks = tasks
     .filter((t) => t.sprint_id === selectedSprintId)
@@ -211,6 +251,62 @@ export default function SprintBoard({
       }
       return task
     })
+
+  useEffect(() => {
+    if (!currentSprint) {
+      setSegmentNames({})
+      setTopicNames({})
+      return
+    }
+
+    const supabase = createClient()
+    const db = supabase.schema('campaign_os')
+
+    const segmentIds = new Set([
+      ...((currentSprint as any).focus_segments_primary || currentSprint.focus_segments || []),
+      ...((currentSprint as any).focus_segments_secondary || []),
+    ])
+    const topicIds = new Set([
+      ...((currentSprint as any).focus_topics_primary || currentSprint.focus_topics || []),
+      ...((currentSprint as any).focus_topics_secondary || []),
+    ])
+
+    async function loadNames() {
+      if (segmentIds.size > 0) {
+        const { data: segments } = await db
+          .from('segments')
+          .select('id, name')
+          .in('id', Array.from(segmentIds))
+        if (segments) {
+          const names: Record<string, string> = {}
+          segments.forEach(seg => {
+            names[seg.id] = seg.name
+          })
+          setSegmentNames(names)
+        }
+      } else {
+        setSegmentNames({})
+      }
+
+      if (topicIds.size > 0) {
+        const { data: topics } = await db
+          .from('topics')
+          .select('id, name')
+          .in('id', Array.from(topicIds))
+        if (topics) {
+          const names: Record<string, string> = {}
+          topics.forEach(topic => {
+            names[topic.id] = topic.name
+          })
+          setTopicNames(names)
+        }
+      } else {
+        setTopicNames({})
+      }
+    }
+
+    loadNames()
+  }, [currentSprint])
 
   const todoTasks = sprintTasks.filter((t) => t.status === 'todo')
   const inProgressTasks = sprintTasks.filter((t) => t.status === 'in_progress')
@@ -408,6 +504,80 @@ export default function SprintBoard({
             </>
           )}
           <span className="font-medium text-gray-900">Goal: {currentSprint.focus_goal || 'No goal set'}</span>
+        </div>
+      )}
+
+      {currentSprint && (
+        <div className="grid sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white/80 border border-slate-200 rounded-2xl p-4">
+            <p className="text-xs font-semibold uppercase text-gray-500 tracking-wide mb-2">
+              Szegmensek
+            </p>
+            <div className="text-xs text-gray-600 space-y-2">
+              <div>
+                <p className="text-[11px] mb-1 text-gray-500 uppercase tracking-wide">Fő szegmensek</p>
+                <div className="flex flex-wrap gap-2">
+                  {primarySegments.length > 0 ? renderBadges(primarySegments, getSegmentLabel, true) : (
+                    <span className="text-gray-400">Nincs megadva</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] mb-1 text-gray-500 uppercase tracking-wide">Kiegészítők</p>
+                <div className="flex flex-wrap gap-2">
+                  {secondarySegments.length > 0 ? renderBadges(secondarySegments, getSegmentLabel, false) : (
+                    <span className="text-gray-400">Nem került megadásra</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white/80 border border-slate-200 rounded-2xl p-4">
+            <p className="text-xs font-semibold uppercase text-gray-500 tracking-wide mb-2">
+              Témák
+            </p>
+            <div className="space-y-2 text-xs text-gray-600">
+              <div>
+                <p className="text-[11px] mb-1 text-gray-500 uppercase tracking-wide">Fő témák</p>
+                <div className="flex flex-wrap gap-2">
+                  {primaryTopics.length > 0 ? renderBadges(primaryTopics, getTopicLabel, true) : (
+                    <span className="text-gray-400">Nincs megadva</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] mb-1 text-gray-500 uppercase tracking-wide">Kiegészítő témák</p>
+                <div className="flex flex-wrap gap-2">
+                  {secondaryTopics.length > 0 ? renderBadges(secondaryTopics, getTopicLabel, false) : (
+                    <span className="text-gray-400">Nem került megadásra</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white/80 border border-slate-200 rounded-2xl p-4">
+            <p className="text-xs font-semibold uppercase text-gray-500 tracking-wide mb-2">
+              Csatornák
+            </p>
+            <div className="space-y-2 text-xs text-gray-600">
+              <div>
+                <p className="text-[11px] mb-1 text-gray-500 uppercase tracking-wide">Fő csatornák</p>
+                <div className="flex flex-wrap gap-2">
+                  {primaryChannels.length > 0 ? renderBadges(primaryChannels, (value) => value, true) : (
+                    <span className="text-gray-400">Nincs megadva</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] mb-1 text-gray-500 uppercase tracking-wide">Kiegészítő csatornák</p>
+                <div className="flex flex-wrap gap-2">
+                  {secondaryChannels.length > 0 ? renderBadges(secondaryChannels, (value) => value, false) : (
+                    <span className="text-gray-400">Nem került megadásra</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

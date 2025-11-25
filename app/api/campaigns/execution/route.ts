@@ -1,7 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { ExecutionPlanSchema, ExecutionPlan } from '@/lib/ai/schemas'
+import { ExecutionPlanSchema, ExecutionPlan, SprintFocusStage } from '@/lib/ai/schemas'
 import { Database } from '@/lib/supabase/types'
+
+type Priority = 'primary' | 'secondary'
+interface PriorityGroup {
+  primary: string[]
+  secondary: string[]
+}
+const focusStageOptions: SprintFocusStage[] = ['awareness', 'engagement', 'consideration', 'conversion', 'mobilization']
+
+const normalizeFocusStage = (value: string | null | undefined): SprintFocusStage =>
+  focusStageOptions.includes(value as SprintFocusStage) ? (value as SprintFocusStage) : 'awareness'
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.map((item) => (typeof item === 'string' ? item : String(item))).filter((item) => item.trim().length > 0)
+  }
+  if (typeof value === 'string') {
+    return value.trim().length > 0 ? [value] : []
+  }
+  return []
+}
+
+
+const normalizePriorityValue = (value: string | null | undefined): Priority => {
+  return value === 'secondary' ? 'secondary' : 'primary'
+}
+
+const buildRelationMap = (rows: any[], keyField: string) => {
+  const map = new Map<string, PriorityGroup>()
+  rows.forEach(row => {
+    if (!row || !row.sprint_id) return
+    const value = row[keyField]
+    if (!value) return
+    const priority = normalizePriorityValue(row.priority)
+    const aggregate = map.get(row.sprint_id) || { primary: [], secondary: [] }
+    if (priority === 'secondary') {
+      aggregate.secondary.push(value)
+    } else {
+      aggregate.primary.push(value)
+    }
+    map.set(row.sprint_id, aggregate)
+  })
+  return map
+}
 
 type SprintInsert = Database['campaign_os']['Tables']['sprints']['Insert']
 type ContentSlotInsert = Database['campaign_os']['Tables']['content_slots']['Insert']
@@ -202,7 +245,6 @@ async function saveExecutionPlan(
       end_date: sprint.end_date,
       focus_goal: sprint.focus_goal || 'awareness', // Default to awareness if undefined
       focus_description: sprint.focus_description || '', // Default to empty string if undefined
-      focus_channels: sprint.focus_channels as any, // JSONB
       success_indicators: sprint.success_indicators as any, // JSONB
       status: 'planned' as const,
       // Enhanced fields (Phase 2) - all optional
@@ -243,27 +285,54 @@ async function saveExecutionPlan(
     executionPlan.sprints.forEach(sprint => {
       const dbSprintId = sprintIdMap.get(sprint.id)!
       
-      // Sprint-segment relationships
-      sprint.focus_segments.forEach(segmentId => {
+      const segmentsPrimary = sprint.focus_segments_primary ?? []
+      const segmentsSecondary = sprint.focus_segments_secondary ?? []
+      segmentsPrimary.forEach(segmentId => {
         segmentInserts.push({
           sprint_id: dbSprintId,
           segment_id: segmentId,
+          priority: 'primary' as Priority,
         })
       })
-      
-      // Sprint-topic relationships
-      sprint.focus_topics.forEach(topicId => {
+      segmentsSecondary.forEach(segmentId => {
+        segmentInserts.push({
+          sprint_id: dbSprintId,
+          segment_id: segmentId,
+          priority: 'secondary' as Priority,
+        })
+      })
+
+      const topicsPrimary = sprint.focus_topics_primary ?? []
+      const topicsSecondary = sprint.focus_topics_secondary ?? []
+      topicsPrimary.forEach(topicId => {
         topicInserts.push({
           sprint_id: dbSprintId,
           topic_id: topicId,
+          priority: 'primary' as Priority,
         })
       })
-      
-      // Sprint-channel relationships
-      sprint.focus_channels.forEach(channelKey => {
+      topicsSecondary.forEach(topicId => {
+        topicInserts.push({
+          sprint_id: dbSprintId,
+          topic_id: topicId,
+          priority: 'secondary' as Priority,
+        })
+      })
+
+      const channelsPrimary = sprint.focus_channels_primary ?? []
+      const channelsSecondary = sprint.focus_channels_secondary ?? []
+      channelsPrimary.forEach(channelKey => {
         channelInserts.push({
           sprint_id: dbSprintId,
           channel_key: channelKey,
+          priority: 'primary' as Priority,
+        })
+      })
+      channelsSecondary.forEach(channelKey => {
+        channelInserts.push({
+          sprint_id: dbSprintId,
+          channel_key: channelKey,
+          priority: 'secondary' as Priority,
         })
       })
     })
@@ -404,7 +473,7 @@ async function loadExecutionPlan(
   // Load junction tables
   const { data: sprintSegments, error: segmentsError } = await db
     .from('sprint_segments')
-    .select('sprint_id, segment_id')
+    .select('sprint_id, segment_id, priority')
     .in('sprint_id', sprintIds)
   
   if (segmentsError) {
@@ -413,7 +482,7 @@ async function loadExecutionPlan(
   
   const { data: sprintTopics, error: topicsError } = await db
     .from('sprint_topics')
-    .select('sprint_id, topic_id')
+    .select('sprint_id, topic_id, priority')
     .in('sprint_id', sprintIds)
   
   if (topicsError) {
@@ -422,7 +491,7 @@ async function loadExecutionPlan(
   
   const { data: sprintChannels, error: channelsError } = await db
     .from('sprint_channels')
-    .select('sprint_id, channel_key')
+    .select('sprint_id, channel_key, priority')
     .in('sprint_id', sprintIds)
   
   if (channelsError) {
@@ -442,30 +511,9 @@ async function loadExecutionPlan(
   }
   
   // Build sprint map for segments/topics/channels
-  const segmentMap = new Map<string, string[]>()
-  const topicMap = new Map<string, string[]>()
-  const channelMap = new Map<string, string[]>()
-  
-  sprintSegments?.forEach(ss => {
-    if (!segmentMap.has(ss.sprint_id)) {
-      segmentMap.set(ss.sprint_id, [])
-    }
-    segmentMap.get(ss.sprint_id)!.push(ss.segment_id)
-  })
-  
-  sprintTopics?.forEach(st => {
-    if (!topicMap.has(st.sprint_id)) {
-      topicMap.set(st.sprint_id, [])
-    }
-    topicMap.get(st.sprint_id)!.push(st.topic_id)
-  })
-  
-  sprintChannels?.forEach(sc => {
-    if (!channelMap.has(sc.sprint_id)) {
-      channelMap.set(sc.sprint_id, [])
-    }
-    channelMap.get(sc.sprint_id)!.push(sc.channel_key)
-  })
+  const segmentMap = buildRelationMap(sprintSegments || [], 'segment_id')
+  const topicMap = buildRelationMap(sprintTopics || [], 'topic_id')
+  const channelMap = buildRelationMap(sprintChannels || [], 'channel_key')
   
       // Transform to ExecutionPlan format
       const executionPlan: ExecutionPlan = {
@@ -527,14 +575,19 @@ async function loadExecutionPlan(
             end_date: sprint.end_date,
             focus_goal: sprint.focus_goal as any,
             focus_description: sprint.focus_description || '',
-            focus_segments: segmentMap.get(sprint.id) || [],
-            focus_topics: topicMap.get(sprint.id) || [],
-            focus_channels: channelMap.get(sprint.id) || (sprint.focus_channels as string[] || []),
+            focus_segments_primary: segmentMap.get(sprint.id)?.primary ?? [],
+            focus_segments_secondary: segmentMap.get(sprint.id)?.secondary ?? [],
+            focus_topics_primary: topicMap.get(sprint.id)?.primary ?? [],
+            focus_topics_secondary: topicMap.get(sprint.id)?.secondary ?? [],
+            focus_channels_primary: channelMap.get(sprint.id)?.primary ?? [],
+            focus_channels_secondary: channelMap.get(sprint.id)?.secondary ?? [],
             success_indicators: successIndicators,
             success_criteria: successCriteria,
             risks_and_watchouts: risksAndWatchouts,
             key_messages_summary: sprint.key_messages_summary || undefined,
             suggested_weekly_post_volume: normalizedVolume,
+            focus_stage: normalizeFocusStage(sprint.focus_stage),
+            focus_goals: normalizeStringArray(sprint.focus_goals),
           }
         }),
     content_calendar: (contentSlots || []).map(slot => ({

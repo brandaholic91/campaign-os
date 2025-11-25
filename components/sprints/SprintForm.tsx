@@ -33,9 +33,12 @@ interface SprintFormData {
   end_date: string
   focus_goal: SprintFocusGoalType
   focus_description: string
-  focus_segments: string[]
-  focus_topics: string[]
-  focus_channels: string[]
+  focus_segments_primary: string[]
+  focus_segments_secondary: string[]
+  focus_topics_primary: string[]
+  focus_topics_secondary: string[]
+  focus_channels_primary: string[]
+  focus_channels_secondary: string[]
   success_indicators: string[]
   risks_and_watchouts: string[]
   success_criteria: string[]
@@ -142,6 +145,34 @@ export default function SprintForm({
     return defaultValue
   }
 
+  const categorizeByPriority = (
+    rows: { priority: string | null; [key: string]: string | null }[] = [],
+    keyField: string
+  ) => {
+    const primary: string[] = []
+    const secondary: string[] = []
+    rows.forEach((row) => {
+      if (!row[keyField]) return
+      const priority = row.priority === 'secondary' ? 'secondary' : 'primary'
+      if (priority === 'secondary') {
+        secondary.push(row[keyField])
+      } else {
+        primary.push(row[keyField])
+      }
+    })
+    return { primary, secondary }
+  }
+
+  const ensureCount = (label: string, values: string[], min: number, max: number) => {
+    if (values.length < min) {
+      return `${label} mezőben legalább ${min} elem szükséges`
+    }
+    if (values.length > max) {
+      return `${label} mezőben legfeljebb ${max} elem lehet`
+    }
+    return null
+  }
+
   // Initialize formData directly from initialData or empty defaults
   const getInitialFormData = (): SprintFormData => {
     if (!initialData) {
@@ -151,9 +182,12 @@ export default function SprintForm({
         end_date: '',
         focus_goal: 'awareness' as SprintFocusGoalType,
         focus_description: '',
-        focus_segments: [],
-        focus_topics: [],
-        focus_channels: [],
+        focus_segments_primary: [],
+        focus_segments_secondary: [],
+        focus_topics_primary: [],
+        focus_topics_secondary: [],
+        focus_channels_primary: [],
+        focus_channels_secondary: [],
         success_indicators: [],
         risks_and_watchouts: [],
         success_criteria: [],
@@ -170,9 +204,12 @@ export default function SprintForm({
       end_date: initialData.end_date ? initialData.end_date.split('T')[0] : '',
       focus_goal: (initialData.focus_goal as SprintFocusGoalType) || 'awareness',
       focus_description: (initialData.focus_description as string) || '',
-      focus_segments: initialData.focus_segments || [],
-      focus_topics: initialData.focus_topics || [],
-      focus_channels: (initialData.focus_channels as string[]) || [],
+      focus_segments_primary: ((initialData as any).focus_segments_primary as string[] | undefined) || (initialData.focus_segments as string[] | undefined) || [],
+      focus_segments_secondary: ((initialData as any).focus_segments_secondary as string[] | undefined) || [],
+      focus_topics_primary: ((initialData as any).focus_topics_primary as string[] | undefined) || (initialData.focus_topics as string[] | undefined) || [],
+      focus_topics_secondary: ((initialData as any).focus_topics_secondary as string[] | undefined) || [],
+      focus_channels_primary: ((initialData as any).focus_channels_primary as string[] | undefined) || (initialData.focus_channels as string[] | undefined) || [],
+      focus_channels_secondary: ((initialData as any).focus_channels_secondary as string[] | undefined) || [],
       success_indicators: parseJsonField(initialData.success_indicators, []),
       risks_and_watchouts: parseJsonField(initialData.risks_and_watchouts as any, []),
       success_criteria: parseJsonField(initialData.success_criteria as any, []),
@@ -261,16 +298,23 @@ export default function SprintForm({
       // Load junction table relationships if editing
       if (initialData?.id) {
         const [segmentsResult, topicsResult, channelsResult] = await Promise.all([
-          db.from('sprint_segments').select('segment_id').eq('sprint_id', initialData.id),
-          db.from('sprint_topics').select('topic_id').eq('sprint_id', initialData.id),
-          db.from('sprint_channels').select('channel_key').eq('sprint_id', initialData.id),
+          db.from('sprint_segments').select('segment_id, priority').eq('sprint_id', initialData.id),
+          db.from('sprint_topics').select('topic_id, priority').eq('sprint_id', initialData.id),
+          db.from('sprint_channels').select('channel_key, priority').eq('sprint_id', initialData.id),
         ])
+
+        const segmentMap = categorizeByPriority(segmentsResult.data || [], 'segment_id')
+        const topicMap = categorizeByPriority(topicsResult.data || [], 'topic_id')
+        const channelMap = categorizeByPriority(channelsResult.data || [], 'channel_key')
 
         setFormData(prev => ({
           ...prev,
-          focus_segments: (segmentsResult.data || []).map((s: any) => s.segment_id),
-          focus_topics: (topicsResult.data || []).map((t: any) => t.topic_id),
-          focus_channels: (channelsResult.data || []).map((c: any) => c.channel_key),
+          focus_segments_primary: segmentMap.primary,
+          focus_segments_secondary: segmentMap.secondary,
+          focus_topics_primary: topicMap.primary,
+          focus_topics_secondary: topicMap.secondary,
+          focus_channels_primary: channelMap.primary,
+          focus_channels_secondary: channelMap.secondary,
         }))
       }
     }
@@ -298,28 +342,60 @@ export default function SprintForm({
         return
       }
 
-      if (formData.focus_segments.length === 0) {
-        setError('Legalább egy fókusz szegmens szükséges')
-        setIsLoading(false)
-        return
+      const focusSegmentsPrimary = formData.focus_segments_primary
+      const focusTopicsPrimary = formData.focus_topics_primary
+      const focusChannelsPrimary = formData.focus_channels_primary
+      const focusSegmentsSecondary = formData.focus_segments_secondary
+      const focusTopicsSecondary = formData.focus_topics_secondary
+      const focusChannelsSecondary = formData.focus_channels_secondary
+
+      const errorMessages = [
+        ensureCount('Fő szegmensek', focusSegmentsPrimary, 1, 2),
+        ensureCount('Fő témák', focusTopicsPrimary, 2, 3),
+        ensureCount('Fő csatornák', focusChannelsPrimary, 2, 3),
+      ]
+
+      if (focusTopicsSecondary.length > 0) {
+        if (focusTopicsSecondary.length < 2) {
+          errorMessages.push('Kiegészítő témák esetén legalább 2 elemet kell megadni')
+        } else if (focusTopicsSecondary.length > 4) {
+          errorMessages.push('Kiegészítő témák legfeljebb 4 elemet tartalmazhatnak')
+        }
       }
 
-      if (formData.focus_topics.length === 0) {
-        setError('Legalább egy fókusz téma szükséges')
-        setIsLoading(false)
-        return
-      }
-
-      if (formData.focus_channels.length === 0) {
-        setError('Legalább egy csatorna szükséges')
+      const errorMessage = errorMessages.find(Boolean)
+      if (errorMessage) {
+        setError(errorMessage)
         setIsLoading(false)
         return
       }
 
       const url = '/api/sprints'
       const method = initialData ? 'PUT' : 'POST'
+      const focusSegmentsCombined = [
+        ...formData.focus_segments_primary,
+        ...formData.focus_segments_secondary,
+      ]
+      const focusTopicsCombined = [
+        ...formData.focus_topics_primary,
+        ...formData.focus_topics_secondary,
+      ]
+      const focusChannelsCombined = [
+        ...formData.focus_channels_primary,
+        ...formData.focus_channels_secondary,
+      ]
+
       const body = {
         ...formData,
+        focus_segments_primary: formData.focus_segments_primary,
+        focus_segments_secondary: formData.focus_segments_secondary,
+        focus_topics_primary: formData.focus_topics_primary,
+        focus_topics_secondary: formData.focus_topics_secondary,
+        focus_channels_primary: formData.focus_channels_primary,
+        focus_channels_secondary: formData.focus_channels_secondary,
+        focus_segments: focusSegmentsCombined,
+        focus_topics: focusTopicsCombined,
+        focus_channels: focusChannelsCombined,
         campaign_id: campaignId,
         id: initialData?.id,
       }
@@ -476,51 +552,133 @@ export default function SprintForm({
         />
       </div>
 
-      <div className="space-y-2">
-        <Label>Fókusz szegmensek *</Label>
-        <MultiSelect
-          options={segments.map((s) => ({
-            value: s.id,
-            label: s.name,
-            description: s.description || undefined,
-          }))}
-          selected={formData.focus_segments}
-          onSelectionChange={(selected) =>
-            setFormData({ ...formData, focus_segments: selected })
-          }
-          placeholder="Válassz szegmenseket..."
-        />
-      </div>
+      <div className="grid gap-4">
+        <div>
+          <p className="text-sm font-semibold text-gray-500 uppercase mb-2 tracking-wide">
+            Szegmensek
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Fő szegmensek <span className="text-xs text-gray-500">(1-2 fő)</span>
+              </Label>
+              <MultiSelect
+                options={segments.map((s) => ({
+                  value: s.id,
+                  label: s.name,
+                  description: s.description || undefined,
+                }))}
+                selected={formData.focus_segments_primary}
+                onSelectionChange={(selected) =>
+                  setFormData({ ...formData, focus_segments_primary: selected })
+                }
+                placeholder="Válassz fő szegmenseket..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Kiegészítő szegmensek{' '}
+                <span className="text-xs text-gray-500">(0-2 darab, opcionális)</span>
+              </Label>
+              <MultiSelect
+                options={segments.map((s) => ({
+                  value: s.id,
+                  label: s.name,
+                  description: s.description || undefined,
+                }))}
+                selected={formData.focus_segments_secondary}
+                onSelectionChange={(selected) =>
+                  setFormData({ ...formData, focus_segments_secondary: selected })
+                }
+                placeholder="Válassz kiegészítő szegmenseket..."
+              />
+            </div>
+          </div>
+        </div>
 
-      <div className="space-y-2">
-        <Label>Fókusz témák *</Label>
-        <MultiSelect
-          options={topics.map((t) => ({
-            value: t.id,
-            label: t.name,
-            description: t.description || undefined,
-          }))}
-          selected={formData.focus_topics}
-          onSelectionChange={(selected) =>
-            setFormData({ ...formData, focus_topics: selected })
-          }
-          placeholder="Válassz témákat..."
-        />
-      </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-500 uppercase mb-2 tracking-wide">
+            Témák
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Fő témák <span className="text-xs text-gray-500">(2-3 fő)</span>
+              </Label>
+              <MultiSelect
+                options={topics.map((t) => ({
+                  value: t.id,
+                  label: t.name,
+                  description: t.description || undefined,
+                }))}
+                selected={formData.focus_topics_primary}
+                onSelectionChange={(selected) =>
+                  setFormData({ ...formData, focus_topics_primary: selected })
+                }
+                placeholder="Válassz fő témákat..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Kiegészítő témák{' '}
+                <span className="text-xs text-gray-500">(2-4 darab, opcionális)</span>
+              </Label>
+              <MultiSelect
+                options={topics.map((t) => ({
+                  value: t.id,
+                  label: t.name,
+                  description: t.description || undefined,
+                }))}
+                selected={formData.focus_topics_secondary}
+                onSelectionChange={(selected) =>
+                  setFormData({ ...formData, focus_topics_secondary: selected })
+                }
+                placeholder="Válassz kiegészítő témákat..."
+              />
+            </div>
+          </div>
+        </div>
 
-      <div className="space-y-2">
-        <Label>Csatornák *</Label>
-        <MultiSelect
-          options={channels.map((c) => ({
-            value: c,
-            label: c,
-          }))}
-          selected={formData.focus_channels}
-          onSelectionChange={(selected) =>
-            setFormData({ ...formData, focus_channels: selected })
-          }
-          placeholder="Válassz csatornákat..."
-        />
+        <div>
+          <p className="text-sm font-semibold text-gray-500 uppercase mb-2 tracking-wide">
+            Csatornák
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Fő csatornák <span className="text-xs text-gray-500">(2-3 fő)</span>
+              </Label>
+              <MultiSelect
+                options={channels.map((c) => ({
+                  value: c,
+                  label: c,
+                }))}
+                selected={formData.focus_channels_primary}
+                onSelectionChange={(selected) =>
+                  setFormData({ ...formData, focus_channels_primary: selected })
+                }
+                placeholder="Válassz fő csatornákat..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Kiegészítő csatornák{' '}
+                <span className="text-xs text-gray-500">(opcionális)</span>
+              </Label>
+              <MultiSelect
+                options={channels.map((c) => ({
+                  value: c,
+                  label: c,
+                }))}
+                selected={formData.focus_channels_secondary}
+                onSelectionChange={(selected) =>
+                  setFormData({ ...formData, focus_channels_secondary: selected })
+                }
+                placeholder="Válassz kiegészítő csatornákat..."
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -750,25 +908,6 @@ export default function SprintForm({
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="status">Státusz</Label>
-        <Select
-          value={formData.status}
-          onValueChange={(value: any) =>
-            setFormData({ ...formData, status: value })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="planned">Planned</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="flex justify-between pt-4">

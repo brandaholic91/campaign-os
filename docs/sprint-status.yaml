@@ -188,7 +188,7 @@ development_status:
   # Note: Epic 5 Phase 2 - Two-phase refactor: Primary/secondary distinction for segments, topics, and channels
   # Note: Story drafted 2025-01-XX - Sprint plan schema with primary/secondary focus areas
   # Note: Extends Story 5.6 with priority-based junction tables and primary/secondary fields
-  5-10-sprint-plan-primary-secondary-schema: backlog
+  5-10-sprint-plan-primary-secondary-schema: in-progress
 
   epic-5-retrospective: optional
 

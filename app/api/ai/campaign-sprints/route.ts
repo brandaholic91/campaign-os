@@ -263,52 +263,79 @@ export async function POST(req: NextRequest) {
 
           // Process and validate sprints (same logic as execution planner)
           sprintResponse.sprints = sprintResponse.sprints.map((sprint: any, index: number) => {
-            // Fix sprint ID
             const sprintId = isValidUUID(sprint.id) ? sprint.id : randomUUID()
 
-            // Fix focus_segments - filter invalid UUIDs and keep only valid segment IDs
-            const validFocusSegments = (sprint.focus_segments || [])
-              .filter((id: string) => isValidUUID(id) && validSegmentIds.has(id))
-
-            // Fix focus_topics - filter invalid UUIDs and keep only valid topic IDs
-            const validFocusTopics = (sprint.focus_topics || [])
-              .filter((id: string) => isValidUUID(id) && validTopicIds.has(id))
-
-            // Ensure at least one segment and topic (required by schema)
-            const finalFocusSegments = validFocusSegments.length > 0
-              ? validFocusSegments
-              : [Array.from(validSegmentIds)[0]]
-            const finalFocusTopics = validFocusTopics.length > 0
-              ? validFocusTopics
-              : [Array.from(validTopicIds)[0]]
-
-            // Helper to normalize array fields that AI might return as strings
             const normalizeArrayField = (field: any): string[] => {
               if (!field) return []
               if (Array.isArray(field)) {
-                return field.filter(item => typeof item === 'string').map(item => String(item))
+                return field
+                  .filter(item => typeof item === 'string')
+                  .map(item => String(item).trim())
+                  .filter(item => item.length > 0)
               }
               if (typeof field === 'string') {
-                return field.trim() ? [field.trim()] : []
+                const trimmed = field.trim()
+                return trimmed.length > 0 ? [trimmed] : []
               }
               return []
             }
 
-            // Helper for optional fields that should be undefined if empty (to pass validation)
             const normalizeOptionalArrayField = (field: any): string[] | undefined => {
               const normalized = normalizeArrayField(field)
-              // If empty array, return undefined to make the field optional
               return normalized.length > 0 ? normalized : undefined
             }
+
+            const legacySegments = normalizeArrayField(sprint.focus_segments).filter(
+              id => isValidUUID(id) && validSegmentIds.has(id)
+            )
+            const legacyTopics = normalizeArrayField(sprint.focus_topics).filter(
+              id => isValidUUID(id) && validTopicIds.has(id)
+            )
+
+            const primarySegments = normalizeArrayField(sprint.focus_segments_primary).filter(
+              id => isValidUUID(id) && validSegmentIds.has(id)
+            )
+            const secondarySegments = normalizeArrayField(sprint.focus_segments_secondary).filter(
+              id => isValidUUID(id) && validSegmentIds.has(id)
+            )
+            const finalSegmentsPrimary = primarySegments.length > 0
+              ? primarySegments
+              : legacySegments.length > 0
+                ? legacySegments
+                : [Array.from(validSegmentIds)[0]]
+
+            const primaryTopics = normalizeArrayField(sprint.focus_topics_primary).filter(
+              id => isValidUUID(id) && validTopicIds.has(id)
+            )
+            const secondaryTopics = normalizeArrayField(sprint.focus_topics_secondary).filter(
+              id => isValidUUID(id) && validTopicIds.has(id)
+            )
+            const finalTopicsPrimary = primaryTopics.length > 0
+              ? primaryTopics
+              : legacyTopics.length > 0
+                ? legacyTopics
+                : [Array.from(validTopicIds)[0]]
+
+            const primaryChannels = normalizeArrayField(sprint.focus_channels_primary)
+            const secondaryChannels = normalizeArrayField(sprint.focus_channels_secondary)
+            const legacyChannels = normalizeArrayField(sprint.focus_channels)
+            const finalChannelsPrimary = primaryChannels.length > 0
+              ? primaryChannels
+              : legacyChannels
 
             return {
               ...sprint,
               id: sprintId,
-              focus_segments: finalFocusSegments,
-              focus_topics: finalFocusTopics,
-              // Normalize array fields that might come as strings from AI
-              // For optional fields with min requirements, return undefined if empty
-              success_indicators: normalizeArrayField(sprint.success_indicators), // Always return array, even if empty
+              focus_segments: [...finalSegmentsPrimary, ...secondarySegments],
+              focus_segments_primary: finalSegmentsPrimary,
+              focus_segments_secondary: secondarySegments,
+              focus_topics: [...finalTopicsPrimary, ...secondaryTopics],
+              focus_topics_primary: finalTopicsPrimary,
+              focus_topics_secondary: secondaryTopics,
+              focus_channels: [...finalChannelsPrimary, ...secondaryChannels],
+              focus_channels_primary: finalChannelsPrimary,
+              focus_channels_secondary: secondaryChannels,
+              success_indicators: normalizeArrayField(sprint.success_indicators),
               risks_and_watchouts: normalizeOptionalArrayField(sprint.risks_and_watchouts),
               success_criteria: normalizeOptionalArrayField(sprint.success_criteria),
               narrative_emphasis: normalizeArrayField(sprint.narrative_emphasis),

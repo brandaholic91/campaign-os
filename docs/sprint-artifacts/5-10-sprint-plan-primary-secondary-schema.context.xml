@@ -1,0 +1,154 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>epic-5</epicId>
+    <storyId>5.10</storyId>
+    <title>Sprint Plan Primary/Secondary Schema Implementation</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-25</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/5-10-sprint-plan-primary-secondary-schema.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>campaign manager</asA>
+    <iWant>sprint plans with primary and secondary focus areas for segments, topics, and channels</iWant>
+    <soThat>I can clearly prioritize which audiences, topics, and channels are most important for each sprint phase</soThat>
+    <tasks>
+- Task 1: Update `SprintPlanSchema` in `lib/ai/schemas.ts` – remove legacy `focus_*` fields, make `focus_stage` required, add primary/secondary arrays with min/max validation, and regenerate Zod exports.
+- Task 2: Create an idempotent migration in `supabase/migrations/` that adds `priority TEXT DEFAULT 'primary'` plus CHECK constraints to `sprint_segments`, `sprint_topics`, and `sprint_channels`, and backfill existing rows with `'primary'`.
+- Task 3: Extend `app/api/sprints/route.ts` (GET handler) to group junction-table relationships by priority and return `focus_*_primary` and `focus_*_secondary` arrays (empty arrays, not null), honoring backward compatibility for null priorities.
+- Task 4: Extend the POST handler in `app/api/sprints/route.ts` to accept primary/secondary arrays, validate min/max rules, insert sprint row, and create priority-tagged junction records.
+- Task 5: Extend the PUT handler in `app/api/sprints/route.ts` to delete old junction records, insert new priority-aware records, and reuse the same validation logic as POST.
+- Task 6: Verify `app/api/ai/campaign-sprints/route.ts` still validates against the enhanced `SprintPlanSchema` and surfaces the new primary/secondary arrays in generated responses.
+- Task 7: Update `app/api/campaigns/execution/route.ts` so execution-plan saves persist the new primary/secondary relationships into the junction tables with priorities.
+- Task 8: Update `components/sprints/SprintForm.tsx`, `components/campaigns/SprintEditForm.tsx`, and related form helpers to show distinct sections/labeled fields (Hungarian labels) for primary vs. secondary segments/topics/channels and enforce the declared min/max counts.
+- Task 9: Update `components/sprints/SprintBoard.tsx` and `components/campaigns/SprintDetailPage.tsx` to display primary items in bold/primary color, secondary items in standard weight/secondary color, and keep the enhanced metadata from Story 5.9 visible.
+- Task 10: Run coverage/validation on schema, migration, API GET/POST/PUT, and UI behavior to ensure the new fields survive serialization round trips and still respect backward-compatible defaults.
+- Task 11: Regenerate `lib/supabase/types.ts` after migration so junction table types expose the `priority` field; verify all imports still align.
+- Task 12: Compose automated and manual tests that cover schema validation, migration backfill, API round trips, AI generation output, execution-plan persistence, frontend form validation, and display of primary/secondary distinctions.
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+- AC1–AC10 cover schema enforcement, database migration with priority columns, GET/POST/PUT endpoint behavior, AI generation, execution-plan save, UI form/display updates, and backward compatibility (primary-only fallbacks).
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+- path: docs/sprint-artifacts/5-10-sprint-plan-primary-secondary-schema.md
+  title: Story 5.10: Sprint Plan Primary/Secondary Schema Implementation
+  section: Acceptance Criteria & Tasks
+  snippet: "AC1–AC10 demand schema rules, priority columns, API coverage, AI validation, UI sections, and backward compatibility; tasks list enumerates schema, migration, API, UI, and testing steps."
+- path: docs/tech-spec.md
+  title: Technical Specification
+  section: Epic 5 – Execution Planner
+  snippet: "Phase 2 splits sprint generation (`/api/ai/campaign-sprints`) from per-sprint content slot generation; outlines Next.js, Supabase, AI stack, and key file ownership for sprint and content flows."
+- path: docs/sprint-artifacts/5-9-ui-refactor-two-phase-model.md
+  title: Story 5.9: UI Refactor – Two-Phase Model
+  section: Acceptance Criteria 5.9.1–5.9.7
+  snippet: "Sprint cards already show primary/secondary metadata and SSE-driven generation/UI controls, so this story must align colors/labels and reuse those components for new fields."
+- path: docs/sprint-artifacts/5-6-enhanced-sprint-schema-database-migration.md
+  title: Story 5.6: Enhanced Sprint Schema & Database Migration
+  section: Acceptance Criteria & Dev Notes
+  snippet: "Foundational migration introduced `focus_stage`, `focus_goals`, and metadata fields; this story builds on the same migration pattern (nullable first, then required) and existing Zod/TypeScript updates."
+    </docs>
+
+    <code>
+- path: lib/ai/schemas.ts
+  kind: schema
+  symbol: SprintPlanSchema
+  lines: 349-382
+  reason: "Controls the primary/secondary fields, validation, and exports referenced by AI generation and API validation logic."
+- path: supabase/migrations/20251128_execution_planning_schema.sql
+  kind: migration
+  symbol: content_slots + sprints
+  lines: 13-188
+  reason: "Existing execution-planning migration is the template for safe ALTER/CREATE patterns and trigger/index management when adjusting junction tables."
+- path: app/api/sprints/route.ts
+  kind: REST endpoint
+  symbol: GET/POST/PUT handlers
+  lines: 45-220
+  reason: "Handles sprint CRUD and will serve as the single place to expose primary/secondary arrays plus junction-table writes."
+- path: app/api/ai/campaign-sprints/route.ts
+  kind: REST endpoint
+  symbol: POST /api/ai/campaign-sprints
+  lines: 1-140
+  reason: "Generates sprints obeying SprintPlanSchema; must emit new arrays so downstream UI/designer previews have data."
+- path: app/api/campaigns/execution/route.ts
+  kind: REST endpoint
+  symbol: POST /api/campaigns/execution
+  lines: 1-220
+  reason: "Persists execution plans and related junction data, so newly introduced priority fields must flow through this save path as well."
+    </code>
+  </artifacts>
+
+  <constraints>
+- Maintain backward compatibility by treating null priorities as primary until the migration runs and still allowing sprint rows to load without secondary arrays.
+- Follow the Phase 2 upgrade pattern: add nullable columns/fields first, fill defaults, then enforce required rules through validation and API contracts.
+- Keep Hungarian labels in forms/display (e.g., "Fő szegmensek", "Kiegészítő szegmensek") consistent with Story 5.9 styling, and visually distinguish primary (bold/primary color) vs. secondary (normal/secondary color) entries.
+- Database migrations must be idempotent, include CHECK constraints for `priority IN ('primary','secondary')`, and set defaults/backfill before altering NOT NULL.
+- AI prompts and validation (lib/ai/prompts/sprint-planner.ts and SprintPlanSchema) must continue to produce the same JSON shape, now including the explicit primary/secondary arrays.
+  </constraints>
+
+  <interfaces>
+- name: GET /api/sprints?campaignId={campaignId}
+  kind: REST endpoint
+  signature: GET /api/sprints?campaignId=xxx
+  path: app/api/sprints/route.ts
+  reason: Returns `focus_*_primary` and `focus_*_secondary` arrays (empty arrays when no secondary entries) plus sprint metadata.
+- name: GET /api/sprints/{sprintId}
+  kind: REST endpoint
+  signature: GET /api/sprints/[sprintId]
+  path: app/api/sprints/route.ts
+  reason: Same response as list endpoint, used by SprintDetailPage and ExecutionPlanner detail view.
+- name: POST /api/sprints
+  kind: REST endpoint
+  signature: POST /api/sprints
+  path: app/api/sprints/route.ts
+  reason: Accepts new primary/secondary payload arrays, validates min/max counts, and writes priority-tagged junction records.
+- name: PUT /api/sprints/{sprintId}
+  kind: REST endpoint
+  signature: PUT /api/sprints/[sprintId]
+  path: app/api/sprints/route.ts
+  reason: Replaces junction relations with newly posted primary/secondary data while enforcing the same validation.
+- name: POST /api/ai/campaign-sprints
+  kind: REST endpoint
+  signature: POST /api/ai/campaign-sprints
+  path: app/api/ai/campaign-sprints/route.ts
+  reason: Still uses SprintPlanSchema; must include the new arrays programmatically for AI-generated sprints.
+- name: POST /api/campaigns/execution
+  kind: REST endpoint
+  signature: POST /api/campaigns/execution
+  path: app/api/campaigns/execution/route.ts
+  reason: Saves execution plans that will now carry primary/secondary relationships into the DB and junction tables.
+  </interfaces>
+
+  <dependencies>
+- Next.js 16 (App Router) + React 19 + TypeScript 5.9 (frontend stack referenced in `docs/tech-spec.md` and `package.json`).
+- Tailwind CSS 3.4 + Shadcn/ui + Lucide/icons + `clsx` for UI styling (Story 5.9’s refactors rely on these packages).
+- Supabase Postgres (PostgreSQL 15+) client libs via `@supabase/supabase-js` and Next.js API routes for migrations and endpoint logic.
+- Zod 4.x schemas (`lib/ai/schemas.ts`) drive validation for SprintPlanSchema and other artifacts.
+- AI integrations (Anthropic Claude via `@anthropic-ai/sdk`, CopilotKit runtime) appear in `docs/tech-spec.md` and underlie `app/api/ai/*` endpoints.
+  </dependencies>
+
+  <tests>
+    <standards>Schema validation must enforce required min/max counts and field presence before database writes; migrations must default existing priorities to 'primary'; API responses must return arrays (never null); UI must distinguish primary/secondary with Hungarian labels.</standards>
+    <locations>
+- supabase/migrations
+- app/api/sprints
+- app/api/ai/campaign-sprints
+- app/api/campaigns/execution
+- components/sprints
+- components/campaigns
+- __tests__/api
+- __tests__/validation
+    </locations>
+    <ideas>
+- Run Supabase migration plus rollback to confirm idempotence and check for null priority values.
+- API contract tests: POST/PUT w/ valid and invalid min/max data, GET ensuring secondary arrays default to [], and AI endpoint output matches SprintPlanSchema.
+- Frontend: fill SprintForm/SprintEditForm with boundary cases (1 vs. 2 primary segments, 0 vs. 2 secondary), submit, and verify UI shows primary/secondary sections with expected colors/labels.
+- Execution-plan save integration: call `POST /api/campaigns/execution` with payloads containing primary/secondary arrays and assert junction tables share priority flags (use API tests under `__tests__/api`).
+    </ideas>
+  </tests>
+</story-context>
+

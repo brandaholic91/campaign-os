@@ -586,14 +586,17 @@ export type Database = {
         Row: {
           channel_key: string
           sprint_id: string
+          priority: string
         }
         Insert: {
           channel_key: string
           sprint_id: string
+          priority?: string
         }
         Update: {
           channel_key?: string
           sprint_id?: string
+          priority?: string
         }
         Relationships: [
           {
@@ -609,14 +612,17 @@ export type Database = {
         Row: {
           segment_id: string
           sprint_id: string
+          priority: string
         }
         Insert: {
           segment_id: string
           sprint_id: string
+          priority?: string
         }
         Update: {
           segment_id?: string
           sprint_id?: string
+          priority?: string
         }
         Relationships: [
           {
@@ -639,14 +645,17 @@ export type Database = {
         Row: {
           sprint_id: string
           topic_id: string
+          priority: string
         }
         Insert: {
           sprint_id: string
           topic_id: string
+          priority?: string
         }
         Update: {
           sprint_id?: string
           topic_id?: string
+          priority?: string
         }
         Relationships: [
           {

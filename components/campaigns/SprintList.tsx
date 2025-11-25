@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
 import { ChevronDown, ChevronUp, Calendar, Target, Users, MessageSquare, Radio, Edit, Trash2, Plus, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { SprintEditForm } from './SprintEditForm'
+import SprintForm from '../sprints/SprintForm'
 import { Database } from '@/lib/supabase/types'
 import {
   Dialog,
@@ -20,7 +20,12 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 
-type Sprint = Database['campaign_os']['Tables']['sprints']['Row']
+type Sprint = Database['campaign_os']['Tables']['sprints']['Row'] & {
+  focus_segments?: string[]
+  focus_topics?: string[]
+  focus_channels?: string[]
+  success_indicators?: any[]
+}
 
 interface SprintListProps {
   sprints: SprintPlan[]
@@ -65,8 +70,14 @@ export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateCont
       const topicIds = new Set<string>()
       
       sprints.forEach(sprint => {
-        sprint.focus_segments.forEach(id => segmentIds.add(id))
-        sprint.focus_topics.forEach(id => topicIds.add(id))
+        const segPrimary = sprint.focus_segments_primary ?? []
+        const segSecondary = sprint.focus_segments_secondary ?? []
+        const topicPrimary = sprint.focus_topics_primary ?? []
+        const topicSecondary = sprint.focus_topics_secondary ?? []
+        segPrimary.forEach(id => segmentIds.add(id))
+        segSecondary.forEach(id => segmentIds.add(id))
+        topicPrimary.forEach(id => topicIds.add(id))
+        topicSecondary.forEach(id => topicIds.add(id))
       })
 
       if (segmentIds.size > 0) {
@@ -124,7 +135,7 @@ export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateCont
         end_date: sprintPlan.end_date,
         focus_goal: sprintPlan.focus_goal || 'awareness', // Default fallback for backward compatibility
         focus_description: sprintPlan.focus_description || '', // Default fallback for backward compatibility
-        focus_channels: sprintPlan.focus_channels as any,
+        focus_channels: [...(sprintPlan.focus_channels_primary || []), ...(sprintPlan.focus_channels_secondary || [])] as any,
         success_indicators: sprintPlan.success_indicators as any,
         status: 'planned' as const,
         created_at: null, // null indicates this sprint is not yet saved to database
@@ -137,8 +148,8 @@ export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateCont
         success_criteria: (sprintPlan.success_criteria || []) as any,
         risks_and_watchouts: (sprintPlan.risks_and_watchouts || []) as any,
         updated_at: null,
-        _focus_segments: sprintPlan.focus_segments, // Temporary field for unsaved sprints
-        _focus_topics: sprintPlan.focus_topics, // Temporary field for unsaved sprints
+        _focus_segments: [...(sprintPlan.focus_segments_primary || []), ...(sprintPlan.focus_segments_secondary || [])], // Temporary field for unsaved sprints
+        _focus_topics: [...(sprintPlan.focus_topics_primary || []), ...(sprintPlan.focus_topics_secondary || [])], // Temporary field for unsaved sprints
       }
       
       setEditingSprint(sprintForEdit as Sprint)
@@ -160,7 +171,54 @@ export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateCont
       return
     }
 
-    setEditingSprint(sprint)
+    // Load junction table data to get segments, topics, channels
+    const [segmentsResult, topicsResult, channelsResult] = await Promise.all([
+      db.from('sprint_segments').select('segment_id, priority').eq('sprint_id', sprintId),
+      db.from('sprint_topics').select('topic_id, priority').eq('sprint_id', sprintId),
+      db.from('sprint_channels').select('channel_key, priority').eq('sprint_id', sprintId),
+    ])
+
+    const segmentsPrimary: string[] = []
+    const segmentsSecondary: string[] = []
+    const topicsPrimary: string[] = []
+    const topicsSecondary: string[] = []
+    const channelsPrimary: string[] = []
+    const channelsSecondary: string[] = []
+
+    ;(segmentsResult.data || []).forEach((row: any) => {
+      if (row.priority === 'secondary') {
+        segmentsSecondary.push(row.segment_id)
+      } else {
+        segmentsPrimary.push(row.segment_id)
+      }
+    })
+
+    ;(topicsResult.data || []).forEach((row: any) => {
+      if (row.priority === 'secondary') {
+        topicsSecondary.push(row.topic_id)
+      } else {
+        topicsPrimary.push(row.topic_id)
+      }
+    })
+
+    ;(channelsResult.data || []).forEach((row: any) => {
+      if (row.priority === 'secondary') {
+        channelsSecondary.push(row.channel_key)
+      } else {
+        channelsPrimary.push(row.channel_key)
+      }
+    })
+
+    // Convert to Sprint format with proper types
+    const sprintForEdit: Sprint = {
+      ...sprint,
+      focus_segments: [...segmentsPrimary, ...segmentsSecondary],
+      focus_topics: [...topicsPrimary, ...topicsSecondary],
+      focus_channels: [...channelsPrimary, ...channelsSecondary],
+      success_indicators: Array.isArray(sprint.success_indicators) ? sprint.success_indicators : [],
+    } as Sprint
+
+    setEditingSprint(sprintForEdit)
   }
 
   const handleDelete = async (sprintId: string) => {
@@ -226,6 +284,12 @@ export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateCont
           const isExpanded = expandedSprints.has(sprint.id)
           const startDate = new Date(sprint.start_date)
           const endDate = new Date(sprint.end_date)
+          const sprintSegmentsPrimary = sprint.focus_segments_primary ?? []
+          const sprintSegmentsSecondary = sprint.focus_segments_secondary ?? []
+          const sprintTopicsPrimary = sprint.focus_topics_primary ?? []
+          const sprintTopicsSecondary = sprint.focus_topics_secondary ?? []
+          const sprintChannelsPrimary = sprint.focus_channels_primary ?? []
+          const sprintChannelsSecondary = sprint.focus_channels_secondary ?? []
 
           return (
             <div key={sprint.id} className="p-6 hover:bg-gray-50 transition-colors">
@@ -254,15 +318,15 @@ export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateCont
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Users className="w-4 h-4" />
-                      <span>{sprint.focus_segments.length} szegmens</span>
+                      <span>{sprintSegmentsPrimary.length + sprintSegmentsSecondary.length} szegmens</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <MessageSquare className="w-4 h-4" />
-                      <span>{sprint.focus_topics.length} téma</span>
+                      <span>{sprintTopicsPrimary.length + sprintTopicsSecondary.length} téma</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Radio className="w-4 h-4" />
-                      <span>{sprint.focus_channels.length} csatorna</span>
+                      <span>{sprintChannelsPrimary.length + sprintChannelsSecondary.length} csatorna</span>
                     </div>
                   </div>
 
@@ -274,37 +338,71 @@ export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateCont
                     <div className="mt-4 space-y-3 pt-4 border-t border-gray-100">
                       <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                          Fókusz szegmensek
+                          Fő szegmensek
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {sprint.focus_segments.map(segId => (
-                            <Badge key={segId} variant="outline" className="text-xs">
+                          {sprintSegmentsPrimary.map(segId => (
+                            <Badge key={`primary-${segId}`} variant="outline" className="text-xs">
                               {segmentNames[segId] || segId}
                             </Badge>
                           ))}
                         </div>
                       </div>
-
                       <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                          Fókusz témák
+                          Kiegészítő szegmensek
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {sprint.focus_topics.map(topicId => (
-                            <Badge key={topicId} variant="outline" className="text-xs">
+                          {sprintSegmentsSecondary.map(segId => (
+                            <Badge key={`secondary-${segId}`} variant="outline" className="text-xs">
+                              {segmentNames[segId] || segId}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                          Fő témák
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {sprintTopicsPrimary.map(topicId => (
+                            <Badge key={`primary-topic-${topicId}`} variant="outline" className="text-xs">
                               {topicNames[topicId] || topicId}
                             </Badge>
                           ))}
                         </div>
                       </div>
-
                       <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                          Csatornák
+                          Kiegészítő témák
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {sprint.focus_channels.map(channel => (
-                            <Badge key={channel} variant="outline" className="text-xs">
+                          {sprintTopicsSecondary.map(topicId => (
+                            <Badge key={`secondary-topic-${topicId}`} variant="outline" className="text-xs">
+                              {topicNames[topicId] || topicId}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                          Fő csatornák
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {sprintChannelsPrimary.map(channel => (
+                            <Badge key={`primary-channel-${channel}`} variant="outline" className="text-xs">
+                              {channel}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                          Kiegészítő csatornák
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {sprintChannelsSecondary.map(channel => (
+                            <Badge key={`secondary-channel-${channel}`} variant="outline" className="text-xs">
                               {channel}
                             </Badge>
                           ))}
@@ -375,8 +473,8 @@ export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateCont
 
       {/* Edit Form Dialog */}
       {editingSprint && campaignId && (
-        <SprintEditForm
-          sprint={editingSprint}
+        <SprintForm
+          initialData={editingSprint}
           campaignId={campaignId}
           onSuccess={handleEditSuccess}
           onCancel={() => setEditingSprint(null)}
