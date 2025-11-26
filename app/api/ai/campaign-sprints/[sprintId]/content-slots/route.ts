@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAIProvider } from '@/lib/ai/client'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import { CampaignStructure, ContentSlotSchema, ExecutionPlan } from '@/lib/ai/schemas'
 import { CONTENT_SLOT_PLANNER_SYSTEM_PROMPT, CONTENT_SLOT_PLANNER_USER_PROMPT, ContentSlotPlannerContext } from '@/lib/ai/prompts/content-slot-planner'
 import { enforceConstraints } from '@/lib/ai/execution-planner'
@@ -32,7 +32,10 @@ export async function POST(
       return NextResponse.json({ error: 'sprintId is required' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     const db = supabase.schema('campaign_os')
 
     // 1. Fetch sprint with enhanced metadata
@@ -427,6 +430,55 @@ export async function POST(
 
           if (warnings.length > 0) {
             console.warn('Constraint warnings:', warnings)
+          }
+
+          sendSSE(controller, 'progress', { message: 'Mentés az adatbázisba...' })
+
+          // Delete existing slots for this sprint to avoid duplicates/conflicts on regeneration
+          const { error: deleteError } = await db
+            .from('content_slots')
+            .delete()
+            .eq('sprint_id', sprintId)
+
+          if (deleteError) {
+            console.error('Error deleting existing slots:', deleteError)
+            throw new Error('Failed to clear existing slots')
+          }
+
+          // Insert new slots
+          const slotsToInsert = finalPlan.content_calendar.map(slot => ({
+            id: slot.id,
+            sprint_id: slot.sprint_id,
+            campaign_id: slot.campaign_id,
+            date: slot.date,
+            channel: slot.channel,
+            slot_index: slot.slot_index,
+            primary_segment_id: slot.primary_segment_id || null,
+            primary_topic_id: slot.primary_topic_id || null,
+            secondary_segment_ids: slot.secondary_segment_ids || null,
+            secondary_topic_ids: slot.secondary_topic_ids || null,
+            related_goal_ids: slot.related_goal_ids || [],
+            objective: slot.objective,
+            content_type: slot.content_type,
+            funnel_stage: slot.funnel_stage,
+            angle_type: slot.angle_type,
+            cta_type: slot.cta_type,
+            time_of_day: slot.time_of_day || null,
+            angle_hint: slot.angle_hint || null,
+            notes: slot.notes || null,
+            status: slot.status,
+            tone_override: slot.tone_override || null,
+            asset_requirements: slot.asset_requirements || null,
+            owner: slot.owner || null,
+          }))
+
+          const { error: insertError } = await db
+            .from('content_slots')
+            .insert(slotsToInsert as any)
+
+          if (insertError) {
+            console.error('Error saving slots:', insertError)
+            throw new Error('Failed to save content slots to database')
           }
 
           sendSSE(controller, 'progress', { message: 'Slot tervezés kész!' })

@@ -43,14 +43,15 @@ export function SlotDetailPage({ campaignId, sprintId, slotId }: SlotDetailPageP
       const supabase = createClient()
       const db = supabase.schema('campaign_os')
 
-      // Load slot with drafts
-      const { data: slotData, error } = await db
+      // 1. Load slot data
+      const { data: slotData, error: slotError } = await db
         .from('content_slots')
-        .select('*, content_drafts(*)')
+        .select('*')
         .eq('id', slotId)
         .single()
 
-      if (error || !slotData) {
+      if (slotError || !slotData) {
+        console.error('Error loading slot:', slotError)
         toast.error('Slot betöltése sikertelen')
         return
       }
@@ -80,23 +81,36 @@ export function SlotDetailPage({ campaignId, sprintId, slotId }: SlotDetailPageP
         tone_override: slotData.tone_override || undefined,
         asset_requirements: (slotData.asset_requirements as any as string[]) || undefined,
         owner: slotData.owner || undefined,
-        draft_status: (() => {
-          const drafts = (slotData as any).content_drafts
-          if (!drafts || !Array.isArray(drafts) || drafts.length === 0) return 'no_draft'
-          if (drafts.some((d: any) => d.status === 'published')) return 'published'
-          if (drafts.some((d: any) => d.status === 'approved')) return 'approved'
-          return 'has_draft'
-        })(),
+        draft_status: 'no_draft', // Will be updated after loading drafts
       }
 
       setSlot(contentSlot)
 
-      // Map drafts
-      if ((slotData as any).content_drafts) {
-        setDrafts((slotData as any).content_drafts as ContentDraft[])
+      // 2. Load drafts
+      const { data: draftsData, error: draftsError } = await db
+        .from('content_drafts')
+        .select('*')
+        .eq('slot_id', slotId)
+
+      if (draftsError) {
+        console.error('Error loading drafts:', draftsError)
+        toast.error('Draftok betöltése sikertelen')
+        // Don't return, we still have the slot
+      } else {
+        const loadedDrafts = (draftsData || []) as ContentDraft[]
+        setDrafts(loadedDrafts)
+        
+        // Update draft status based on loaded drafts
+        if (loadedDrafts.length > 0) {
+          let status: 'no_draft' | 'has_draft' | 'approved' | 'published' = 'has_draft'
+          if (loadedDrafts.some(d => d.status === 'published')) status = 'published'
+          else if (loadedDrafts.some(d => d.status === 'approved')) status = 'approved'
+          
+          setSlot(prev => prev ? { ...prev, draft_status: status } : null)
+        }
       }
 
-      // Load names
+      // Load names (segments and topics)
       const segmentIds = new Set<string>()
       const topicIds = new Set<string>()
       

@@ -1,19 +1,20 @@
 import { SlotDetailPage } from '@/components/campaigns/SlotDetailPage'
 
 interface SlotPageProps {
-  params: {
+  params: Promise<{
     id: string
     sprintId: string
     slotId: string
-  }
+  }>
 }
 
-export default function SlotPage({ params }: SlotPageProps) {
+export default async function SlotPage({ params }: SlotPageProps) {
+  const resolvedParams = await params
   return (
     <SlotDetailPage
-      campaignId={params.id}
-      sprintId={params.sprintId}
-      slotId={params.slotId}
+      campaignId={resolvedParams.id}
+      sprintId={resolvedParams.sprintId}
+      slotId={resolvedParams.slotId}
     />
   )
 }

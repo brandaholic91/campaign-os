@@ -190,46 +190,68 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
 
         setSprint(sprintPlan)
 
-        // Load content slots for this sprint with drafts
-        const { data: slots } = await db
+        // Load content slots for this sprint
+        const { data: slots, error: slotsError } = await db
           .from('content_slots')
-          .select('*, content_drafts(status)')
+          .select('*')
           .eq('sprint_id', sprintId)
 
-        if (slots) {
-          const contentSlots: ContentSlot[] = slots.map(slot => ({
-            id: slot.id,
-            sprint_id: slot.sprint_id,
-            campaign_id: slot.campaign_id,
-            date: slot.date,
-            channel: slot.channel,
-            slot_index: slot.slot_index,
-            primary_segment_id: slot.primary_segment_id || undefined,
-            primary_topic_id: slot.primary_topic_id || undefined,
-            secondary_segment_ids: (slot.secondary_segment_ids as any as string[]) || undefined,
-            secondary_topic_ids: (slot.secondary_topic_ids as any as string[]) || undefined,
-            related_goal_ids: (slot.related_goal_ids as any as string[]) || [],
-            objective: slot.objective as any,
-            content_type: slot.content_type as any,
-            funnel_stage: slot.funnel_stage as any,
-            angle_type: slot.angle_type as any,
-            cta_type: slot.cta_type as any,
-            time_of_day: slot.time_of_day as any,
-            angle_hint: slot.angle_hint || undefined,
-            notes: slot.notes || undefined,
-            status: (slot.status as any) || 'planned',
-            tone_override: slot.tone_override || undefined,
-            asset_requirements: (slot.asset_requirements as any as string[]) || undefined,
-            owner: slot.owner || undefined,
-            draft_status: (() => {
-              const drafts = (slot as any).content_drafts
-              if (!drafts || !Array.isArray(drafts) || drafts.length === 0) return 'no_draft'
-              if (drafts.some((d: any) => d.status === 'published')) return 'published'
-              if (drafts.some((d: any) => d.status === 'approved')) return 'approved'
-              return 'has_draft'
-            })(),
-          }))
+        if (slotsError) {
+          console.error('Error loading slots:', slotsError)
+          toast.error('Slotok betöltése sikertelen')
+        }
+
+        if (slots && slots.length > 0) {
+          // Load drafts for these slots
+          const slotIds = slots.map(s => s.id)
+          const { data: drafts, error: draftsError } = await db
+            .from('content_drafts')
+            .select('slot_id, status')
+            .in('slot_id', slotIds)
+          
+          if (draftsError) {
+            console.error('Error loading drafts:', draftsError)
+            // Continue without drafts
+          }
+
+          const contentSlots: ContentSlot[] = slots.map(slot => {
+            const slotDrafts = drafts?.filter(d => d.slot_id === slot.id) || []
+            
+            return {
+              id: slot.id,
+              sprint_id: slot.sprint_id,
+              campaign_id: slot.campaign_id,
+              date: slot.date,
+              channel: slot.channel,
+              slot_index: slot.slot_index,
+              primary_segment_id: slot.primary_segment_id || undefined,
+              primary_topic_id: slot.primary_topic_id || undefined,
+              secondary_segment_ids: (slot.secondary_segment_ids as any as string[]) || undefined,
+              secondary_topic_ids: (slot.secondary_topic_ids as any as string[]) || undefined,
+              related_goal_ids: (slot.related_goal_ids as any as string[]) || [],
+              objective: slot.objective as any,
+              content_type: slot.content_type as any,
+              funnel_stage: slot.funnel_stage as any,
+              angle_type: slot.angle_type as any,
+              cta_type: slot.cta_type as any,
+              time_of_day: slot.time_of_day as any,
+              angle_hint: slot.angle_hint || undefined,
+              notes: slot.notes || undefined,
+              status: (slot.status as any) || 'planned',
+              tone_override: slot.tone_override || undefined,
+              asset_requirements: (slot.asset_requirements as any as string[]) || undefined,
+              owner: slot.owner || undefined,
+              draft_status: (() => {
+                if (!slotDrafts || slotDrafts.length === 0) return 'no_draft'
+                if (slotDrafts.some((d: any) => d.status === 'published')) return 'published'
+                if (slotDrafts.some((d: any) => d.status === 'approved')) return 'approved'
+                return 'has_draft'
+              })(),
+            }
+          })
           setContentSlots(contentSlots)
+        } else {
+          setContentSlots([])
         }
 
         // Load segment and topic names
@@ -343,45 +365,68 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
     const supabase = createClient()
     const db = supabase.schema('campaign_os')
 
-    const { data: slots } = await db
+    const { data: slots, error: slotsError } = await db
       .from('content_slots')
-      .select('*, content_drafts(status)')
+      .select('*')
       .eq('sprint_id', sprintId)
 
-    if (slots) {
-      const contentSlots: ContentSlot[] = slots.map(slot => ({
-        id: slot.id,
-        sprint_id: slot.sprint_id,
-        campaign_id: slot.campaign_id,
-        date: slot.date,
-        channel: slot.channel,
-        slot_index: slot.slot_index,
-        primary_segment_id: slot.primary_segment_id || undefined,
-        primary_topic_id: slot.primary_topic_id || undefined,
-        secondary_segment_ids: (slot.secondary_segment_ids as any as string[]) || undefined,
-        secondary_topic_ids: (slot.secondary_topic_ids as any as string[]) || undefined,
-        related_goal_ids: (slot.related_goal_ids as any as string[]) || [],
-        objective: slot.objective as any,
-        content_type: slot.content_type as any,
-        funnel_stage: slot.funnel_stage as any,
-        angle_type: slot.angle_type as any,
-        cta_type: slot.cta_type as any,
-        time_of_day: slot.time_of_day as any,
-        angle_hint: slot.angle_hint || undefined,
-        notes: slot.notes || undefined,
-        status: (slot.status as any) || 'planned',
-        tone_override: slot.tone_override || undefined,
-        asset_requirements: (slot.asset_requirements as any as string[]) || undefined,
-        owner: slot.owner || undefined,
-        draft_status: (() => {
-          const drafts = (slot as any).content_drafts
-          if (!drafts || !Array.isArray(drafts) || drafts.length === 0) return 'no_draft'
-          if (drafts.some((d: any) => d.status === 'published')) return 'published'
-          if (drafts.some((d: any) => d.status === 'approved')) return 'approved'
-          return 'has_draft'
-        })(),
-      }))
+    if (slotsError) {
+      console.error('Error loading slots:', slotsError)
+      toast.error('Slotok frissítése sikertelen')
+      return
+    }
+
+    if (slots && slots.length > 0) {
+      // Load drafts for these slots
+      const slotIds = slots.map(s => s.id)
+      const { data: drafts, error: draftsError } = await db
+        .from('content_drafts')
+        .select('slot_id, status')
+        .in('slot_id', slotIds)
+      
+      if (draftsError) {
+        console.error('Error loading drafts:', draftsError)
+        // Continue without drafts
+      }
+
+      const contentSlots: ContentSlot[] = slots.map(slot => {
+        const slotDrafts = drafts?.filter(d => d.slot_id === slot.id) || []
+        
+        return {
+          id: slot.id,
+          sprint_id: slot.sprint_id,
+          campaign_id: slot.campaign_id,
+          date: slot.date,
+          channel: slot.channel,
+          slot_index: slot.slot_index,
+          primary_segment_id: slot.primary_segment_id || undefined,
+          primary_topic_id: slot.primary_topic_id || undefined,
+          secondary_segment_ids: (slot.secondary_segment_ids as any as string[]) || undefined,
+          secondary_topic_ids: (slot.secondary_topic_ids as any as string[]) || undefined,
+          related_goal_ids: (slot.related_goal_ids as any as string[]) || [],
+          objective: slot.objective as any,
+          content_type: slot.content_type as any,
+          funnel_stage: slot.funnel_stage as any,
+          angle_type: slot.angle_type as any,
+          cta_type: slot.cta_type as any,
+          time_of_day: slot.time_of_day as any,
+          angle_hint: slot.angle_hint || undefined,
+          notes: slot.notes || undefined,
+          status: (slot.status as any) || 'planned',
+          tone_override: slot.tone_override || undefined,
+          asset_requirements: (slot.asset_requirements as any as string[]) || undefined,
+          owner: slot.owner || undefined,
+          draft_status: (() => {
+            if (!slotDrafts || slotDrafts.length === 0) return 'no_draft'
+            if (slotDrafts.some((d: any) => d.status === 'published')) return 'published'
+            if (slotDrafts.some((d: any) => d.status === 'approved')) return 'approved'
+            return 'has_draft'
+          })(),
+        }
+      })
       setContentSlots(contentSlots)
+    } else {
+      setContentSlots([])
     }
   }
 
