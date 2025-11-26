@@ -131,3 +131,103 @@ development_status:
   4-0-4-ui-validation-status-checklist: done
 
   epic-4-0-retrospective: optional
+
+  # Epic 5: Execution Planner - Sprint & Content Calendar AI
+  # Note: Epic created 2025-11-27 - AI-powered execution planner for sprint plans and content calendars
+  # Note: Tech context available in tech-spec.md and epic-5-execution-planner-stories.md (2025-11-27)
+  epic-5: contexted
+
+  # Story 5.1: Database Schema for Execution Planning
+  # Note: Story drafted 2025-11-27 - Database tables for sprints and content slots with proper relationships
+  5-1-database-schema-execution-planning: done
+
+  # Story 5.2: Execution Planner AI Endpoint
+  # Note: Story drafted 2025-11-27 - AI endpoint that generates sprint plans and content calendars from validated campaign structures
+  # Note: Status updated to in-progress (2025-11-28) - Implementation completed, testing pending
+  5-2-execution-planner-ai-endpoint: done
+
+  # Story 5.3: Execution Plan Preview UI
+  # Note: Story drafted 2025-11-27 - Preview UI for generated execution plan before saving
+  5-3-execution-plan-preview-ui: done
+
+  # Story 5.4: Save Execution Plan API & Workflow
+  # Note: Story drafted 2025-11-27 - Save execution plan to database with transaction support
+  # Note: Status updated to review (2025-11-28) - Implementation completed by Dev Agent
+  5-4-save-execution-plan-api: done
+
+  # Story 5.5: Execution Plan Edit & Management UI
+  # Note: Story drafted 2025-11-27 - Edit sprints and content slots after saving
+  # Note: Status updated to in-progress (2025-11-28) - Dev agent starting implementation
+  5-5-execution-plan-edit-management-ui: done
+
+  # Story 5.6: Enhanced Sprint Schema & Database Migration
+  # Note: Epic 5 Phase 2 - Two-phase refactor: Enhanced sprint schema with strategic metadata
+  # Note: Story drafted 2025-01-XX - Enhanced sprint schema with strategic metadata fields
+  # Note: Status updated to in-progress (2025-11-24) - Dev agent starting migration and schema enhancement
+  # Note: Status updated to review (2025-11-24) - Implementation completed, all ACs satisfied, all tests passing
+  5-6-enhanced-sprint-schema-database-migration: done
+
+  # Story 5.7: Sprint-Only AI Generation Endpoint
+  # Note: Epic 5 Phase 2 - Two-phase refactor: AI endpoint that generates only sprint plans
+  # Note: Story drafted 2025-01-XX - AI endpoint for sprint-only generation
+  # Note: Status updated to review (2025-11-24) - Implementation completed, all ACs satisfied, all tests passing
+  5-7-sprint-only-ai-generation-endpoint: done
+
+  # Story 5.8: Sprint-Specific Content Slot Generation
+  # Note: Epic 5 Phase 2 - Two-phase refactor: Generate content slots per sprint when ready
+  # Note: Story drafted 2025-01-XX - Sprint-specific content slot generation endpoint
+  # Note: Status updated to review (2025-11-24) - Implementation completed, all ACs satisfied, all tests passing
+  5-8-sprint-specific-content-slot-generation: done
+
+  # Story 5.9: UI Refactor - Two-Phase Model
+  # Note: Epic 5 Phase 2 - Two-phase refactor: UI that separates sprint generation from content slot generation
+  # Note: Story drafted 2025-01-XX - UI refactor for two-phase model
+  5-9-ui-refactor-two-phase-model: done
+
+  # Story 5.10: Sprint Plan Primary/Secondary Schema Implementation
+  # Note: Epic 5 Phase 2 - Two-phase refactor: Primary/secondary distinction for segments, topics, and channels
+  # Note: Story drafted 2025-01-XX - Sprint plan schema with primary/secondary focus areas
+  # Note: Extends Story 5.6 with priority-based junction tables and primary/secondary fields
+  5-10-sprint-plan-primary-secondary-schema: in-progress
+
+  epic-5-retrospective: optional
+
+  # Epic 6: Content Slot / Content Draft Szeparáció
+  # Note: Epic created 2025-01-XX - Refactor content slot and draft model into two-tier architecture
+  # Note: Tech context available in content-slot-draft-separation-plan.md
+  epic-6: contexted
+
+  # Story 6.1: ContentSlot Schema Enhancement & ContentDraft Table
+  # Note: Story drafted 2025-01-XX - Database migration for enhanced slots and new drafts table
+  # Note: Status updated to ready-for-dev (2025-01-XX) - Story context generated
+  # Note: Status updated to in-progress (2025-01-XX) - Dev agent starting implementation
+  # Note: Status updated to review (2025-01-XX) - All tasks completed, migration executed, schemas updated, types regenerated
+  6-1-content-slot-schema-enhancement-draft-table: review
+
+  # Story 6.2: Content Slot Planner Refactor (No Copy)
+  # Note: Story drafted 2025-01-XX - AI endpoint refactor to generate only slots without copy
+  # Note: Status updated to ready-for-dev (2025-01-XX) - Story context generated
+  # Note: Status updated to in-progress (2025-11-25) - Dev agent starting implementation
+  # Note: Status updated to review (2025-11-25) - All tasks completed, prompt refactored, message strategies integrated, response schema updated
+  6-2-content-slot-planner-refactor-no-copy: review
+
+  # Story 6.3: Content Draft API CRUD
+  # Note: Story drafted 2025-01-XX - CRUD API endpoints for content drafts
+  # Note: Status updated to ready-for-dev (2025-01-02) - Story context generated
+  # Note: Status updated to in-progress (2025-11-25) - Dev agent starting CRUD API implementation
+  # Note: Status updated to review (2025-11-25) - All tasks completed, CRUD endpoints implemented with validation
+  6-3-content-draft-api-crud: review
+
+  # Story 6.4: Content Draft AI Generator Endpoint
+  # Note: Story drafted 2025-01-XX - AI endpoint for generating content drafts from slots
+  # Note: Status updated to ready-for-dev (2025-11-25) - Story context generated
+  # Note: Status updated to in-progress (2025-11-25) - Dev agent starting implementation
+  # Note: Status updated to review (2025-11-25) - All ACs completed, TypeScript build passing
+  6-4-content-draft-ai-generator-endpoint: review
+
+  # Story 6.5: Slot & Draft UI Components
+  # Note: Story drafted 2025-01-XX - UI components for slot management and draft creation
+  # Note: Status updated to ready-for-dev (2025-01-02) - Story context generated
+  6-5-slot-draft-ui-components: in-progress
+
+  epic-6-retrospective: optional

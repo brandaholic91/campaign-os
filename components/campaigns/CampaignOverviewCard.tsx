@@ -181,7 +181,7 @@ export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) 
 
           {/* Content */}
           <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 min-h-[120px]">
-            {currentView === 'segments' && currentItem && (
+            {currentView === 'segments' && currentItem && 'name' in currentItem && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="font-semibold text-gray-900">{currentItem.name}</h4>
@@ -202,7 +202,7 @@ export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) 
               </div>
             )}
 
-            {currentView === 'topics' && currentItem && (
+            {currentView === 'topics' && currentItem && 'name' in currentItem && 'topic_type' in currentItem && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="font-semibold text-gray-900">{currentItem.name}</h4>
@@ -228,7 +228,7 @@ export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) 
               </div>
             )}
 
-            {currentView === 'narratives' && currentItem && (
+            {currentView === 'narratives' && currentItem && 'title' in currentItem && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="font-semibold text-gray-900">{currentItem.title}</h4>

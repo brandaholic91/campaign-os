@@ -257,15 +257,17 @@ export function isReadyForExecution(structure: CampaignStructure): ExecutionRead
   // 1. Validate Goals
   structure.goals.forEach((goal, index) => {
     const res = validateGoalCompleteness(goal)
-    if (!res.valid || (res.missing && res.missing.length > 0)) {
-      // If not valid, it's an issue. If valid but missing recommended, maybe just a warning?
-      // Let's report all missing items as issues for readiness
+    if (!res.valid) {
+      // Only report issues if validation actually failed (required fields missing)
+      // Skip recommended fields - they are optional and shouldn't block execution
       res.missing?.forEach(field => {
-        issues.push({
-          type: 'goal',
-          element: goal.title || `Goal ${index + 1}`,
-          issue: `Missing ${field}`
-        })
+        if (!field.includes('(recommended)')) {
+          issues.push({
+            type: 'goal',
+            element: goal.title || `Goal ${index + 1}`,
+            issue: `Missing ${field}`
+          })
+        }
       })
     }
   })
@@ -288,13 +290,17 @@ export function isReadyForExecution(structure: CampaignStructure): ExecutionRead
   if (structure.topics) {
     structure.topics.forEach((topic, index) => {
       const res = validateTopicCompleteness(topic)
-      if (!res.valid || (res.missing && res.missing.length > 0)) {
+      if (!res.valid) {
+        // Only report issues if validation actually failed (required fields missing)
+        // Skip recommended fields - they are optional and shouldn't block execution
         res.missing?.forEach(field => {
-          issues.push({
-            type: 'topic',
-            element: topic.name || `Topic ${index + 1}`,
-            issue: `Missing ${field}`
-          })
+          if (!field.includes('(recommended)')) {
+            issues.push({
+              type: 'topic',
+              element: topic.name || `Topic ${index + 1}`,
+              issue: `Missing ${field}`
+            })
+          }
         })
       }
     })
@@ -322,13 +328,19 @@ export function isReadyForExecution(structure: CampaignStructure): ExecutionRead
   } else {
     structure.narratives.forEach((narrative, index) => {
       const res = validateNarrativeCompleteness(narrative)
-      if (res.missing && res.missing.length > 0) {
+      // Only add issues if validation actually failed (not for recommended fields)
+      // validateNarrativeCompleteness returns valid: true for narratives since
+      // primary_goal_ids, primary_topic_ids, suggested_phase are all optional/recommended
+      if (!res.valid && res.missing && res.missing.length > 0) {
         res.missing.forEach(field => {
-          issues.push({
-            type: 'narrative',
-            element: narrative.title || `Narrative ${index + 1}`,
-            issue: `Missing ${field}`
-          })
+          // Skip recommended fields - they are optional and shouldn't block execution
+          if (!field.includes('(recommended)')) {
+            issues.push({
+              type: 'narrative',
+              element: narrative.title || `Narrative ${index + 1}`,
+              issue: `Missing ${field}`
+            })
+          }
         })
       }
     })

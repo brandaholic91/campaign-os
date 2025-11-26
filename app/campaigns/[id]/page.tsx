@@ -8,6 +8,8 @@ import { CampaignStatusCard } from '@/components/campaigns/CampaignStatusCard'
 import { ValidationStatusSection } from '@/components/ai/ValidationStatusSection'
 import { ValidationStatusBadge } from '@/components/ai/ValidationStatusBadge'
 import { CampaignOverviewCard } from '@/components/campaigns/CampaignOverviewCard'
+import { ExecutionPlanner } from '@/components/campaigns/ExecutionPlanner'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 
@@ -121,8 +123,16 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
         </div>
       </div>
 
-      {/* Bento Grid Content */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="overview">Áttekintés</TabsTrigger>
+          <TabsTrigger value="execution">Sprintek & Naptár</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-8">
+          {/* Bento Grid Content */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* Status Card */}
         <CampaignStatusCard campaignId={id} currentStatus={campaign.status} updatedAt={campaign.updated_at} />
@@ -284,7 +294,13 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
             </div>
          </Link>
 
-      </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="execution">
+          <ExecutionPlanner campaignId={id} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

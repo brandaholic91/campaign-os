@@ -1,0 +1,739 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { ExecutionPlanSchema, ExecutionPlan, SprintFocusStage } from '@/lib/ai/schemas'
+import { Database } from '@/lib/supabase/types'
+
+type Priority = 'primary' | 'secondary'
+interface PriorityGroup {
+  primary: string[]
+  secondary: string[]
+}
+const focusStageOptions: SprintFocusStage[] = ['awareness', 'engagement', 'consideration', 'conversion', 'mobilization']
+
+const normalizeFocusStage = (value: string | null | undefined): SprintFocusStage =>
+  focusStageOptions.includes(value as SprintFocusStage) ? (value as SprintFocusStage) : 'awareness'
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.map((item) => (typeof item === 'string' ? item : String(item))).filter((item) => item.trim().length > 0)
+  }
+  if (typeof value === 'string') {
+    return value.trim().length > 0 ? [value] : []
+  }
+  return []
+}
+
+
+const normalizePriorityValue = (value: string | null | undefined): Priority => {
+  return value === 'secondary' ? 'secondary' : 'primary'
+}
+
+const buildRelationMap = (rows: any[], keyField: string) => {
+  const map = new Map<string, PriorityGroup>()
+  rows.forEach(row => {
+    if (!row || !row.sprint_id) return
+    const value = row[keyField]
+    if (!value) return
+    const priority = normalizePriorityValue(row.priority)
+    const aggregate = map.get(row.sprint_id) || { primary: [], secondary: [] }
+    if (priority === 'secondary') {
+      aggregate.secondary.push(value)
+    } else {
+      aggregate.primary.push(value)
+    }
+    map.set(row.sprint_id, aggregate)
+  })
+  return map
+}
+
+type SprintInsert = Database['campaign_os']['Tables']['sprints']['Insert']
+type ContentSlotInsert = Database['campaign_os']['Tables']['content_slots']['Insert']
+type SprintSegmentInsert = Database['campaign_os']['Tables']['sprint_segments']['Insert']
+type SprintTopicInsert = Database['campaign_os']['Tables']['sprint_topics']['Insert']
+type SprintChannelInsert = Database['campaign_os']['Tables']['sprint_channels']['Insert']
+
+interface SaveExecutionPlanRequest {
+  campaignId: string
+  executionPlan: ExecutionPlan
+}
+
+interface SaveExecutionPlanResponse {
+  success: boolean
+  sprints: Array<{ id: string; name: string }>
+  contentSlots: number
+  message?: string
+}
+
+/**
+ * Validates that all content slot dates are within their sprint date ranges
+ */
+function validateSlotDates(executionPlan: ExecutionPlan): { valid: boolean; error?: string } {
+  const sprintMap = new Map(executionPlan.sprints.map(s => [s.id, s]))
+  
+  for (const slot of executionPlan.content_calendar) {
+    const sprint = sprintMap.get(slot.sprint_id)
+    if (!sprint) {
+      return {
+        valid: false,
+        error: `Content slot ${slot.id} references non-existent sprint ${slot.sprint_id}`
+      }
+    }
+    
+    const slotDate = new Date(slot.date)
+    const sprintStart = new Date(sprint.start_date)
+    const sprintEnd = new Date(sprint.end_date)
+    
+    if (slotDate < sprintStart || slotDate > sprintEnd) {
+      return {
+        valid: false,
+        error: `Content slot date ${slot.date} is outside sprint date range ${sprint.start_date} to ${sprint.end_date} for sprint "${sprint.name}"`
+      }
+    }
+  }
+  
+  return { valid: true }
+}
+
+/**
+ * Validates that there are no duplicate slot_index values for the same (date, channel) combination
+ */
+function validateSlotIndices(executionPlan: ExecutionPlan): { valid: boolean; error?: string } {
+  const slotMap = new Map<string, Set<number>>()
+  
+  for (const slot of executionPlan.content_calendar) {
+    const key = `${slot.date}:${slot.channel}`
+    if (!slotMap.has(key)) {
+      slotMap.set(key, new Set())
+    }
+    
+    const indices = slotMap.get(key)!
+    if (indices.has(slot.slot_index)) {
+      return {
+        valid: false,
+        error: `Duplicate slot_index ${slot.slot_index} for date ${slot.date} and channel ${slot.channel}`
+      }
+    }
+    
+    indices.add(slot.slot_index)
+  }
+  
+  return { valid: true }
+}
+
+/**
+ * Checks if an execution plan already exists for the campaign
+ */
+async function checkExistingPlan(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  campaignId: string
+): Promise<{ exists: boolean; sprintIds?: string[] }> {
+  const db = supabase.schema('campaign_os')
+  
+  const { data: sprints, error } = await db
+    .from('sprints')
+    .select('id')
+    .eq('campaign_id', campaignId)
+  
+  if (error) {
+    throw new Error(`Failed to check existing plan: ${error.message}`)
+  }
+  
+  return {
+    exists: (sprints?.length ?? 0) > 0,
+    sprintIds: sprints?.map(s => s.id)
+  }
+}
+
+/**
+ * Deletes existing execution plan for a campaign (used for update scenario)
+ */
+async function deleteExistingPlan(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  campaignId: string
+): Promise<void> {
+  const db = supabase.schema('campaign_os')
+  
+  // Get all sprint IDs for this campaign
+  const { data: sprints, error: fetchError } = await db
+    .from('sprints')
+    .select('id')
+    .eq('campaign_id', campaignId)
+  
+  if (fetchError) {
+    throw new Error(`Failed to fetch existing sprints: ${fetchError.message}`)
+  }
+  
+  if (!sprints || sprints.length === 0) {
+    return // Nothing to delete
+  }
+  
+  const sprintIds = sprints.map(s => s.id)
+  
+  // Delete in order: content_slots, junction tables, then sprints
+  // CASCADE should handle most of this, but we'll be explicit
+  
+  // Delete content slots
+  const { error: slotsError } = await db
+    .from('content_slots')
+    .delete()
+    .in('sprint_id', sprintIds)
+  
+  if (slotsError) {
+    throw new Error(`Failed to delete content slots: ${slotsError.message}`)
+  }
+  
+  // Delete junction tables
+  const { error: segmentsError } = await db
+    .from('sprint_segments')
+    .delete()
+    .in('sprint_id', sprintIds)
+  
+  if (segmentsError) {
+    throw new Error(`Failed to delete sprint_segments: ${segmentsError.message}`)
+  }
+  
+  const { error: topicsError } = await db
+    .from('sprint_topics')
+    .delete()
+    .in('sprint_id', sprintIds)
+  
+  if (topicsError) {
+    throw new Error(`Failed to delete sprint_topics: ${topicsError.message}`)
+  }
+  
+  const { error: channelsError } = await db
+    .from('sprint_channels')
+    .delete()
+    .in('sprint_id', sprintIds)
+  
+  if (channelsError) {
+    throw new Error(`Failed to delete sprint_channels: ${channelsError.message}`)
+  }
+  
+  // Delete sprints (CASCADE should handle related records, but we've already deleted them)
+  const { error: sprintsError } = await db
+    .from('sprints')
+    .delete()
+    .eq('campaign_id', campaignId)
+  
+  if (sprintsError) {
+    throw new Error(`Failed to delete sprints: ${sprintsError.message}`)
+  }
+}
+
+/**
+ * Saves execution plan to database using Supabase batch operations
+ * Note: Supabase JS client doesn't support true transactions, so we use batch inserts
+ * and manual rollback on error. For true atomicity, consider using PostgreSQL functions.
+ */
+async function saveExecutionPlan(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  campaignId: string,
+  executionPlan: ExecutionPlan
+): Promise<SaveExecutionPlanResponse> {
+  const db = supabase.schema('campaign_os')
+  const savedSprintIds: string[] = []
+  const savedContentSlotIds: string[] = []
+  
+  try {
+    // Step 1: Insert sprints
+    const sprintInserts: SprintInsert[] = executionPlan.sprints.map(sprint => ({
+      campaign_id: campaignId,
+      name: sprint.name,
+      order: sprint.order,
+      start_date: sprint.start_date,
+      end_date: sprint.end_date,
+      focus_goal: sprint.focus_goal || 'awareness', // Default to awareness if undefined
+      focus_description: sprint.focus_description || '', // Default to empty string if undefined
+      success_indicators: sprint.success_indicators as any, // JSONB
+      status: 'planned' as const,
+      // Enhanced fields (Phase 2) - all optional
+      focus_stage: sprint.focus_stage,
+      focus_goals: sprint.focus_goals as any, // JSONB array
+      suggested_weekly_post_volume: sprint.suggested_weekly_post_volume as any, // JSONB object
+      narrative_emphasis: sprint.narrative_emphasis as any, // JSONB array
+      key_messages_summary: sprint.key_messages_summary,
+      success_criteria: sprint.success_criteria as any, // JSONB array
+      risks_and_watchouts: sprint.risks_and_watchouts as any, // JSONB array
+    }))
+    
+    const { data: insertedSprints, error: sprintsError } = await db
+      .from('sprints')
+      .insert(sprintInserts)
+      .select('id, name')
+    
+    if (sprintsError) {
+      throw new Error(`Failed to insert sprints: ${sprintsError.message}`)
+    }
+    
+    if (!insertedSprints || insertedSprints.length !== executionPlan.sprints.length) {
+      throw new Error('Failed to insert all sprints')
+    }
+    
+    // Map original sprint IDs to new database IDs
+    const sprintIdMap = new Map<string, string>()
+    executionPlan.sprints.forEach((sprint, index) => {
+      sprintIdMap.set(sprint.id, insertedSprints[index].id)
+      savedSprintIds.push(insertedSprints[index].id)
+    })
+    
+    // Step 2: Insert junction tables (batch inserts)
+    const segmentInserts: SprintSegmentInsert[] = []
+    const topicInserts: SprintTopicInsert[] = []
+    const channelInserts: SprintChannelInsert[] = []
+    
+    executionPlan.sprints.forEach(sprint => {
+      const dbSprintId = sprintIdMap.get(sprint.id)!
+      
+      const segmentsPrimary = sprint.focus_segments_primary ?? []
+      const segmentsSecondary = sprint.focus_segments_secondary ?? []
+      segmentsPrimary.forEach(segmentId => {
+        segmentInserts.push({
+          sprint_id: dbSprintId,
+          segment_id: segmentId,
+          priority: 'primary' as Priority,
+        })
+      })
+      segmentsSecondary.forEach(segmentId => {
+        segmentInserts.push({
+          sprint_id: dbSprintId,
+          segment_id: segmentId,
+          priority: 'secondary' as Priority,
+        })
+      })
+
+      const topicsPrimary = sprint.focus_topics_primary ?? []
+      const topicsSecondary = sprint.focus_topics_secondary ?? []
+      topicsPrimary.forEach(topicId => {
+        topicInserts.push({
+          sprint_id: dbSprintId,
+          topic_id: topicId,
+          priority: 'primary' as Priority,
+        })
+      })
+      topicsSecondary.forEach(topicId => {
+        topicInserts.push({
+          sprint_id: dbSprintId,
+          topic_id: topicId,
+          priority: 'secondary' as Priority,
+        })
+      })
+
+      const channelsPrimary = sprint.focus_channels_primary ?? []
+      const channelsSecondary = sprint.focus_channels_secondary ?? []
+      channelsPrimary.forEach(channelKey => {
+        channelInserts.push({
+          sprint_id: dbSprintId,
+          channel_key: channelKey,
+          priority: 'primary' as Priority,
+        })
+      })
+      channelsSecondary.forEach(channelKey => {
+        channelInserts.push({
+          sprint_id: dbSprintId,
+          channel_key: channelKey,
+          priority: 'secondary' as Priority,
+        })
+      })
+    })
+    
+    // Insert junction tables
+    if (segmentInserts.length > 0) {
+      const { error: segmentsError } = await db
+        .from('sprint_segments')
+        .insert(segmentInserts)
+      
+      if (segmentsError) {
+        throw new Error(`Failed to insert sprint_segments: ${segmentsError.message}`)
+      }
+    }
+    
+    if (topicInserts.length > 0) {
+      const { error: topicsError } = await db
+        .from('sprint_topics')
+        .insert(topicInserts)
+      
+      if (topicsError) {
+        throw new Error(`Failed to insert sprint_topics: ${topicsError.message}`)
+      }
+    }
+    
+    if (channelInserts.length > 0) {
+      const { error: channelsError } = await db
+        .from('sprint_channels')
+        .insert(channelInserts)
+      
+      if (channelsError) {
+        throw new Error(`Failed to insert sprint_channels: ${channelsError.message}`)
+      }
+    }
+    
+    // Step 3: Insert content slots
+    const slotInserts = executionPlan.content_calendar.map(slot => ({
+      sprint_id: sprintIdMap.get(slot.sprint_id)!,
+      campaign_id: slot.campaign_id, // Required field from Story 6.1
+      date: slot.date,
+      channel: slot.channel,
+      slot_index: slot.slot_index,
+      primary_segment_id: slot.primary_segment_id!, // Required field (NOT NULL in database)
+      primary_topic_id: slot.primary_topic_id!, // Required field (NOT NULL in database)
+      objective: slot.objective,
+      content_type: slot.content_type,
+      funnel_stage: slot.funnel_stage, // Required field from Story 6.1
+      angle_type: slot.angle_type, // Required field from Story 6.1
+      cta_type: slot.cta_type, // Required field from Story 6.1
+      angle_hint: slot.angle_hint || null,
+      notes: slot.notes || null,
+      status: slot.status || 'planned',
+      // Optional new fields from Story 6.1
+      secondary_segment_ids: slot.secondary_segment_ids || null,
+      secondary_topic_ids: slot.secondary_topic_ids || null,
+      related_goal_ids: slot.related_goal_ids || null,
+      time_of_day: slot.time_of_day || null,
+      tone_override: slot.tone_override || null,
+    }))
+    
+    const { data: insertedSlots, error: slotsError } = await db
+      .from('content_slots')
+      .insert(slotInserts)
+      .select('id')
+    
+    if (slotsError) {
+      throw new Error(`Failed to insert content slots: ${slotsError.message}`)
+    }
+    
+    if (!insertedSlots || insertedSlots.length !== executionPlan.content_calendar.length) {
+      throw new Error('Failed to insert all content slots')
+    }
+    
+    savedContentSlotIds.push(...insertedSlots.map(s => s.id))
+    
+    return {
+      success: true,
+      sprints: insertedSprints.map(s => ({ id: s.id, name: s.name })),
+      contentSlots: insertedSlots.length,
+    }
+  } catch (error) {
+    // Rollback: Delete any saved data
+    // Note: In a true transaction, this would be automatic, but Supabase JS client
+    // doesn't support transactions, so we manually clean up
+    
+    if (savedSprintIds.length > 0) {
+      // Delete in reverse order: content_slots, junction tables, sprints
+      const db = supabase.schema('campaign_os')
+      
+      // Safely delete (ignore errors during rollback)
+      try {
+        await db.from('content_slots').delete().in('sprint_id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
+      try {
+        await db.from('sprint_segments').delete().in('sprint_id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
+      try {
+        await db.from('sprint_topics').delete().in('sprint_id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
+      try {
+        await db.from('sprint_channels').delete().in('sprint_id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
+      try {
+        await db.from('sprints').delete().in('id', savedSprintIds)
+      } catch {
+        // Ignore errors during rollback
+      }
+    }
+    
+    throw error
+  }
+}
+
+/**
+ * Loads execution plan from database for a campaign
+ */
+async function loadExecutionPlan(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  campaignId: string
+): Promise<ExecutionPlan | null> {
+  const db = supabase.schema('campaign_os')
+  
+  // Load sprints
+  const { data: sprints, error: sprintsError } = await db
+    .from('sprints')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('order', { ascending: true })
+  
+  if (sprintsError) {
+    throw new Error(`Failed to load sprints: ${sprintsError.message}`)
+  }
+  
+  if (!sprints || sprints.length === 0) {
+    return null // No execution plan exists yet
+  }
+  
+  const sprintIds = sprints.map(s => s.id)
+  
+  // Load junction tables
+  const { data: sprintSegments, error: segmentsError } = await db
+    .from('sprint_segments')
+    .select('sprint_id, segment_id, priority')
+    .in('sprint_id', sprintIds)
+  
+  if (segmentsError) {
+    throw new Error(`Failed to load sprint_segments: ${segmentsError.message}`)
+  }
+  
+  const { data: sprintTopics, error: topicsError } = await db
+    .from('sprint_topics')
+    .select('sprint_id, topic_id, priority')
+    .in('sprint_id', sprintIds)
+  
+  if (topicsError) {
+    throw new Error(`Failed to load sprint_topics: ${topicsError.message}`)
+  }
+  
+  const { data: sprintChannels, error: channelsError } = await db
+    .from('sprint_channels')
+    .select('sprint_id, channel_key, priority')
+    .in('sprint_id', sprintIds)
+  
+  if (channelsError) {
+    throw new Error(`Failed to load sprint_channels: ${channelsError.message}`)
+  }
+  
+  // Load content slots
+  const { data: contentSlots, error: slotsError } = await db
+    .from('content_slots')
+    .select('*')
+    .in('sprint_id', sprintIds)
+    .order('date', { ascending: true })
+    .order('slot_index', { ascending: true })
+  
+  if (slotsError) {
+    throw new Error(`Failed to load content_slots: ${slotsError.message}`)
+  }
+  
+  // Build sprint map for segments/topics/channels
+  const segmentMap = buildRelationMap(sprintSegments || [], 'segment_id')
+  const topicMap = buildRelationMap(sprintTopics || [], 'topic_id')
+  const channelMap = buildRelationMap(sprintChannels || [], 'channel_key')
+  
+      // Transform to ExecutionPlan format
+      const executionPlan: ExecutionPlan = {
+        sprints: sprints.map(sprint => {
+          // Normalize success_indicators to array
+          let successIndicators: any[] = []
+          if (sprint.success_indicators) {
+            if (Array.isArray(sprint.success_indicators)) {
+              successIndicators = sprint.success_indicators
+            } else {
+              // If it's not an array, wrap it
+              successIndicators = [sprint.success_indicators]
+            }
+          }
+          
+          // Normalize success_criteria to array
+          let successCriteria: any[] = []
+          if (sprint.success_criteria) {
+            if (Array.isArray(sprint.success_criteria)) {
+              successCriteria = sprint.success_criteria
+            } else {
+              successCriteria = [sprint.success_criteria]
+            }
+          }
+          
+          // Normalize risks_and_watchouts to array
+          let risksAndWatchouts: any[] = []
+          if (sprint.risks_and_watchouts) {
+            if (Array.isArray(sprint.risks_and_watchouts)) {
+              risksAndWatchouts = sprint.risks_and_watchouts
+            } else {
+              risksAndWatchouts = [sprint.risks_and_watchouts]
+            }
+          }
+          
+          // Normalize suggested_weekly_post_volume from JSONB to SuggestedWeeklyPostVolume type
+          let normalizedVolume: { total_posts_per_week: number; video_posts_per_week: number; stories_per_week?: number } | undefined = undefined
+          if (sprint.suggested_weekly_post_volume) {
+            const volume = sprint.suggested_weekly_post_volume
+            if (typeof volume === 'object' && volume !== null && !Array.isArray(volume)) {
+              // Check if it has the expected structure
+              if ('total_posts_per_week' in volume && 'video_posts_per_week' in volume) {
+                normalizedVolume = {
+                  total_posts_per_week: typeof volume.total_posts_per_week === 'number' ? volume.total_posts_per_week : Number(volume.total_posts_per_week) || 5,
+                  video_posts_per_week: typeof volume.video_posts_per_week === 'number' ? volume.video_posts_per_week : Number(volume.video_posts_per_week) || 1,
+                  stories_per_week: 'stories_per_week' in volume 
+                    ? (typeof volume.stories_per_week === 'number' ? volume.stories_per_week : Number(volume.stories_per_week) || undefined)
+                    : undefined,
+                }
+              }
+            }
+          }
+          
+          return {
+            id: sprint.id,
+            name: sprint.name,
+            order: sprint.order || 1,
+            start_date: sprint.start_date,
+            end_date: sprint.end_date,
+            focus_goal: sprint.focus_goal as any,
+            focus_description: sprint.focus_description || '',
+            focus_segments_primary: segmentMap.get(sprint.id)?.primary ?? [],
+            focus_segments_secondary: segmentMap.get(sprint.id)?.secondary ?? [],
+            focus_topics_primary: topicMap.get(sprint.id)?.primary ?? [],
+            focus_topics_secondary: topicMap.get(sprint.id)?.secondary ?? [],
+            focus_channels_primary: channelMap.get(sprint.id)?.primary ?? [],
+            focus_channels_secondary: channelMap.get(sprint.id)?.secondary ?? [],
+            success_indicators: successIndicators,
+            success_criteria: successCriteria,
+            risks_and_watchouts: risksAndWatchouts,
+            key_messages_summary: sprint.key_messages_summary || undefined,
+            suggested_weekly_post_volume: normalizedVolume,
+            focus_stage: normalizeFocusStage(sprint.focus_stage),
+            focus_goals: normalizeStringArray(sprint.focus_goals),
+          }
+        }),
+    content_calendar: (contentSlots || []).map(slot => ({
+      id: slot.id,
+      sprint_id: slot.sprint_id,
+      campaign_id: slot.campaign_id, // Required field from Story 6.1
+      date: slot.date,
+      channel: slot.channel,
+      slot_index: slot.slot_index,
+      primary_segment_id: slot.primary_segment_id || undefined,
+      primary_topic_id: slot.primary_topic_id || undefined,
+      objective: slot.objective as any,
+      content_type: slot.content_type as any,
+      funnel_stage: slot.funnel_stage as any, // Required field from Story 6.1
+      angle_type: slot.angle_type as any, // Required field from Story 6.1
+      cta_type: slot.cta_type as any, // Required field from Story 6.1
+      related_goal_ids: Array.isArray(slot.related_goal_ids) ? slot.related_goal_ids.filter((id): id is string => typeof id === 'string') : [], // Required field from Story 6.1
+      angle_hint: slot.angle_hint || undefined,
+      notes: slot.notes || undefined,
+      status: (slot.status || 'planned') as any,
+      // Optional new fields from Story 6.1
+      secondary_segment_ids: Array.isArray(slot.secondary_segment_ids) ? slot.secondary_segment_ids.filter((id): id is string => typeof id === 'string') : undefined,
+      secondary_topic_ids: Array.isArray(slot.secondary_topic_ids) ? slot.secondary_topic_ids.filter((id): id is string => typeof id === 'string') : undefined,
+      time_of_day: (slot.time_of_day as any) || undefined,
+      tone_override: slot.tone_override || undefined,
+    })),
+  }
+  
+  return executionPlan
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const campaignId = searchParams.get('campaign_id')
+    
+    if (!campaignId) {
+      return NextResponse.json(
+        { error: 'campaign_id query parameter is required' },
+        { status: 400 }
+      )
+    }
+    
+    const supabase = await createClient()
+    const executionPlan = await loadExecutionPlan(supabase, campaignId)
+    
+    if (!executionPlan) {
+      return NextResponse.json(null, { status: 200 })
+    }
+    
+    return NextResponse.json(executionPlan)
+  } catch (error) {
+    console.error('Error loading execution plan:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: SaveExecutionPlanRequest = await request.json()
+    
+    // Validate request body
+    if (!body.campaignId || !body.executionPlan) {
+      return NextResponse.json(
+        { error: 'campaignId and executionPlan are required' },
+        { status: 400 }
+      )
+    }
+    
+    // Validate execution plan against schema
+    const validationResult = ExecutionPlanSchema.safeParse(body.executionPlan)
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: 'Invalid execution plan',
+          details: validationResult.error.issues.map((e: any) => ({
+            path: e.path.join('.'),
+            message: e.message,
+          })),
+        },
+        { status: 400 }
+      )
+    }
+    
+    const executionPlan = validationResult.data
+    
+    // Validate slot dates are within sprint ranges
+    const dateValidation = validateSlotDates(executionPlan)
+    if (!dateValidation.valid) {
+      return NextResponse.json(
+        { error: dateValidation.error },
+        { status: 400 }
+      )
+    }
+    
+    // Validate no duplicate slot_index per (date, channel)
+    const indexValidation = validateSlotIndices(executionPlan)
+    if (!indexValidation.valid) {
+      return NextResponse.json(
+        { error: indexValidation.error },
+        { status: 400 }
+      )
+    }
+    
+    const supabase = await createClient()
+    
+    // Check for existing plan (AC 5.4.4: Duplicate save handling)
+    const existingPlan = await checkExistingPlan(supabase, body.campaignId)
+    
+    if (existingPlan.exists) {
+      // Option A: Update existing plan (delete old, insert new)
+      await deleteExistingPlan(supabase, body.campaignId)
+    }
+    
+    // Save execution plan
+    const result = await saveExecutionPlan(supabase, body.campaignId, executionPlan)
+    
+    return NextResponse.json({
+      ...result,
+      message: existingPlan.exists
+        ? 'Execution plan updated successfully'
+        : 'Execution plan saved successfully',
+    })
+  } catch (error) {
+    console.error('Error saving execution plan:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    )
+  }
+}
+

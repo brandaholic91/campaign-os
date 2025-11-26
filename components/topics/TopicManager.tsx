@@ -14,16 +14,18 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Database, Json } from '@/lib/supabase/types'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2, X } from 'lucide-react'
 
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
 type TopicInsert = Database['campaign_os']['Tables']['topics']['Insert']
 
-// Type for JSONB fields
-type ContentAnglesData = Json | null
-type RecommendedChannelsData = Json | null
-type RelatedGoalTypesData = Json | null
-type RiskNotesData = Json | null
+// Type definitions for structured form data
+interface TopicFormData {
+  content_angles: string[]
+  recommended_channels: string[]
+  related_goal_types: string[]
+  risk_notes: string[]
+}
 
 interface TopicManagerProps {
   campaignId: string
@@ -38,18 +40,41 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
     name: '',
     description: '',
     category: '',
-    content_angles: null,
-    recommended_channels: null,
-    related_goal_types: null,
-    risk_notes: null,
   })
-  // Store JSON as strings in form for easier editing
-  const [contentAnglesJson, setContentAnglesJson] = useState<string>('')
-  const [recommendedChannelsJson, setRecommendedChannelsJson] = useState<string>('')
-  const [relatedGoalTypesJson, setRelatedGoalTypesJson] = useState<string>('')
-  const [riskNotesJson, setRiskNotesJson] = useState<string>('')
+  
+  // Structured form data for JSONB fields
+  const [topicFormData, setTopicFormData] = useState<TopicFormData>({
+    content_angles: [],
+    recommended_channels: [],
+    related_goal_types: [],
+    risk_notes: [],
+  })
+  
   const [showForm, setShowForm] = useState(false)
   const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null)
+  
+  // Helper function to parse JSONB array fields
+  function parseJsonbArray(field: Json | null): string[] {
+    if (!field) return []
+    if (Array.isArray(field)) {
+      return field.filter((item): item is string => typeof item === 'string')
+    }
+    if (typeof field === 'string') {
+      try {
+        const parsed = JSON.parse(field)
+        return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
+      } catch {
+        return [field]
+      }
+    }
+    return []
+  }
+  
+  // Helper function to convert array to JSONB format
+  function arrayToJsonb(arr: string[]): Json | null {
+    const cleaned = arr.filter(v => v && v.trim() !== '')
+    return cleaned.length > 0 ? cleaned : null
+  }
 
   useEffect(() => {
     fetchTopics()
@@ -76,51 +101,11 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
     setError(null)
 
     try {
-      // Parse and validate JSON fields
-      let contentAngles: ContentAnglesData = null
-      let recommendedChannels: RecommendedChannelsData = null
-      let relatedGoalTypes: RelatedGoalTypesData = null
-      let riskNotes: RiskNotesData = null
-
-      if (contentAnglesJson.trim()) {
-        try {
-          const parsed = JSON.parse(contentAnglesJson.trim())
-          contentAngles = typeof parsed === 'object' && parsed !== null ? parsed : null
-        } catch (parseError) {
-          setError('Érvénytelen JSON formátum a tartalomszögeknél. Kérlek ellenőrizd a szintaxist.')
-          return
-        }
-      }
-
-      if (recommendedChannelsJson.trim()) {
-        try {
-          const parsed = JSON.parse(recommendedChannelsJson.trim())
-          recommendedChannels = typeof parsed === 'object' && parsed !== null ? parsed : null
-        } catch (parseError) {
-          setError('Érvénytelen JSON formátum az ajánlott csatornáknál. Kérlek ellenőrizd a szintaxist.')
-          return
-        }
-      }
-
-      if (relatedGoalTypesJson.trim()) {
-        try {
-          const parsed = JSON.parse(relatedGoalTypesJson.trim())
-          relatedGoalTypes = typeof parsed === 'object' && parsed !== null ? parsed : null
-        } catch (parseError) {
-          setError('Érvénytelen JSON formátum a kapcsolódó cél típusoknál. Kérlek ellenőrizd a szintaxist.')
-          return
-        }
-      }
-
-      if (riskNotesJson.trim()) {
-        try {
-          const parsed = JSON.parse(riskNotesJson.trim())
-          riskNotes = typeof parsed === 'object' && parsed !== null ? parsed : null
-        } catch (parseError) {
-          setError('Érvénytelen JSON formátum a kockázati megjegyzéseknél. Kérlek ellenőrizd a szintaxist.')
-          return
-        }
-      }
+      // Convert structured form data to JSONB format
+      const contentAngles = arrayToJsonb(topicFormData.content_angles)
+      const recommendedChannels = arrayToJsonb(topicFormData.recommended_channels)
+      const relatedGoalTypes = arrayToJsonb(topicFormData.related_goal_types)
+      const riskNotes = arrayToJsonb(topicFormData.risk_notes)
 
       const payload = {
         ...formData,
@@ -153,13 +138,16 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
         throw new Error(data.error || 'Failed to save topic')
       }
 
+      // Reset form
       setShowForm(false)
       setEditingId(null)
-      setFormData({ name: '', description: '', category: '', content_angles: null, recommended_channels: null, related_goal_types: null, risk_notes: null })
-      setContentAnglesJson('')
-      setRecommendedChannelsJson('')
-      setRelatedGoalTypesJson('')
-      setRiskNotesJson('')
+      setFormData({ name: '', description: '', category: '' })
+      setTopicFormData({
+        content_angles: [],
+        recommended_channels: [],
+        related_goal_types: [],
+        risk_notes: [],
+      })
       fetchTopics()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save topic')
@@ -191,43 +179,92 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
       topic_type: topic.topic_type || 'benefit',
       core_narrative: topic.core_narrative || '',
       priority: topic.priority || 'secondary',
-      content_angles: topic.content_angles as ContentAnglesData,
-      recommended_channels: topic.recommended_channels as RecommendedChannelsData,
-      related_goal_types: topic.related_goal_types as RelatedGoalTypesData,
-      risk_notes: topic.risk_notes as RiskNotesData,
     })
-    // Convert JSONB to string for editing
-    setContentAnglesJson(
-      topic.content_angles 
-        ? JSON.stringify(topic.content_angles as ContentAnglesData, null, 2)
-        : ''
-    )
-    setRecommendedChannelsJson(
-      topic.recommended_channels 
-        ? JSON.stringify(topic.recommended_channels as RecommendedChannelsData, null, 2)
-        : ''
-    )
-    setRelatedGoalTypesJson(
-      topic.related_goal_types 
-        ? JSON.stringify(topic.related_goal_types as RelatedGoalTypesData, null, 2)
-        : ''
-    )
-    setRiskNotesJson(
-      topic.risk_notes 
-        ? JSON.stringify(topic.risk_notes as RiskNotesData, null, 2)
-        : ''
-    )
+    
+    // Parse JSONB fields to structured form data
+    setTopicFormData({
+      content_angles: parseJsonbArray(topic.content_angles),
+      recommended_channels: parseJsonbArray(topic.recommended_channels),
+      related_goal_types: parseJsonbArray(topic.related_goal_types),
+      risk_notes: parseJsonbArray(topic.risk_notes),
+    })
+    
     setShowForm(true)
   }
 
   function handleCancel() {
     setShowForm(false)
     setEditingId(null)
-    setFormData({ name: '', description: '', category: '', content_angles: null, recommended_channels: null, related_goal_types: null, risk_notes: null })
-    setContentAnglesJson('')
-    setRecommendedChannelsJson('')
-    setRelatedGoalTypesJson('')
-    setRiskNotesJson('')
+    setFormData({ name: '', description: '', category: '' })
+    setTopicFormData({
+      content_angles: [],
+      recommended_channels: [],
+      related_goal_types: [],
+      risk_notes: [],
+    })
+  }
+  
+  // Helper component for dynamic array inputs
+  function ArrayInput({ 
+    label, 
+    values, 
+    onChange, 
+    placeholder 
+  }: { 
+    label: string
+    values: string[]
+    onChange: (values: string[]) => void
+    placeholder?: string
+  }) {
+    const addItem = () => {
+      onChange([...values, ''])
+    }
+    
+    const updateItem = (index: number, value: string) => {
+      const newValues = [...values]
+      newValues[index] = value
+      onChange(newValues)
+    }
+    
+    const removeItem = (index: number) => {
+      onChange(values.filter((_, i) => i !== index))
+    }
+    
+    return (
+      <div className="space-y-2">
+        <Label>{label}</Label>
+        <div className="space-y-2">
+          {values.map((value, index) => (
+            <div key={index} className="flex gap-2">
+              <Input
+                value={value}
+                onChange={(e) => updateItem(index, e.target.value)}
+                placeholder={placeholder || 'Adjon meg egy értéket...'}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => removeItem(index)}
+                className="flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addItem}
+            className="w-full"
+            size="sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Hozzáadás
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -336,51 +373,47 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="content_angles">Tartalomszögek (JSON)</Label>
-            <Textarea
-              id="content_angles"
-              value={contentAnglesJson}
-              onChange={(e) => setContentAnglesJson(e.target.value)}
-              placeholder='["Szöveg alapú posztok", "Infografikák", "Videó tartalom"]'
-              rows={3}
-              className="font-mono text-sm"
+          {/* Tartalomszögek */}
+          <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-white">
+            <h3 className="text-sm font-semibold text-gray-700">Tartalomszögek</h3>
+            <ArrayInput
+              label="Tartalomszögek"
+              values={topicFormData.content_angles}
+              onChange={(values) => setTopicFormData({ ...topicFormData, content_angles: values })}
+              placeholder="pl. Szöveg alapú posztok"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="recommended_channels">Ajánlott Csatornák (JSON)</Label>
-            <Textarea
-              id="recommended_channels"
-              value={recommendedChannelsJson}
-              onChange={(e) => setRecommendedChannelsJson(e.target.value)}
-              placeholder='["Facebook", "Instagram", "TikTok"]'
-              rows={3}
-              className="font-mono text-sm"
+          {/* Ajánlott Csatornák */}
+          <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-white">
+            <h3 className="text-sm font-semibold text-gray-700">Ajánlott Csatornák</h3>
+            <ArrayInput
+              label="Ajánlott Csatornák"
+              values={topicFormData.recommended_channels}
+              onChange={(values) => setTopicFormData({ ...topicFormData, recommended_channels: values })}
+              placeholder="pl. Instagram"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="related_goal_types">Kapcsolódó Cél Típusok (JSON)</Label>
-            <Textarea
-              id="related_goal_types"
-              value={relatedGoalTypesJson}
-              onChange={(e) => setRelatedGoalTypesJson(e.target.value)}
-              placeholder='["awareness", "engagement", "conversion"]'
-              rows={2}
-              className="font-mono text-sm"
+          {/* Kapcsolódó Cél Típusok */}
+          <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-white">
+            <h3 className="text-sm font-semibold text-gray-700">Kapcsolódó Cél Típusok</h3>
+            <ArrayInput
+              label="Kapcsolódó Cél Típusok"
+              values={topicFormData.related_goal_types}
+              onChange={(values) => setTopicFormData({ ...topicFormData, related_goal_types: values })}
+              placeholder="pl. awareness"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="risk_notes">Kockázati Megjegyzések (JSON)</Label>
-            <Textarea
-              id="risk_notes"
-              value={riskNotesJson}
-              onChange={(e) => setRiskNotesJson(e.target.value)}
-              placeholder='["Politikai érzékenység", "Jogi korlátok"]'
-              rows={2}
-              className="font-mono text-sm"
+          {/* Kockázati Megjegyzések */}
+          <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-white">
+            <h3 className="text-sm font-semibold text-gray-700">Kockázati Megjegyzések</h3>
+            <ArrayInput
+              label="Kockázati Megjegyzések"
+              values={topicFormData.risk_notes}
+              onChange={(values) => setTopicFormData({ ...topicFormData, risk_notes: values })}
+              placeholder="pl. Politikai érzékenység"
             />
           </div>
 
@@ -505,52 +538,80 @@ export function TopicManager({ campaignId }: TopicManagerProps) {
                             )}
 
                             {/* Tartalomszögek */}
-                            {topic.content_angles && (
-                              <div className="space-y-2">
-                                <h4 className="text-sm font-semibold text-gray-700">Tartalomszögek</h4>
-                                <div className="bg-white p-3 rounded-lg border border-gray-200">
-                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
-                                    {JSON.stringify(topic.content_angles, null, 2)}
-                                  </pre>
+                            {topic.content_angles && (() => {
+                              const angles = parseJsonbArray(topic.content_angles)
+                              return angles.length > 0 ? (
+                                <div className="space-y-2">
+                                  <h4 className="text-sm font-semibold text-gray-700">Tartalomszögek</h4>
+                                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                                    <div className="flex flex-wrap gap-2">
+                                      {angles.map((angle: string, idx: number) => (
+                                        <span key={idx} className="text-xs text-gray-700 bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                          {angle}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              ) : null
+                            })()}
 
                             {/* Ajánlott Csatornák */}
-                            {topic.recommended_channels && (
-                              <div className="space-y-2">
-                                <h4 className="text-sm font-semibold text-gray-700">Ajánlott Csatornák</h4>
-                                <div className="bg-white p-3 rounded-lg border border-gray-200">
-                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
-                                    {JSON.stringify(topic.recommended_channels, null, 2)}
-                                  </pre>
+                            {topic.recommended_channels && (() => {
+                              const channels = parseJsonbArray(topic.recommended_channels)
+                              return channels.length > 0 ? (
+                                <div className="space-y-2">
+                                  <h4 className="text-sm font-semibold text-gray-700">Ajánlott Csatornák</h4>
+                                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                                    <div className="flex flex-wrap gap-2">
+                                      {channels.map((channel: string, idx: number) => (
+                                        <span key={idx} className="text-xs text-gray-700 bg-primary-100 text-primary-700 px-2 py-1 rounded">
+                                          {channel}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              ) : null
+                            })()}
 
                             {/* Kapcsolódó Cél Típusok */}
-                            {topic.related_goal_types && (
-                              <div className="space-y-2">
-                                <h4 className="text-sm font-semibold text-gray-700">Kapcsolódó Cél Típusok</h4>
-                                <div className="bg-white p-3 rounded-lg border border-gray-200">
-                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
-                                    {JSON.stringify(topic.related_goal_types, null, 2)}
-                                  </pre>
+                            {topic.related_goal_types && (() => {
+                              const goalTypes = parseJsonbArray(topic.related_goal_types)
+                              return goalTypes.length > 0 ? (
+                                <div className="space-y-2">
+                                  <h4 className="text-sm font-semibold text-gray-700">Kapcsolódó Cél Típusok</h4>
+                                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                                    <div className="flex flex-wrap gap-2">
+                                      {goalTypes.map((goalType: string, idx: number) => (
+                                        <span key={idx} className="text-xs text-gray-700 bg-green-100 text-green-700 px-2 py-1 rounded">
+                                          {goalType}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              ) : null
+                            })()}
 
                             {/* Kockázati Megjegyzések */}
-                            {topic.risk_notes && (
-                              <div className="space-y-2">
-                                <h4 className="text-sm font-semibold text-gray-700">Kockázati Megjegyzések</h4>
-                                <div className="bg-white p-3 rounded-lg border border-gray-200">
-                                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono">
-                                    {JSON.stringify(topic.risk_notes, null, 2)}
-                                  </pre>
+                            {topic.risk_notes && (() => {
+                              const risks = parseJsonbArray(topic.risk_notes)
+                              return risks.length > 0 ? (
+                                <div className="space-y-2">
+                                  <h4 className="text-sm font-semibold text-gray-700">Kockázati Megjegyzések</h4>
+                                  <div className="bg-white p-4 rounded-lg border border-gray-200">
+                                    <div className="flex flex-wrap gap-2">
+                                      {risks.map((risk: string, idx: number) => (
+                                        <span key={idx} className="text-xs text-gray-700 bg-amber-100 text-amber-700 px-2 py-1 rounded">
+                                          {risk}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              ) : null
+                            })()}
                           </div>
                         </td>
                       </tr>

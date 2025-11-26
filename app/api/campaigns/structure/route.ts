@@ -3,6 +3,15 @@ import { createClient } from '@/lib/supabase/server'
 import { CampaignStructureSchema } from '@/lib/ai/schemas'
 import { z } from 'zod'
 
+// Convert legacy enum values to current database enum values
+const normalizeCampaignType = (type: string): string => {
+  const mapping: Record<string, string> = {
+    'brand_product': 'product_launch',
+    'ngo': 'ngo_issue',
+  }
+  return mapping[type] || type
+}
+
 const SaveStructureSchema = z.object({
   campaignId: z.string().optional(), // Optional: if provided, update existing campaign
   campaign: z.object({
@@ -36,7 +45,7 @@ export async function POST(req: NextRequest) {
           description: campaign.description,
           start_date: campaign.startDate,
           end_date: campaign.endDate,
-          campaign_type: campaign.campaignType as any,
+          campaign_type: normalizeCampaignType(campaign.campaignType) as any,
           primary_goal_type: campaign.goalType as any,
           narratives: structure.narratives || [],
           wizard_data: wizardData || null
@@ -83,7 +92,7 @@ export async function POST(req: NextRequest) {
           description: campaign.description,
           start_date: campaign.startDate,
           end_date: campaign.endDate,
-          campaign_type: campaign.campaignType as any,
+          campaign_type: normalizeCampaignType(campaign.campaignType) as any,
           primary_goal_type: campaign.goalType as any,
           status: 'planning',
           narratives: structure.narratives || [],
@@ -235,50 +244,51 @@ export async function POST(req: NextRequest) {
       console.log('Valid matrix entries to insert:', validMatrixEntries.length)
 
       if (validMatrixEntries.length > 0) {
+        // Remove duplicates based on (segment_id, topic_id) pair
+        // Use a Map to keep only the last occurrence of each pair
+        const uniqueMatrixEntries = new Map<string, typeof validMatrixEntries[0]>()
+        for (const entry of validMatrixEntries) {
+          const key = `${entry.segment_id}:${entry.topic_id}`
+          uniqueMatrixEntries.set(key, entry)
+        }
+        
+        const deduplicatedEntries = Array.from(uniqueMatrixEntries.values())
+        console.log(`Deduplicated matrix entries: ${deduplicatedEntries.length} (removed ${validMatrixEntries.length - deduplicatedEntries.length} duplicates)`)
+
         // Delete existing matrix entries for this campaign first to avoid duplicates
-        // Get segment and topic IDs from the matrix entries
-        const segmentIdsFromMatrix = Array.from(new Set(validMatrixEntries.map(e => e.segment_id)))
-        const topicIdsFromMatrix = Array.from(new Set(validMatrixEntries.map(e => e.topic_id)))
+        // Delete all matrix entries that reference any of the segments or topics in this campaign
+        const segmentIdsFromMatrix = Array.from(new Set(deduplicatedEntries.map(e => e.segment_id)))
+        const topicIdsFromMatrix = Array.from(new Set(deduplicatedEntries.map(e => e.topic_id)))
+        
         if (segmentIdsFromMatrix.length > 0 && topicIdsFromMatrix.length > 0) {
-          await supabase
+          // Delete entries where segment_id is in our list AND topic_id is in our list
+          // This ensures we only delete relevant entries
+          const { error: deleteError } = await supabase
             .schema('campaign_os')
             .from('segment_topic_matrix')
             .delete()
             .in('segment_id', segmentIdsFromMatrix)
             .in('topic_id', topicIdsFromMatrix)
+          
+          if (deleteError) {
+            console.warn('Failed to delete existing matrix entries:', deleteError)
+            // Continue anyway - upsert will handle conflicts
+          }
         }
         
-        const { data: insertedData, error: matrixError } = await supabase
+        // Use upsert directly to handle any remaining conflicts gracefully
+        const { data: upsertedData, error: upsertError } = await supabase
           .schema('campaign_os')
           .from('segment_topic_matrix')
-          .insert(validMatrixEntries)
+          .upsert(deduplicatedEntries, { onConflict: 'segment_id,topic_id' })
           .select()
         
-        if (matrixError) {
-          console.error('Matrix creation failed:', matrixError)
-          console.error('Failed entries:', validMatrixEntries)
-          // If duplicate key error, try to upsert instead
-          if (matrixError.code === '23505') {
-            console.log('Duplicate key detected, attempting upsert...')
-            // Use upsert to handle duplicates
-            const { data: upsertedData, error: upsertError } = await supabase
-              .schema('campaign_os')
-              .from('segment_topic_matrix')
-              .upsert(validMatrixEntries, { onConflict: 'segment_id,topic_id' })
-              .select()
-            
-            if (upsertError) {
-              console.error('Matrix upsert also failed:', upsertError)
-              console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually.')
-            } else {
-              console.log('Matrix entries successfully upserted:', upsertedData?.length || 0)
-            }
-          } else {
-            // Log the error but don't fail the entire operation
-            console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually or permissions need to be fixed.')
-          }
+        if (upsertError) {
+          console.error('Matrix upsert failed:', upsertError)
+          console.error('Failed entries:', deduplicatedEntries)
+          console.warn('Segment-topic matrix entries could not be saved. Campaign structure saved successfully, but matrix entries need to be added manually.')
         } else {
-          console.log('Matrix entries successfully inserted:', insertedData?.length || 0)
+          console.log('Matrix entries successfully upserted:', upsertedData?.length || 0)
         }
       } else {
         console.warn('No valid matrix entries to insert after filtering')

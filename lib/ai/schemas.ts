@@ -314,3 +314,183 @@ export type StyleTone = z.infer<typeof StyleToneSchema>
 export type CTAFunnel = z.infer<typeof CTAFunnelSchema>
 export type ExtraFields = z.infer<typeof ExtraFieldsSchema>
 export type MessageStrategy = z.infer<typeof MessageStrategySchema>
+
+// Epic 5.0: Execution Planning Schemas
+
+// Helper for date validation (YYYY-MM-DD format)
+const dateStringSchema = () => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+
+// Sprint focus goal enum (legacy - kept for backward compatibility)
+export const SprintFocusGoalTypeSchema = z.enum([
+  'awareness',
+  'engagement',
+  'consideration',
+  'conversion',
+  'mobilization'
+])
+
+// Enhanced Sprint focus stage enum (Phase 2)
+export const SprintFocusStageSchema = z.enum([
+  'awareness',
+  'engagement',
+  'consideration',
+  'conversion',
+  'mobilization'
+])
+
+// Suggested weekly post volume schema
+export const SuggestedWeeklyPostVolumeSchema = z.object({
+  total_posts_per_week: z.number().int().positive('Total posts per week must be positive'),
+  video_posts_per_week: z.number().int().nonnegative('Video posts per week must be non-negative'),
+  stories_per_week: z.number().int().nonnegative('Stories per week must be non-negative').optional(),
+})
+
+// Sprint plan schema (Enhanced with Phase 2 fields)
+export const SprintPlanSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1, 'Sprint name must be at least 1 character'),
+  order: z.number().int().positive('Order must be a positive integer'),
+  start_date: dateStringSchema(),
+  end_date: dateStringSchema(),
+
+  // Legacy metadata (Phase 1 - still optional for compatibility)
+  focus_goal: SprintFocusGoalTypeSchema.optional(),
+  focus_description: z.string().min(10, 'Focus description must be at least 10 characters').optional(),
+  success_indicators: z.array(z.any()).optional(),
+
+  // Enhanced focus data (Phase 2 requirements)
+  focus_stage: SprintFocusStageSchema,
+  focus_goals: z.array(z.string().uuid()).min(1).max(3),
+  focus_segments_primary: z.array(z.string().uuid()).min(1, 'At least one primary focus segment required').max(2, 'Maximum two primary focus segments allowed'),
+  focus_segments_secondary: z.array(z.string().uuid()).max(2, 'Maximum two secondary focus segments allowed').optional(),
+  focus_topics_primary: z.array(z.string().uuid()).min(2, 'At least two primary focus topics required').max(3, 'Maximum three primary focus topics allowed'),
+  focus_topics_secondary: z.array(z.string().uuid()).min(2, 'At least two secondary focus topics required').max(4, 'Maximum four secondary focus topics allowed').optional(),
+  focus_channels_primary: z.array(z.string().min(1, 'Channel key must be at least one character')).min(2, 'At least two primary focus channels required').max(3, 'Maximum three primary focus channels allowed'),
+  focus_channels_secondary: z.array(z.string().min(1, 'Channel key must be at least one character')).optional(),
+
+  suggested_weekly_post_volume: SuggestedWeeklyPostVolumeSchema.optional(),
+  narrative_emphasis: z.array(z.string().uuid()).min(1).max(2).optional(),
+  key_messages_summary: z.string().min(20, 'Key messages summary must be at least 20 characters').optional(),
+  success_criteria: z.array(z.string()).min(1).optional(),
+  risks_and_watchouts: z.array(z.string()).min(1).max(4).optional(),
+}).refine((data) => {
+  // Validate that end_date is after start_date
+  const start = new Date(data.start_date)
+  const end = new Date(data.end_date)
+  return end > start
+}, {
+  message: 'end_date must be after start_date',
+  path: ['end_date']
+})
+
+// Content objective enum
+export const ContentObjectiveSchema = z.enum([
+  'reach',
+  'engagement',
+  'traffic',
+  'lead',
+  'conversion',
+  'mobilization'
+])
+
+// Content type enum
+export const ContentTypeSchema = z.enum([
+  'short_video',
+  'story',
+  'static_image',
+  'carousel',
+  'live',
+  'long_post',
+  'email'
+])
+
+// Funnel stage enum (reused from SprintFocusStageSchema)
+export const FunnelStageSchema = SprintFocusStageSchema;
+
+// Time of day enum
+export const TimeOfDaySchema = z.enum(['morning', 'midday', 'evening', 'unspecified']).optional();
+
+// Angle type enum
+export const AngleTypeSchema = z.enum(['story', 'proof', 'how_to', 'comparison', 'behind_the_scenes', 'testimonial', 'other']);
+
+// CTA type enum
+export const CTATypeSchema = z.enum(['soft_info', 'learn_more', 'signup', 'donate', 'attend_event', 'share', 'comment']);
+
+// Content slot status enum (updated values)
+export const ContentSlotStatusSchema = z.enum(['planned', 'scheduled', 'cancelled']);
+
+// Content draft status enum
+export const ContentDraftStatusSchema = z.enum(['draft', 'approved', 'rejected', 'published']);
+
+// Content slot schema (enhanced with new fields)
+export const ContentSlotSchema = z.object({
+  id: z.string().uuid(),
+  sprint_id: z.string().uuid(),
+  campaign_id: z.string().uuid(),
+  date: dateStringSchema(),
+  channel: z.string().min(1, 'Channel must be at least 1 character'),
+  slot_index: z.number().int().positive('Slot index must be a positive integer'),
+  primary_segment_id: z.string().uuid().optional(),
+  primary_topic_id: z.string().uuid().optional(),
+  time_of_day: TimeOfDaySchema,
+  secondary_segment_ids: z.array(z.string().uuid()).max(2, 'Maximum 2 secondary segments allowed').optional(),
+  secondary_topic_ids: z.array(z.string().uuid()).max(2, 'Maximum 2 secondary topics allowed').optional(),
+  related_goal_ids: z.array(z.string().uuid()).min(1, 'At least 1 related goal required').max(2, 'Maximum 2 related goals allowed'),
+  objective: ContentObjectiveSchema,
+  content_type: ContentTypeSchema,
+  funnel_stage: FunnelStageSchema,
+  angle_type: AngleTypeSchema,
+  angle_hint: z.string().optional(),
+  cta_type: CTATypeSchema,
+  tone_override: z.string().optional(),
+  asset_requirements: z.array(z.string()).optional(),
+  owner: z.string().optional(),
+  notes: z.string().optional(),
+  status: ContentSlotStatusSchema.default('planned'),
+  draft_status: z.enum(['no_draft', 'has_draft', 'approved', 'published']).optional(),
+})
+
+// Content draft schema
+export const ContentDraftSchema = z.object({
+  id: z.string().uuid().optional(),
+  slot_id: z.string().uuid(),
+  variant_name: z.string().nullable().optional(),
+  status: ContentDraftStatusSchema.default('draft'),
+  hook: z.string().min(10, 'Hook must be at least 10 characters'),
+  body: z.string().min(50, 'Body must be at least 50 characters'),
+  cta_copy: z.string().min(5, 'CTA copy must be at least 5 characters'),
+  visual_idea: z.string().min(20, 'Visual idea must be at least 20 characters'),
+  alt_text_suggestion: z.string().nullable().optional(),
+  length_hint: z.string().nullable().optional(),
+  tone_notes: z.string().nullable().optional(),
+  used_segment_id: z.string().uuid().nullable().optional(),
+  used_topic_id: z.string().uuid().nullable().optional(),
+  used_goal_ids: z.array(z.string().uuid()).nullable().optional(),
+  created_by: z.enum(['ai', 'human']).default('ai'),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+})
+
+// Execution plan schema (combines sprints and content calendar)
+export const ExecutionPlanSchema = z.object({
+  sprints: z.array(SprintPlanSchema).min(1, 'At least one sprint required').max(6, 'Maximum 6 sprints allowed'),
+  content_calendar: z.array(ContentSlotSchema).min(0, 'Content calendar can be empty').default([]), // Optional: can be empty for sprint-only plans
+})
+
+// TypeScript type exports
+export type SprintFocusGoalType = z.infer<typeof SprintFocusGoalTypeSchema>
+export type SprintFocusStage = z.infer<typeof SprintFocusStageSchema>
+export type SuggestedWeeklyPostVolume = z.infer<typeof SuggestedWeeklyPostVolumeSchema>
+export type SprintPlan = z.infer<typeof SprintPlanSchema>
+export type EnhancedSprintPlan = z.infer<typeof SprintPlanSchema> // Alias for enhanced sprint plan
+export type ContentObjective = z.infer<typeof ContentObjectiveSchema>
+export type ContentType = z.infer<typeof ContentTypeSchema>
+export type FunnelStage = z.infer<typeof FunnelStageSchema>
+export type TimeOfDay = z.infer<typeof TimeOfDaySchema>
+export type AngleType = z.infer<typeof AngleTypeSchema>
+export type CTAType = z.infer<typeof CTATypeSchema>
+export type ContentSlotStatus = z.infer<typeof ContentSlotStatusSchema>
+export type ContentDraftStatus = z.infer<typeof ContentDraftStatusSchema>
+export type ContentSlot = z.infer<typeof ContentSlotSchema>
+export type ContentDraft = z.infer<typeof ContentDraftSchema>
+export type ExecutionPlan = z.infer<typeof ExecutionPlanSchema>

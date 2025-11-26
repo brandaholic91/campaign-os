@@ -167,7 +167,11 @@ describe('Campaign Structure Validation', () => {
   describe('isReadyForExecution', () => {
     it('should return ready for a complete structure', () => {
       const structure: CampaignStructure = {
-        goals: [{ title: 'G1', priority: 1, funnel_stage: 'awareness', kpi_hint: 'KPI' }],
+        goals: [
+          { title: 'G1', priority: 1, funnel_stage: 'awareness', kpi_hint: 'KPI' },
+          { title: 'G2', priority: 2, funnel_stage: 'engagement', kpi_hint: 'KPI' },
+          { title: 'G3', priority: 3, funnel_stage: 'conversion', kpi_hint: 'KPI' }
+        ],
         segments: [{
           id: 'seg-1', name: 'S1', priority: 'primary',
           demographic_profile: { age_range: '18-25', location_type: 'Urban' },
@@ -177,8 +181,37 @@ describe('Campaign Structure Validation', () => {
           example_persona: { name: 'P1', one_sentence_story: 'S' }
         }],
         topics: [{ name: 'T1', priority: 'primary', related_goal_stages: ['awareness'], recommended_content_types: ['blog'], risk_notes: [] }],
-        narratives: [],
-        segment_topic_matrix: []
+        narratives: [
+          {
+            title: 'N1',
+            description: 'Desc 1',
+            priority: 1,
+            primary_goal_ids: ['g1'],
+            primary_topic_ids: ['t1'],
+            suggested_phase: 'early'
+          },
+          {
+            title: 'N2',
+            description: 'Desc 2',
+            priority: 2,
+            primary_goal_ids: ['g2'],
+            primary_topic_ids: ['t1'],
+            suggested_phase: 'mid'
+          }
+        ],
+        segment_topic_matrix: [
+          // Minimum 10 required, but max 3 high/core per segment
+          { segment_id: 'seg-1', topic_id: 't1', importance: 'high', role: 'core_message' },
+          { segment_id: 'seg-1', topic_id: 't2', importance: 'high', role: 'core_message' },
+          { segment_id: 'seg-1', topic_id: 't3', importance: 'high', role: 'core_message' },
+          { segment_id: 'seg-1', topic_id: 't4', importance: 'medium', role: 'support' },
+          { segment_id: 'seg-1', topic_id: 't5', importance: 'medium', role: 'support' },
+          { segment_id: 'seg-1', topic_id: 't6', importance: 'medium', role: 'support' },
+          { segment_id: 'seg-1', topic_id: 't7', importance: 'low', role: 'experimental' },
+          { segment_id: 'seg-1', topic_id: 't8', importance: 'low', role: 'experimental' },
+          { segment_id: 'seg-1', topic_id: 't9', importance: 'low', role: 'support' },
+          { segment_id: 'seg-1', topic_id: 't10', importance: 'low', role: 'support' }
+        ]
       }
       const result = isReadyForExecution(structure)
       expect(result.ready).toBe(true)

@@ -3,6 +3,7 @@ import { getAIProvider } from '@/lib/ai/client'
 import { STRATEGY_GENERATOR_SYSTEM_PROMPT, STRATEGY_GENERATOR_USER_PROMPT, StrategyGenerationContext } from '@/lib/ai/prompts/strategy-generator'
 import { MessageGenerationRequestSchema, MessageStrategySchema, MessageStrategy } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
+import { jsonrepair } from 'jsonrepair'
 
 export async function POST(req: NextRequest) {
   try {
@@ -175,7 +176,19 @@ export async function POST(req: NextRequest) {
             console.error('Raw output:', content.substring(0, 500)) // Limit log size
             console.error('Extracted JSON:', jsonContent.substring(0, 500))
             console.error('Parse error details:', parseError instanceof Error ? parseError.message : String(parseError))
-            continue
+            
+            // Try to repair the JSON using jsonrepair
+            try {
+              console.log(`[Strategy Generation] Attempting to repair JSON for segment ${segment.name}, topic ${topic.name}`)
+              const repairedJson = jsonrepair(jsonContent)
+              console.log(`[Strategy Generation] JSON repair successful, attempting to parse repaired JSON`)
+              strategyData = JSON.parse(repairedJson)
+              console.log(`[Strategy Generation] Successfully parsed repaired JSON`)
+            } catch (repairError) {
+              console.error(`[Strategy Generation] JSON repair failed for segment ${segment.name} (${segment.id}), topic ${topic.name} (${topic.id}):`, repairError)
+              console.error('Repair error details:', repairError instanceof Error ? repairError.message : String(repairError))
+              continue
+            }
           }
 
           // Validate strategy

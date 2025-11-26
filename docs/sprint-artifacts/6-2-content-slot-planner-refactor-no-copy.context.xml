@@ -1,0 +1,126 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>2</storyId>
+    <title>Content Slot Planner Refactor (No Copy)</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-25</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-2-content-slot-planner-refactor-no-copy.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>campaign manager</asA>
+    <iWant>Content Slot Planner AI to generate only tactical slots without copy</iWant>
+    <soThat>I can plan content timing separately from content creation</soThat>
+    <tasks>
+      <task>Task 1: Refactor Content Slot Planner prompt</task>
+      <task>Task 2: Load message strategies for slot generation</task>
+      <task>Task 3: Update AI endpoint response schema</task>
+      <task>Task 4: Update streaming response</task>
+      <task>Task 5: Test and validate</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criteria id="1">Endpoint generates ContentSlot objects only (no copy fields: hook, body, cta_copy). Response format: { content_slots: ContentSlot[] } (no draft field)</criteria>
+    <criteria id="2">All slots include new required fields: angle_type, cta_type, tone_override (optional), funnel_stage, related_goal_ids, secondary_segment_ids, secondary_topic_ids, campaign_id, time_of_day (optional), angle_hint</criteria>
+    <criteria id="3">Prompt refactored to remove copy generation instructions. Prompt includes angle_type and cta_type generation logic. Prompt uses message strategies to inform angle_type, cta_type, tone_override, angle_hint</criteria>
+    <criteria id="4">Validation ensures all required fields are present (ContentSlotSchema). Response validates against enhanced ContentSlotSchema from Story 6.1</criteria>
+    <criteria id="5">Backward compatibility: old endpoint /api/ai/campaign-execution still works (deprecated but functional)</criteria>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/epics.md" title="Epic Breakdown" section="Epic 6: Content Slot / Content Draft Szeparáció">
+        Epic 6 célja a content slot és content draft modell két szintű architektúrára refaktorálása. Story 6.2 refaktorálja a Content Slot Planner AI-t, hogy csak slot-okat generáljon copy nélkül.
+      </doc>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="Epic 5: Execution Planner">
+        Execution Planner architektúra és content slot generálás részletei. Phase 2 two-phase modell: sprint-only generálás, majd per-sprint content slot generálás.
+      </doc>
+      <doc path="docs/sprint-artifacts/6-1-content-slot-schema-enhancement-draft-table.md" title="Story 6.1" section="Schema Enhancement">
+        ContentSlot tábla bővítése új mezőkkel (campaign_id, angle_type, cta_type, funnel_stage, related_goal_ids, stb.) és ContentDraft tábla létrehozása.
+      </doc>
+      <doc path="docs/sprint-artifacts/5-8-sprint-specific-content-slot-generation.md" title="Story 5.8" section="Content Slot Generation">
+        Eredeti Content Slot Planner implementáció per-sprint content generálással. Ez a story refaktorálja ezt copy generálás nélkül.
+      </doc>
+      <doc path="docs/epics.md" title="Epic Breakdown" section="Epic 3.0: Message Matrix Refactor">
+        Message strategies tábla és API endpointok részletei. Story 6.2 használja a message_strategies táblát stratégia adatok betöltéséhez.
+      </doc>
+    </docs>
+    <code>
+      <artifact path="lib/ai/prompts/content-slot-planner.ts" kind="prompt" symbol="CONTENT_SLOT_PLANNER_SYSTEM_PROMPT, CONTENT_SLOT_PLANNER_USER_PROMPT" lines="28-143" reason="Refaktorálni kell: eltávolítani copy generálás utasításokat, hozzáadni angle_type és cta_type generálás logikát, integrálni message strategy adatokat">
+        Jelenlegi Content Slot Planner prompt, amelyet refaktorálni kell. Eltávolítani: hook, body, cta_copy generálás. Hozzáadni: angle_type, cta_type, message strategy integráció.
+      </artifact>
+      <artifact path="app/api/ai/campaign-sprints/[sprintId]/content-slots/route.ts" kind="endpoint" symbol="POST handler" lines="22-375" reason="Frissíteni kell: message strategy betöltés hozzáadása, response schema frissítése új mezőkkel, validáció frissítése">
+        Content Slot Planner API endpoint. Hozzá kell adni message_strategies tábla lekérdezést, strategy map építését, és prompt context frissítését.
+      </artifact>
+      <artifact path="lib/ai/schemas.ts" kind="schema" symbol="ContentSlotSchema" lines="400-450" reason="Használni kell a Story 6.1 által frissített enhanced ContentSlotSchema-t új mezőkkel">
+        Zod schema ContentSlot objektumok validálásához. Story 6.1 után tartalmazza az új mezőket: angle_type, cta_type, funnel_stage, related_goal_ids, stb.
+      </artifact>
+      <artifact path="app/api/strategies/route.ts" kind="endpoint" symbol="GET /api/strategies" lines="19-96" reason="Használni kell message strategy lekérdezéshez campaign_id és segment_id/topic_id alapján">
+        Message strategies API endpoint. Campaign ID alapján lekéri a stratégiákat JOIN-nal segments és topics táblákkal.
+      </artifact>
+      <artifact path="lib/ai/execution-planner.ts" kind="helper" symbol="enforceConstraints function" lines="21-159" reason="Használni kell slot constraint enforcement-hez (max posts per day/channel)">
+        Constraint enforcement helper függvény, amely ellenőrzi a max posts per day/channel korlátokat.
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="next" version="^16.0.3" />
+        <package name="react" version="^19.2.0" />
+        <package name="typescript" version="^5.9.3" />
+        <package name="zod" version="^4.1.12" />
+        <package name="@supabase/supabase-js" version="^2.84.0" />
+        <package name="jsonrepair" version="^3.13.1" />
+      </ecosystem>
+      <framework name="Next.js App Router" version="16.0.3" />
+      <framework name="Supabase PostgreSQL" />
+      <framework name="Zod Schema Validation" />
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>AI Prompt Pattern: Követni kell a meglévő prompt struktúrát lib/ai/prompts/content-slot-planner.ts-ből</constraint>
+    <constraint>Schema Validation: Használni kell az enhanced ContentSlotSchema-t Story 6.1-ből</constraint>
+    <constraint>Streaming Response: Követni kell a meglévő streaming pattern-t Story 5.8-ból</constraint>
+    <constraint>Backward Compatibility: Régi endpoint /api/ai/campaign-execution működőképes marad (deprecated, de nem törölve)</constraint>
+    <constraint>Message Strategy Integration: Ha message strategy elérhető segment × topic kombinációhoz, használni kell a stratégia adatokat angle_type, cta_type, tone_override, angle_hint generálásához</constraint>
+    <constraint>Response Format: { content_slots: ContentSlot[] } - nincs draft mező, nincs copy mező</constraint>
+    <constraint>Validation: Minden required mezőt validálni kell (angle_type, cta_type, funnel_stage, related_goal_ids)</constraint>
+  </constraints>
+  
+  <interfaces>
+    <interface name="ContentSlotPlannerContext" kind="TypeScript interface" signature="interface ContentSlotPlannerContext { sprint: {...}, campaign: {...}, structure: CampaignStructure, focus_segments: {...}[], focus_topics: {...}[], focus_channels: string[], volume_override?: SuggestedWeeklyPostVolume }" path="lib/ai/prompts/content-slot-planner.ts">
+      Context interface a Content Slot Planner prompt számára. Bővíteni kell message strategy map-pel.
+    </interface>
+    <interface name="POST /api/ai/campaign-sprints/[sprintId]/content-slots" kind="REST endpoint" signature="POST /api/ai/campaign-sprints/[sprintId]/content-slots { weekly_post_volume?: SuggestedWeeklyPostVolume } → SSE stream { type: 'progress'|'done'|'error', content_slots?: ContentSlot[] }" path="app/api/ai/campaign-sprints/[sprintId]/content-slots/route.ts">
+      Content Slot Planner API endpoint. Frissíteni kell message strategy betöltéssel és új mezőkkel.
+    </interface>
+    <interface name="GET /api/strategies" kind="REST endpoint" signature="GET /api/strategies?campaign_id={uuid} → MessageStrategy[]" path="app/api/strategies/route.ts">
+      Message strategies lekérdezés endpoint. Használni kell campaign_id és segment_id/topic_id alapján.
+    </interface>
+    <interface name="ContentSlotSchema" kind="Zod schema" signature="z.object({ id, sprint_id, date, channel, slot_index, primary_segment_id?, primary_topic_id?, objective, content_type, angle_type, cta_type, funnel_stage, related_goal_ids, secondary_segment_ids?, secondary_topic_ids?, campaign_id, time_of_day?, tone_override?, angle_hint?, notes?, status })" path="lib/ai/schemas.ts">
+      Enhanced ContentSlot Zod schema Story 6.1 után. Minden új mezőt tartalmaz.
+    </interface>
+  </interfaces>
+  
+  <tests>
+    <standards>
+      Testing standards: Unit tesztek API endpoint-hoz, integration tesztek teljes workflow-hoz (sprint context betöltés → strategy lekérdezés → slot generálás → validáció). Tesztelni kell campaigns-szel message strategies-szel és anélkül. Validálni kell az összes új mező jelenlétét és a copy mezők hiányát.
+    </standards>
+    <locations>
+      <location>__tests__/api/campaign-execution.test.ts</location>
+      <location>__tests__/validation/campaign-structure.test.ts</location>
+    </locations>
+    <ideas>
+      <idea criteria="1">Test endpoint response format: verify { content_slots: ContentSlot[] } structure, no draft field, no copy fields</idea>
+      <idea criteria="2">Test new fields: verify angle_type, cta_type, funnel_stage, related_goal_ids are present in all slots</idea>
+      <idea criteria="3">Test message strategy integration: generate slots for campaign with strategies, verify strategy data influences angle_type/cta_type</idea>
+      <idea criteria="3">Test without strategies: generate slots for campaign without strategies, verify it still works</idea>
+      <idea criteria="4">Test validation: send invalid slot (missing required fields), verify error response</idea>
+      <idea criteria="5">Test backward compatibility: call old /api/ai/campaign-execution endpoint, verify it still works</idea>
+    </ideas>
+  </tests>
+</story-context>
+

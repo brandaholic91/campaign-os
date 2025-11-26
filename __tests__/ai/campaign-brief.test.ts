@@ -18,10 +18,30 @@ describe('AI Campaign Generation', () => {
 
     it('should validate valid CampaignStructure output', () => {
       const validStructure = {
-        goals: [{ title: 'Goal 1', description: 'Desc 1', priority: 1 }],
+        goals: [
+          { title: 'Goal 1', description: 'Desc 1', priority: 1 },
+          { title: 'Goal 2', description: 'Desc 2', priority: 2 },
+          { title: 'Goal 3', description: 'Desc 3', priority: 3 }
+        ],
         segments: [{ name: 'Segment 1', description: 'Desc 1', priority: 'primary' }],
         topics: [{ name: 'Topic 1', description: 'Desc 1' }],
-        narratives: [{ title: 'Narrative 1', description: 'Desc 1', priority: 1 }]
+        narratives: [
+          { title: 'Narrative 1', description: 'Desc 1', priority: 1 },
+          { title: 'Narrative 2', description: 'Desc 2', priority: 2 }
+        ],
+        segment_topic_matrix: [
+          // Minimum 10 required
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' },
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' },
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' },
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' },
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' },
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' },
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' },
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' },
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' },
+          { segment_index: 0, topic_index: 0, importance: 'high', role: 'core_message' }
+        ]
       }
       const result = CampaignStructureSchema.safeParse(validStructure)
       expect(result.success).toBe(true)
