@@ -28,10 +28,10 @@ import { Loader2, Save } from 'lucide-react'
 // Schema for editing (subset of ContentDraftSchema)
 const DraftEditSchema = z.object({
   variant_name: z.string().min(1, 'Variáns név kötelező'),
-  hook: z.string().min(1, 'Hook kötelező'),
-  body: z.string().min(1, 'Törzsszöveg kötelező'),
-  cta_copy: z.string().min(1, 'CTA szöveg kötelező'),
-  visual_idea: z.string().min(1, 'Vizuális ötlet kötelező'),
+  hook: z.string().min(10, 'A hook legalább 10 karakter legyen'),
+  body: z.string().min(50, 'A törzsszöveg legalább 50 karakter legyen'),
+  cta_copy: z.string().min(5, 'A CTA szöveg legalább 5 karakter legyen'),
+  visual_idea: z.string().min(20, 'A vizuális ötlet legalább 20 karakter legyen'),
   alt_text_suggestion: z.string().optional(),
   length_hint: z.string().optional(),
   tone_notes: z.string().optional(),

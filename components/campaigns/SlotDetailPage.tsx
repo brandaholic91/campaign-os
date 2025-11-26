@@ -257,12 +257,17 @@ export function SlotDetailPage({ campaignId, sprintId, slotId }: SlotDetailPageP
         body: JSON.stringify(values),
       })
 
-      if (!response.ok) throw new Error('Mentés sikertelen')
+      if (!response.ok) {
+        const data = await response.json()
+        console.error('Validation error details:', data.details)
+        throw new Error(data.error || 'Mentés sikertelen')
+      }
 
       toast.success('Draft mentve')
       loadData()
     } catch (error) {
-      toast.error('Hiba történt a mentés során')
+      const errorMessage = error instanceof Error ? error.message : 'Hiba történt a mentés során'
+      toast.error(errorMessage)
       throw error // Re-throw to let modal know it failed
     }
   }
