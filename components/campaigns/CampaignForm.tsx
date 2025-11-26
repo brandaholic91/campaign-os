@@ -312,7 +312,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="campaign_type">Kampány típusa *</Label>
           <Select
@@ -354,7 +354,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="start_date">Kezdési dátum *</Label>
           <Input
@@ -406,8 +406,8 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
         />
       </div>
 
-      <div className="flex gap-4">
-        <Button type="submit" disabled={loading}>
+      <div className="flex flex-col md:flex-row gap-4">
+        <Button type="submit" disabled={loading} className="w-full md:w-auto">
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -422,6 +422,7 @@ export function CampaignForm({ campaign, onSuccess }: CampaignFormProps) {
           variant="secondary"
           onClick={() => router.back()}
           disabled={loading}
+          className="w-full md:w-auto"
         >
           Mégse
         </Button>

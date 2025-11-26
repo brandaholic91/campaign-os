@@ -67,7 +67,7 @@ export function CampaignStatusCard({ campaignId, currentStatus, updatedAt }: Cam
   }
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft flex flex-col justify-between h-full min-h-[160px]">
+    <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft flex flex-col justify-between h-full min-h-[160px]">
       <div className="flex items-center justify-between mb-4">
         <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Státusz</span>
         <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">

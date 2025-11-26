@@ -16,7 +16,7 @@ export class AnthropicProvider extends BaseAIProvider {
     const { model, systemPrompt, messages, maxTokens, temperature } = options;
 
     const response = await this.client.messages.create({
-      model: model || 'claude-3-5-sonnet-20241022',
+      model: model || process.env.AI_MODEL || 'claude-haiku-4-5',
       max_tokens: maxTokens || 4096,
       temperature: temperature,
       system: systemPrompt,
@@ -57,7 +57,7 @@ export class AnthropicProvider extends BaseAIProvider {
     const { model, systemPrompt, messages, maxTokens, temperature } = options;
 
     const stream = await this.client.messages.create({
-      model: model || 'claude-3-5-sonnet-20241022',
+      model: model || process.env.AI_MODEL || 'claude-haiku-4-5',
       max_tokens: maxTokens || 4096,
       temperature: temperature,
       system: systemPrompt,

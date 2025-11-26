@@ -290,8 +290,8 @@ export function SprintList({ sprints, campaignId, onSprintUpdate }: SprintListPr
           const sprintChannelsSecondary = sprint.focus_channels_secondary ?? []
 
           return (
-            <div key={sprint.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex items-start justify-between">
+            <div key={sprint.id} className="p-4 md:p-6 hover:bg-gray-50 transition-colors">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
                     <h4
@@ -410,7 +410,7 @@ export function SprintList({ sprints, campaignId, onSprintUpdate }: SprintListPr
                   )}
                 </div>
 
-                <div className="ml-4 flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
 
                   {campaignId && (
                     <>

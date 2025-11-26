@@ -351,19 +351,19 @@ export function isReadyForExecution(structure: CampaignStructure): ExecutionRead
     issues.push({
       type: 'matrix',
       element: 'Segment-Topic Matrix',
-      issue: 'Missing segment_topic_matrix array (required: 10-25 entries)'
+      issue: 'Missing segment_topic_matrix array (required: 10-100 entries)'
     })
   } else if (structure.segment_topic_matrix.length < 10) {
     issues.push({
       type: 'matrix',
       element: 'Segment-Topic Matrix',
-      issue: `Too few matrix entries: ${structure.segment_topic_matrix.length} (required: 10-25)`
+      issue: `Too few matrix entries: ${structure.segment_topic_matrix.length} (required: 10-100)`
     })
-  } else if (structure.segment_topic_matrix.length > 25) {
+  } else if (structure.segment_topic_matrix.length > 100) {
     issues.push({
       type: 'matrix',
       element: 'Segment-Topic Matrix',
-      issue: `Too many matrix entries: ${structure.segment_topic_matrix.length} (required: 10-25)`
+      issue: `Too many matrix entries: ${structure.segment_topic_matrix.length} (required: 10-100)`
     })
   } else {
     const matrixRes = validateMatrixRules(structure.segment_topic_matrix, structure.segments)

@@ -19,9 +19,10 @@ generated: "2025-11-20T21:52:36+01:00"
 project: "campaign-os"
 project_type: ""
 selected_track: "quick-flow"
-field_type: "greenfield"
+field_type: "brownfield"
 workflow_path: ".bmad/bmm/workflows/workflow-status/paths/quick-flow-greenfield.yaml"
 workflow_status:
   tech-spec: docs/tech-spec.md
+  document-project: docs/index.md
   sprint-planning: required
 

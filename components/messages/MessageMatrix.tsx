@@ -573,7 +573,8 @@ export default function MessageMatrix({
         <div className="flex-1 flex flex-col">
             {hasAnyData ? (
               <div className="bg-white rounded-2xl shadow-soft border border-gray-200 overflow-hidden flex flex-col relative">
-                <div className="overflow-auto custom-scrollbar flex-1 max-h-[800px]">
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-auto custom-scrollbar flex-1 max-h-[800px]">
                   <div 
                     className="grid"
                     style={{
@@ -650,6 +651,55 @@ export default function MessageMatrix({
                       </React.Fragment>
                     ))}
                   </div>
+                </div>
+
+                {/* Mobile View */}
+                <div className="md:hidden overflow-auto custom-scrollbar flex-1 max-h-[800px] p-4 space-y-8">
+                  {segments.map(segment => (
+                    <div key={segment.id} className="space-y-3">
+                      {/* Segment Header */}
+                      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm py-3 border-b border-gray-100 flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold shadow-sm">A</span>
+                        <div>
+                          <h3 className="text-gray-900 font-display font-bold text-lg leading-none">{segment.name}</h3>
+                          {segment.description && <p className="text-gray-500 text-xs mt-1 line-clamp-1">{segment.description}</p>}
+                        </div>
+                      </div>
+
+                      {/* Topics for this Segment */}
+                      <div className="space-y-4 pl-2">
+                        {topics.map(topic => {
+                          const strategy = getStrategyForCell(segment.id, topic.id)
+                          const matrixEntry = matrixEntries.find(
+                            (m) => m.segment_id === segment.id && m.topic_id === topic.id
+                          )
+                          const isCellGenerating = generatingCell?.segmentId === segment.id && generatingCell?.topicId === topic.id
+
+                          return (
+                            <div key={`${segment.id}-${topic.id}`} className="bg-gray-50 rounded-xl p-3 border border-gray-100 shadow-sm">
+                              {/* Topic Header */}
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="w-5 h-5 rounded bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-bold">T</span>
+                                <span className="text-sm font-bold text-gray-700">{topic.name}</span>
+                              </div>
+                              
+                              {/* Cell Content */}
+                              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden min-h-[150px]">
+                                <StrategyCell
+                                  strategy={strategy?.content}
+                                  matrixEntry={matrixEntry}
+                                  isLoading={isCellGenerating}
+                                  onClick={() => handleCellClick(segment.id, topic.id)}
+                                  onCreate={() => handleCreateStrategy(segment.id, topic.id)}
+                                  onGenerate={() => handleGenerateStrategy(segment.id, topic.id)}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : (

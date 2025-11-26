@@ -121,24 +121,12 @@ Kapcsolat jellemzői:
       )
     }
 
-    // For reasoning models (GPT-5, o1), use a non-reasoning model for simple summary generation
-    // Reasoning models are overkill for this task and can consume all tokens on reasoning,
-    // leaving no tokens for output. Use a faster, cheaper model instead.
-    const isReasoningModel = model.startsWith('gpt-5') || model.startsWith('o1')
-    if (isReasoningModel && providerType === 'openai') {
-      // Use GPT-4o-mini or gpt-4-turbo for summary generation instead
-      model = 'gpt-4o-mini'
-      console.log('[Matrix Summary] Switched from reasoning model to:', model, 'for summary generation')
-    }
-
     const maxTokens = 256 // Standard models don't need as many tokens for a short summary
     
     console.log('[Matrix Summary] Token settings:', {
-      isReasoningModel,
       maxTokens,
       promptLength: userPrompt.length,
       systemPromptLength: MATRIX_SUMMARY_SYSTEM_PROMPT.length,
-      note: isReasoningModel ? 'Reasoning model - needs higher max_completion_tokens for output' : 'Standard model',
     })
 
     let response

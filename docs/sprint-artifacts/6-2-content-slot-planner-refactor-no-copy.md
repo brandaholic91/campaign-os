@@ -1,6 +1,6 @@
 # Story 6.2: Content Slot Planner Refactor (No Copy)
 
-Status: review
+Status: done
 
 ## Story
 

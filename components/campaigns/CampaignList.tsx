@@ -60,15 +60,15 @@ export function CampaignList() {
           <p className="text-lg font-medium mb-2">Még nincsenek kampányok</p>
           <p className="text-sm">Hozz létre egy új kampányt a kezdéshez</p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/campaigns/new/ai">
-            <Button variant="outline">
+        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+          <Link href="/campaigns/new/ai" className="w-full md:w-auto">
+            <Button variant="outline" className="w-full md:w-auto">
               <Sparkles className="mr-2 h-4 w-4" />
               AI Tervező
             </Button>
           </Link>
-          <Link href="/campaigns/new">
-            <Button>
+          <Link href="/campaigns/new" className="w-full md:w-auto">
+            <Button className="w-full md:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Új kampány
             </Button>
@@ -80,17 +80,17 @@ export function CampaignList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-2xl font-bold">Kampányok</h2>
-          <div className="flex gap-2">
-            <Link href="/campaigns/new/ai">
-              <Button variant="outline">
+          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <Link href="/campaigns/new/ai" className="w-full md:w-auto">
+              <Button variant="outline" className="w-full md:w-auto">
                 <Sparkles className="mr-2 h-4 w-4" />
                 AI Tervező
               </Button>
             </Link>
-            <Link href="/campaigns/new">
-              <Button>
+            <Link href="/campaigns/new" className="w-full md:w-auto">
+              <Button className="w-full md:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Új kampány
               </Button>

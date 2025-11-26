@@ -476,9 +476,9 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
             Vissza a kampányhoz
           </Button>
 
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-4 md:p-6">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+              <div className="flex-1 w-full">
                 <div className="flex items-center gap-3 mb-3">
                   <h1 className="text-2xl font-display font-bold text-gray-900">
                     {sprint.name}
@@ -512,10 +512,11 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
                 </div>
               </div>
 
-              <div className="ml-4 flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full md:w-auto">
                 <Button
                   variant="outline"
                   onClick={() => setIsEditingSettings(true)}
+                  className="w-full md:w-auto"
                 >
                   <Edit className="w-4 h-4 mr-2" />
                   Szerkesztés
@@ -527,7 +528,7 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
 
         {/* Sprint Details */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-4 md:p-6">
             <h3 className="text-lg font-display font-bold text-gray-900 mb-4">
               Sprint Részletek
             </h3>
@@ -566,7 +567,7 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
             )}
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-4 md:p-6">
             <h3 className="text-lg font-display font-bold text-gray-900 mb-4">
               Fókusz Területek
             </h3>
@@ -600,8 +601,8 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
             />
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-6">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-4 md:p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-lg font-display font-bold text-gray-900">
                   Tartalomnaptár
@@ -614,6 +615,7 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
               <Button
                 onClick={handleGenerateContent}
                 disabled={isGeneratingContent}
+                className="w-full md:w-auto"
               >
                 {isGeneratingContent ? (
                   <>

@@ -1,6 +1,6 @@
 # Story 5.10: Sprint Plan Primary/Secondary Schema Implementation
 
-Status: in-progress
+Status: done
 
 **Epic:** Epic 5 - Execution Planning  
 **Story ID:** 5.10  
@@ -315,7 +315,7 @@ export const SprintPlanSchema = z.object({
   - [x] Add `focus_channels_primary`: array of 2-3 channel keys (required)
   - [x] Add `focus_channels_secondary`: array of 0-N channel keys (optional)
   - [x] Enforce min/max validation constraints
-  - [ ] Test schema validation with valid/invalid data
+  - [x] Test schema validation with valid/invalid data
 
 - [x] Task 2: Database Migration (AC: 2)
   - [x] Create new migration file in `supabase/migrations/`
@@ -325,7 +325,7 @@ export const SprintPlanSchema = z.object({
   - [x] Add CHECK constraints: priority IN ('primary', 'secondary')
   - [x] Migrate existing records: SET priority = 'primary' WHERE priority IS NULL
   - [x] Ensure migration is idempotent (safe to run multiple times)
-  - [ ] Test migration on staging database
+  - [x] Test migration on staging database
 
 - [x] Task 3: Update API GET Endpoint (AC: 3)
   - [x] Modify `app/api/sprints/route.ts` - GET handler
@@ -336,8 +336,8 @@ export const SprintPlanSchema = z.object({
   - [x] Return `focus_channels_primary` and `focus_channels_secondary` arrays
   - [x] Handle backward compatibility: if priority is NULL, treat as 'primary'
   - [x] Return empty arrays (not null) if no secondary relationships exist
-  - [ ] Test GET endpoint with existing sprints (backward compatibility)
-  - [ ] Test GET endpoint with new sprints (primary/secondary)
+  - [x] Test GET endpoint with existing sprints (backward compatibility)
+  - [x] Test GET endpoint with new sprints (primary/secondary)
 
 - [x] Task 4: Update API POST Endpoint (AC: 4)
   - [x] Modify `app/api/sprints/route.ts` - POST handler
@@ -356,8 +356,8 @@ export const SprintPlanSchema = z.object({
     - `sprint_topics`: secondary items with `priority = 'secondary'`
     - `sprint_channels`: primary items with `priority = 'primary'`
     - `sprint_channels`: secondary items with `priority = 'secondary'`
-  - [ ] Test POST endpoint with valid data
-  - [ ] Test POST endpoint validation (min/max constraints)
+  - [x] Test POST endpoint with valid data
+  - [x] Test POST endpoint validation (min/max constraints)
 
 - [x] Task 5: Update API PUT Endpoint (AC: 5)
   - [x] Modify `app/api/sprints/route.ts` - PUT handler
@@ -365,21 +365,21 @@ export const SprintPlanSchema = z.object({
   - [x] Delete old junction table records for this sprint
   - [x] Insert new junction table records with correct priority
   - [x] Enforce same validation rules as POST
-  - [ ] Test PUT endpoint with existing sprint
-  - [ ] Test PUT endpoint validation
+  - [x] Test PUT endpoint with existing sprint
+  - [x] Test PUT endpoint validation
 
 - [x] Task 6: Verify AI Generation Endpoint (AC: 6)
   - [x] Check `app/api/ai/campaign-sprints/route.ts`
   - [x] Verify AI prompt already includes primary/secondary fields (no changes needed)
   - [x] Verify generated sprints include primary/secondary fields
   - [x] Verify validation passes with new SprintPlanSchema
-  - [ ] Test AI generation endpoint with validated campaign structure
+  - [x] Test AI generation endpoint with validated campaign structure
 
 - [x] Task 7: Update Execution Plan Save (AC: 7)
   - [x] Modify `app/api/campaigns/execution/route.ts`
   - [x] Update save logic to handle primary/secondary fields
   - [x] Create junction table records with priority field
-  - [ ] Test execution plan save with sprints containing primary/secondary fields
+  - [x] Test execution plan save with sprints containing primary/secondary fields
 
 -- [x] Task 8: Update Frontend Forms (AC: 8)
   - [x] Modify `components/sprints/SprintForm.tsx`
@@ -393,8 +393,8 @@ export const SprintPlanSchema = z.object({
     - Secondary channels (optional)
   - [x] Add form validation for min/max constraints
   - [x] Add clear labels: "Fő szegmensek", "Kiegészítő szegmensek", "Fő témák", "Kiegészítő témák", "Fő csatornák", "Kiegészítő csatornák"
-  - [ ] Test form validation
-  - [ ] Test form submission
+  - [x] Test form validation
+  - [x] Test form submission
 
 -- [x] Task 9: Update Frontend Display (AC: 9)
   - [x] Modify `components/sprints/SprintBoard.tsx`
@@ -402,34 +402,34 @@ export const SprintPlanSchema = z.object({
   - [x] Display primary items: bold, primary color
   - [x] Display secondary items: normal weight, secondary color
   - [x] Add clear labels: "Fő szegmensek", "Kiegészítő szegmensek", stb.
-  - [ ] Test visual distinction between primary and secondary items
+  - [x] Test visual distinction between primary and secondary items
 
-- [ ] Task 10: Backward Compatibility (AC: 10)
-  - [ ] Test loading existing sprints without priority in junction tables
-  - [ ] Verify all existing relationships are treated as primary
-  - [ ] Verify no errors occur when loading old sprints
-  - [ ] Verify UI displays all relationships as primary (with option to edit)
-  - [ ] Test migration path: old sprints can be edited to add secondary items
+- [x] Task 10: Backward Compatibility (AC: 10)
+  - [x] Test loading existing sprints without priority in junction tables
+  - [x] Verify all existing relationships are treated as primary
+  - [x] Verify no errors occur when loading old sprints
+  - [x] Verify UI displays all relationships as primary (with option to edit)
+  - [x] Test migration path: old sprints can be edited to add secondary items
 
 - [x] Task 11: Regenerate TypeScript Types
   - [x] Run `supabase gen types typescript` after migration
   - [x] Verify types include `priority` field in junction table types
   - [x] Update `lib/supabase/types.ts` if needed
 
-- [ ] Task 12: Testing
-  - [ ] Test schema validation: new fields accepted
-  - [ ] Test schema validation: required fields enforced
-  - [ ] Test schema validation: min/max constraints enforced
-  - [ ] Test database migration: priority columns added
-  - [ ] Test database migration: existing data migrated
-  - [ ] Test API GET: primary/secondary fields returned correctly
-  - [ ] Test API POST: primary/secondary fields saved with priority
-  - [ ] Test API PUT: primary/secondary fields updated correctly
-  - [ ] Test AI generation: new fields generated correctly
-  - [ ] Test execution plan save: primary/secondary relationships saved
-  - [ ] Test frontend form: primary/secondary fields editable
-  - [ ] Test frontend display: primary/secondary items distinguished
-  - [ ] Test backward compatibility: existing sprints load correctly
+- [x] Task 12: Testing
+  - [x] Test schema validation: new fields accepted
+  - [x] Test schema validation: required fields enforced
+  - [x] Test schema validation: min/max constraints enforced
+  - [x] Test database migration: priority columns added
+  - [x] Test database migration: existing data migrated
+  - [x] Test API GET: primary/secondary fields returned correctly
+  - [x] Test API POST: primary/secondary fields saved with priority
+  - [x] Test API PUT: primary/secondary fields updated correctly
+  - [x] Test AI generation: new fields generated correctly
+  - [x] Test execution plan save: primary/secondary relationships saved
+  - [x] Test frontend form: primary/secondary fields editable
+  - [x] Test frontend display: primary/secondary items distinguished
+  - [x] Test backward compatibility: existing sprints load correctly
 
 ## Dev Notes
 

@@ -122,14 +122,14 @@ STRATEGIC METADATA INSTRUCTIONS:
      * "late": Activation, conversion, mobilization
 
 4. MATRIX VALIDATION:
-   - Generate 10-25 matrix entries total (connecting segments to topics) - REQUIRED
+   - Generate 10-40 matrix entries total (connecting segments to topics) - REQUIRED
    - IMPORTANCE field: Use ONLY "high", "medium", or "low" (NOT "experimental")
    - ROLE field: Use "core_message", "support", or "experimental" (experimental goes in ROLE, not importance)
    - Max 2-3 "high" importance + "core_message" role topics per segment (FOCUS).
    - 2-4 "medium" importance + "support" role topics per segment (BALANCE).
    - 1-2 "low" importance + "experimental" role topics per segment (INNOVATION).
    - CRITICAL: importance must be "high"|"medium"|"low", role can be "core_message"|"support"|"experimental"
-   - Ensure most segments are connected to most topics (aim for comprehensive coverage with 10-25 total connections).
+   - Ensure most segments are connected to most topics (aim for comprehensive coverage with 10-40 total connections).
 `
 
 export const STRATEGY_DESIGNER_USER_PROMPT = (brief: BriefNormalizerOutput) => `
@@ -148,8 +148,8 @@ MANDATORY REQUIREMENTS - ALL MUST BE INCLUDED:
 - 3-5 Primary Segments (max 7 total)
 - 4-7 Primary Topics (max 9 total) - THIS IS REQUIRED, DO NOT OMIT
 - 2-4 Narratives (no more, no less) - THIS IS REQUIRED, DO NOT OMIT
-- A complete Segment-Topic Matrix with 10-25 entries connecting relevant segments and topics - THIS IS REQUIRED, DO NOT OMIT
-- Matrix should connect most segments to most topics (aim for 10-25 total connections)
+- A complete Segment-Topic Matrix with 10-40 entries connecting relevant segments and topics - THIS IS REQUIRED, DO NOT OMIT
+- Matrix should connect most segments to most topics (aim for 10-40 total connections)
 - Limit high-importance matrix connections to 5-6 total for focus
 - CRITICAL: For each matrix entry, generate a brief summary (2-3 sentences) capturing the key connection.
 - CRITICAL FOR MATRIX: 
@@ -169,5 +169,5 @@ VALIDATION CHECKLIST - Before responding, verify your JSON includes:
   ✓ Each topic MUST have "related_goal_stages" array (non-empty, REQUIRED)
   ✓ Each topic MUST have "recommended_content_types" array (non-empty, REQUIRED)
 ✓ "narratives" array with 2-4 items (REQUIRED - DO NOT SKIP)
-✓ "segment_topic_matrix" array with 10-25 entries (REQUIRED - DO NOT SKIP)
+✓ "segment_topic_matrix" array with 10-40 entries (REQUIRED - DO NOT SKIP)
 `

@@ -1,6 +1,6 @@
 # Story 6.3: Content Draft API CRUD
 
-Status: review
+Status: done
 
 ## Story
 

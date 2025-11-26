@@ -15,6 +15,12 @@ export interface SprintPlannerContext {
   sprintDateRanges: Array<{ start_date: string; end_date: string }>
   expectedFocusStages: string[]
   campaignDurationDays: number
+  recommendedVolumes: Array<{
+    sprintIndex: number
+    total: number
+    video: number
+    stories: number
+  }>
 }
 
 export const SPRINT_PLANNER_SYSTEM_PROMPT = `You are a sprint planning expert. Your task is to generate ONLY sprint plans for campaign execution (NO content calendar).
@@ -58,7 +64,7 @@ CRITICAL: You must respond with ONLY valid JSON. No markdown, no explanations, n
     "narrative_emphasis": ["uuid-string"], // 1-2 narrative IDs
     "key_messages_summary": "string (2-3 sentences in Hungarian)",
     "success_criteria": ["string"], // 1+ success criteria in Hungarian
-    "risks_and_watchouts": ["string"] // 2-4 risks in Hungarian
+    "risks_and_watchouts": ["string"] // 2-5 risks in Hungarian
   }]
 }
 
@@ -101,15 +107,15 @@ SPRINT PLANNING GUIDELINES:
    - Use narrative.suggested_phase to match early/mid/late campaign phases
 
 8. Weekly Post Volume:
-   - total_posts_per_week: 8-15 posts based on sprint intensity and campaign type
-   - video_posts_per_week: 2-5 video posts (30-50% of total)
-   - stories_per_week: 3-7 stories (separate from main posts)
+   - STRICTLY FOLLOW the "Recommended Post Volume" provided in the user prompt for each sprint.
+   - The user prompt will specify the exact target numbers for total posts, videos, and stories.
+   - Use these numbers to populate the 'suggested_weekly_post_volume' object.
 
 9. Content Requirements:
    - focus_description: 2-3 sentences explaining sprint strategy in Hungarian
    - key_messages_summary: 2-3 sentences summarizing key messaging in Hungarian
    - success_criteria: 1+ specific, measurable criteria in Hungarian
-   - risks_and_watchouts: 2-4 potential risks and mitigation approaches in Hungarian
+   - risks_and_watchouts: 2-5 potential risks and mitigation approaches in Hungarian
 
 STRATEGIC METADATA USAGE:
 
@@ -134,11 +140,11 @@ VALIDATION CHECKLIST - Before responding, verify:
 ✓ narrative_emphasis arrays contain valid narrative IDs from campaign
 ✓ focus_channels arrays contain valid channel names from campaign
 ✓ All text content is in Hungarian
-✓ suggested_weekly_post_volume has positive integers
+✓ suggested_weekly_post_volume matches the recommended volumes from the prompt
 ✓ success_criteria and risks_and_watchouts are non-empty arrays`
 
 export const SPRINT_PLANNER_USER_PROMPT = (context: SprintPlannerContext) => {
-  const { campaign, structure, sprintCount, sprintDateRanges, expectedFocusStages, campaignDurationDays } = context
+  const { campaign, structure, sprintCount, sprintDateRanges, expectedFocusStages, campaignDurationDays, recommendedVolumes } = context
 
   // Build segment summary
   const segmentSummary = structure.segments.map((seg, idx) => {
@@ -173,7 +179,12 @@ export const SPRINT_PLANNER_USER_PROMPT = (context: SprintPlannerContext) => {
 
   // Build sprint date ranges summary
   const sprintRangesSummary = sprintDateRanges.map((range, idx) => {
-    return `  Sprint ${idx + 1}: ${range.start_date} → ${range.end_date} (Focus Stage: ${expectedFocusStages[idx]})`
+    const vol = recommendedVolumes.find(v => v.sprintIndex === idx + 1)
+    const volInfo = vol 
+      ? `\n    Recommended Volume: Total ${vol.total}/week (Video: ${vol.video}, Stories: ${vol.stories})`
+      : ''
+    
+    return `  Sprint ${idx + 1}: ${range.start_date} → ${range.end_date} (Focus Stage: ${expectedFocusStages[idx]})${volInfo}`
   }).join('\n')
 
   return `Generate sprint plans for this campaign:
@@ -191,7 +202,7 @@ SPRINT REQUIREMENTS:
 - Sprint Count: ${sprintCount}
 - Expected Focus Stage Progression: ${expectedFocusStages.join(' → ')}
 
-SPRINT DATE RANGES (use these exactly):
+SPRINT DATE RANGES & VOLUMES (use these exactly):
 ${sprintRangesSummary}
 
 SEGMENTS (${structure.segments.length} total):
@@ -214,6 +225,7 @@ INSTRUCTIONS:
 5. Ensure all IDs reference valid campaign entities
 6. All text content must be in Hungarian
 7. Make sprints strategic and actionable for campaign execution
+8. USE THE RECOMMENDED POST VOLUMES provided for each sprint.
 
 Return ONLY valid JSON (no markdown, no code blocks, no explanations) with the exact structure defined in the system prompt.`
 }

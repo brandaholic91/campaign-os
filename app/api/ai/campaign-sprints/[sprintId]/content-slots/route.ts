@@ -349,15 +349,20 @@ export async function POST(
                 slot_index: typeof slot.slot_index === 'number' ? slot.slot_index : parseInt(String(slot.slot_index || '1'), 10),
                 primary_segment_id: (slot.primary_segment_id && typeof slot.primary_segment_id === 'string' && uuidPattern.test(slot.primary_segment_id))
                   ? slot.primary_segment_id
-                  : undefined,
+                  : (focusSegmentIds.length > 0 ? focusSegmentIds[0] : undefined),
                 primary_topic_id: (slot.primary_topic_id && typeof slot.primary_topic_id === 'string' && uuidPattern.test(slot.primary_topic_id))
                   ? slot.primary_topic_id
-                  : undefined,
+                  : (focusTopicIds.length > 0 ? focusTopicIds[0] : undefined),
                 // New required fields from Story 6.1
                 funnel_stage: normalizeFunnelStage(slot.funnel_stage, sprint.focus_stage || 'awareness'),
-                related_goal_ids: Array.isArray(slot.related_goal_ids) && slot.related_goal_ids.length > 0
-                  ? slot.related_goal_ids.filter((id: any) => typeof id === 'string' && uuidPattern.test(id))
-                  : (Array.isArray(sprint.focus_goals) && sprint.focus_goals.length > 0 ? sprint.focus_goals.slice(0, 2) : []),
+                related_goal_ids: (() => {
+                  const validIds = Array.isArray(slot.related_goal_ids)
+                    ? slot.related_goal_ids.filter((id: any) => typeof id === 'string' && uuidPattern.test(id))
+                    : []
+                  return validIds.length > 0 
+                    ? validIds 
+                    : (Array.isArray(sprint.focus_goals) && sprint.focus_goals.length > 0 ? sprint.focus_goals.slice(0, 2) : [])
+                })(),
                 angle_type: normalizeAngleType(slot.angle_type),
                 cta_type: normalizeCTAType(slot.cta_type),
                 // Optional new fields

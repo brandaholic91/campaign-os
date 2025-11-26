@@ -188,7 +188,7 @@ export const CampaignStructureSchema = z.object({
   segments: z.array(SegmentSchema),
   topics: z.array(TopicSchema).optional(), // Optional in schema to handle AI generation issues, but validated separately
   narratives: z.array(NarrativeSchema).min(2, 'At least 2 narratives required').max(4, 'Maximum 4 narratives allowed').optional(), // Optional in schema to handle AI generation issues, but validated separately
-  segment_topic_matrix: z.array(SegmentTopicMatrixEntrySchema).min(10, 'At least 10 matrix entries required').max(25, 'Maximum 25 matrix entries allowed').optional(), // Optional in schema to handle AI generation issues, but validated separately
+  segment_topic_matrix: z.array(SegmentTopicMatrixEntrySchema).min(10, 'At least 10 matrix entries required').max(100, 'Maximum 100 matrix entries allowed').optional(), // Optional in schema to handle AI generation issues, but validated separately
 })
 
 export const BriefNormalizerOutputSchema = z.object({
@@ -363,16 +363,16 @@ export const SprintPlanSchema = z.object({
   focus_goals: z.array(z.string().uuid()).min(1).max(3),
   focus_segments_primary: z.array(z.string().uuid()).min(1, 'At least one primary focus segment required').max(2, 'Maximum two primary focus segments allowed'),
   focus_segments_secondary: z.array(z.string().uuid()).max(2, 'Maximum two secondary focus segments allowed').optional(),
-  focus_topics_primary: z.array(z.string().uuid()).min(2, 'At least two primary focus topics required').max(3, 'Maximum three primary focus topics allowed'),
-  focus_topics_secondary: z.array(z.string().uuid()).min(2, 'At least two secondary focus topics required').max(4, 'Maximum four secondary focus topics allowed').optional(),
-  focus_channels_primary: z.array(z.string().min(1, 'Channel key must be at least one character')).min(2, 'At least two primary focus channels required').max(3, 'Maximum three primary focus channels allowed'),
+  focus_topics_primary: z.array(z.string().uuid()).min(1, 'At least one primary focus topic required').max(3, 'Maximum three primary focus topics allowed'),
+  focus_topics_secondary: z.array(z.string().uuid()).max(4, 'Maximum four secondary focus topics allowed').optional(),
+  focus_channels_primary: z.array(z.string().min(1, 'Channel key must be at least one character')).min(1, 'At least one primary focus channel required').max(3, 'Maximum three primary focus channels allowed'),
   focus_channels_secondary: z.array(z.string().min(1, 'Channel key must be at least one character')).optional(),
 
   suggested_weekly_post_volume: SuggestedWeeklyPostVolumeSchema.optional(),
   narrative_emphasis: z.array(z.string().uuid()).min(1).max(2).optional(),
   key_messages_summary: z.string().min(20, 'Key messages summary must be at least 20 characters').optional(),
   success_criteria: z.array(z.string()).min(1).optional(),
-  risks_and_watchouts: z.array(z.string()).min(1).max(4).optional(),
+  risks_and_watchouts: z.array(z.string()).min(1).max(10).optional(),
 }).refine((data) => {
   // Validate that end_date is after start_date
   const start = new Date(data.start_date)

@@ -5,6 +5,7 @@ import { isReadyForExecution } from '@/lib/validation/campaign-structure'
 import { SprintPlanSchema, CampaignStructure } from '@/lib/ai/schemas'
 import { SPRINT_PLANNER_SYSTEM_PROMPT, SPRINT_PLANNER_USER_PROMPT, SprintPlannerContext } from '@/lib/ai/prompts/sprint-planner'
 import { fetchCampaignStructure } from '@/lib/campaign/structure'
+import { calculateSprintVolume } from '@/lib/ai/sprint-utils'
 import { randomUUID } from 'crypto'
 
 export const maxDuration = 120 // 2 minutes for sprint generation
@@ -149,6 +150,22 @@ export async function POST(req: NextRequest) {
       expectedFocusStages.push(getExpectedFocusStage(i, sprintCount))
     }
 
+    // Calculate recommended volumes for each sprint
+    const recommendedVolumes: SprintPlannerContext['recommendedVolumes'] = []
+    for (let i = 0; i < sprintCount; i++) {
+      const volume = calculateSprintVolume({
+        campaignType: campaign.campaign_type || 'general',
+        channels: channels,
+        focusStage: expectedFocusStages[i]
+      })
+      recommendedVolumes.push({
+        sprintIndex: i + 1,
+        total: volume.total_posts_per_week,
+        video: volume.video_posts_per_week,
+        stories: volume.stories_per_week
+      })
+    }
+
     // Create SSE stream
     const encoder = new TextEncoder()
     const readable = new ReadableStream({
@@ -187,6 +204,7 @@ export async function POST(req: NextRequest) {
             sprintDateRanges,
             expectedFocusStages,
             campaignDurationDays,
+            recommendedVolumes,
           }
 
           sendSSE(controller, 'progress', {
@@ -340,6 +358,7 @@ export async function POST(req: NextRequest) {
               success_criteria: normalizeOptionalArrayField(sprint.success_criteria),
               narrative_emphasis: normalizeArrayField(sprint.narrative_emphasis),
               focus_goals: normalizeArrayField(sprint.focus_goals),
+              suggested_weekly_post_volume: sprint.suggested_weekly_post_volume,
             }
           })
 

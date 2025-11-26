@@ -1,6 +1,6 @@
 # Story 6.1: ContentSlot Schema Enhancement & ContentDraft Table
 
-Status: review
+Status: done
 
 ## Story
 
