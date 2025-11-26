@@ -107,7 +107,7 @@ development_status:
 
   # Story 3.0.6: AI Provider Abstraction
   # Note: Story drafted 2025-11-24 - Multi-provider AI support (Anthropic, OpenAI, Google Gemini, Ollama) with unified interface
-  3-0-6-ai-provider-abstraction: review
+  3-0-6-ai-provider-abstraction: done 
 
   # Epic 4.0: Strategic Data Enhancement for Sprint & Content Calendar Planning
   # Note: Epic created 2025-11-XX - Enhances campaign structure with strategic metadata for execution planning
@@ -188,7 +188,7 @@ development_status:
   # Note: Epic 5 Phase 2 - Two-phase refactor: Primary/secondary distinction for segments, topics, and channels
   # Note: Story drafted 2025-01-XX - Sprint plan schema with primary/secondary focus areas
   # Note: Extends Story 5.6 with priority-based junction tables and primary/secondary fields
-  5-10-sprint-plan-primary-secondary-schema: in-progress
+  5-10-sprint-plan-primary-secondary-schema: done
 
   epic-5-retrospective: optional
 
@@ -202,32 +202,32 @@ development_status:
   # Note: Status updated to ready-for-dev (2025-01-XX) - Story context generated
   # Note: Status updated to in-progress (2025-01-XX) - Dev agent starting implementation
   # Note: Status updated to review (2025-01-XX) - All tasks completed, migration executed, schemas updated, types regenerated
-  6-1-content-slot-schema-enhancement-draft-table: review
+  6-1-content-slot-schema-enhancement-draft-table: done
 
   # Story 6.2: Content Slot Planner Refactor (No Copy)
   # Note: Story drafted 2025-01-XX - AI endpoint refactor to generate only slots without copy
   # Note: Status updated to ready-for-dev (2025-01-XX) - Story context generated
   # Note: Status updated to in-progress (2025-11-25) - Dev agent starting implementation
   # Note: Status updated to review (2025-11-25) - All tasks completed, prompt refactored, message strategies integrated, response schema updated
-  6-2-content-slot-planner-refactor-no-copy: review
+  6-2-content-slot-planner-refactor-no-copy: done
 
   # Story 6.3: Content Draft API CRUD
   # Note: Story drafted 2025-01-XX - CRUD API endpoints for content drafts
   # Note: Status updated to ready-for-dev (2025-01-02) - Story context generated
   # Note: Status updated to in-progress (2025-11-25) - Dev agent starting CRUD API implementation
   # Note: Status updated to review (2025-11-25) - All tasks completed, CRUD endpoints implemented with validation
-  6-3-content-draft-api-crud: review
+  6-3-content-draft-api-crud: done
 
   # Story 6.4: Content Draft AI Generator Endpoint
   # Note: Story drafted 2025-01-XX - AI endpoint for generating content drafts from slots
   # Note: Status updated to ready-for-dev (2025-11-25) - Story context generated
   # Note: Status updated to in-progress (2025-11-25) - Dev agent starting implementation
   # Note: Status updated to review (2025-11-25) - All ACs completed, TypeScript build passing
-  6-4-content-draft-ai-generator-endpoint: review
+  6-4-content-draft-ai-generator-endpoint: done
 
   # Story 6.5: Slot & Draft UI Components
   # Note: Story drafted 2025-01-XX - UI components for slot management and draft creation
   # Note: Status updated to ready-for-dev (2025-01-02) - Story context generated
-  6-5-slot-draft-ui-components: in-progress
+  6-5-slot-draft-ui-components: done
 
   epic-6-retrospective: optional

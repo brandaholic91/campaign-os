@@ -1,6 +1,6 @@
 # Story 6.5: Slot & Draft UI Components
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -166,16 +166,16 @@ so that **I can manage slot planning and draft creation in a clear workflow**.
   - [x] Show error messages to user
   - [x] Backward compatibility: handle missing fields gracefully
 
-- [ ] Task 9: Test UI components (AC: 1-10)
-  - [ ] Test slot cards display correctly
-  - [ ] Test slot detail page loads and displays data
-  - [ ] Test AI draft generation modal
-  - [ ] Test draft preview modal
-  - [ ] Test draft edit form
-  - [ ] Test slot edit form
-  - [ ] Test draft actions (approve, reject, delete)
-  - [ ] Test validation and error handling
-  - [ ] Test backward compatibility (slots without new fields)
+- [x] Task 9: Test UI components (AC: 1-10)
+  - [x] Test slot cards display correctly
+  - [x] Test slot detail page loads and displays data
+  - [x] Test AI draft generation modal
+  - [x] Test draft preview modal
+  - [x] Test draft edit form
+  - [x] Test slot edit form
+  - [x] Test draft actions (approve, reject, delete)
+  - [x] Test validation and error handling
+  - [x] Test backward compatibility (slots without new fields)
 
 ## Dev Notes
 
