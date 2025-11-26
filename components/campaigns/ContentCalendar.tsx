@@ -5,7 +5,8 @@ import { ContentSlot, SprintPlan } from '@/lib/ai/schemas'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, isSameMonth } from 'date-fns'
-import { Calendar, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Edit, Trash2, FileText } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ContentSlotEditForm } from './ContentSlotEditForm'
 import { Database } from '@/lib/supabase/types'
@@ -56,9 +57,24 @@ const objectiveColors: Record<string, string> = {
   mobilization: 'bg-red-100 text-red-700 border-red-200',
 }
 
+const draftStatusLabels: Record<string, string> = {
+  no_draft: 'Nincs draft',
+  has_draft: 'Van draft',
+  approved: 'Jóváhagyva',
+  published: 'Publikálva',
+}
+
+const draftStatusColors: Record<string, string> = {
+  no_draft: 'bg-gray-100 text-gray-600 border-gray-200',
+  has_draft: 'bg-blue-50 text-blue-600 border-blue-200',
+  approved: 'bg-green-50 text-green-600 border-green-200',
+  published: 'bg-purple-50 text-purple-600 border-purple-200',
+}
+
 type ViewType = 'weekly' | 'monthly' | 'sprint'
 
 export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: ContentCalendarProps) {
+  const router = useRouter()
   const [viewType, setViewType] = useState<ViewType>('weekly')
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -269,7 +285,8 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
     return (
       <div
         key={slot.id}
-        className="p-2 bg-white border border-gray-200 rounded-lg mb-2 hover:shadow-md transition-shadow"
+        onClick={() => campaignId && router.push(`/campaigns/${campaignId}/sprints/${slot.sprint_id}/slots/${slot.id}`)}
+        className="p-2 bg-white border border-gray-200 rounded-lg mb-2 hover:shadow-md transition-shadow cursor-pointer group relative"
       >
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -281,6 +298,11 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
             <Badge variant="outline" className="text-xs">
               {slot.channel}
             </Badge>
+            {slot.draft_status && (
+              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${draftStatusColors[slot.draft_status]}`}>
+                {draftStatusLabels[slot.draft_status]}
+              </Badge>
+            )}
           </div>
           {campaignId && (
             <div className="flex items-center gap-1">
@@ -288,7 +310,10 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0"
-                onClick={() => handleEdit(slot.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleEdit(slot.id)
+                }}
                 title="Szerkesztés"
               >
                 <Edit className="w-3 h-3" />
@@ -297,7 +322,10 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0 text-destructive"
-                onClick={() => handleDelete(slot.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDelete(slot.id)
+                }}
                 title="Törlés"
               >
                 <Trash2 className="w-3 h-3" />
@@ -323,6 +351,13 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
             <div className="text-gray-500 truncate" title={slot.angle_hint}>
               {slot.angle_hint.length > 30 ? `${slot.angle_hint.substring(0, 30)}...` : slot.angle_hint}
             </div>
+          )}
+          {slot.funnel_stage && (
+             <div className="flex items-center gap-1 mt-1">
+                <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+                  {slot.funnel_stage}
+                </Badge>
+             </div>
           )}
         </div>
       </div>

@@ -447,6 +447,7 @@ export const ContentSlotSchema = z.object({
   owner: z.string().optional(),
   notes: z.string().optional(),
   status: ContentSlotStatusSchema.default('planned'),
+  draft_status: z.enum(['no_draft', 'has_draft', 'approved', 'published']).optional(),
 })
 
 // Content draft schema

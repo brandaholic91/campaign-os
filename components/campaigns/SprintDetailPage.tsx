@@ -190,10 +190,10 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
 
         setSprint(sprintPlan)
 
-        // Load content slots for this sprint
+        // Load content slots for this sprint with drafts
         const { data: slots } = await db
           .from('content_slots')
-          .select('*')
+          .select('*, content_drafts(status)')
           .eq('sprint_id', sprintId)
 
         if (slots) {
@@ -221,6 +221,13 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
             tone_override: slot.tone_override || undefined,
             asset_requirements: (slot.asset_requirements as any as string[]) || undefined,
             owner: slot.owner || undefined,
+            draft_status: (() => {
+              const drafts = (slot as any).content_drafts
+              if (!drafts || !Array.isArray(drafts) || drafts.length === 0) return 'no_draft'
+              if (drafts.some((d: any) => d.status === 'published')) return 'published'
+              if (drafts.some((d: any) => d.status === 'approved')) return 'approved'
+              return 'has_draft'
+            })(),
           }))
           setContentSlots(contentSlots)
         }
@@ -338,7 +345,7 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
 
     const { data: slots } = await db
       .from('content_slots')
-      .select('*')
+      .select('*, content_drafts(status)')
       .eq('sprint_id', sprintId)
 
     if (slots) {
@@ -366,6 +373,13 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
         tone_override: slot.tone_override || undefined,
         asset_requirements: (slot.asset_requirements as any as string[]) || undefined,
         owner: slot.owner || undefined,
+        draft_status: (() => {
+          const drafts = (slot as any).content_drafts
+          if (!drafts || !Array.isArray(drafts) || drafts.length === 0) return 'no_draft'
+          if (drafts.some((d: any) => d.status === 'published')) return 'published'
+          if (drafts.some((d: any) => d.status === 'approved')) return 'approved'
+          return 'has_draft'
+        })(),
       }))
       setContentSlots(contentSlots)
     }
