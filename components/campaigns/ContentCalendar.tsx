@@ -5,7 +5,7 @@ import { ContentSlot, SprintPlan } from '@/lib/ai/schemas'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, isSameMonth } from 'date-fns'
-import { Calendar, ChevronLeft, ChevronRight, Edit, Trash2, FileText } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Edit, Trash2, FileText, Facebook, Instagram, Linkedin, Mail, Globe, Video, Mic } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ContentSlotEditForm } from './ContentSlotEditForm'
@@ -69,6 +69,17 @@ const draftStatusColors: Record<string, string> = {
   has_draft: 'bg-blue-50 text-blue-600 border-blue-200',
   approved: 'bg-green-50 text-green-600 border-green-200',
   published: 'bg-purple-50 text-purple-600 border-purple-200',
+}
+
+const channelIcons: Record<string, React.ElementType> = {
+  facebook: Facebook,
+  instagram: Instagram,
+  linkedin: Linkedin,
+  email: Mail,
+  website: Globe,
+  tiktok: Video,
+  youtube: Video,
+  podcast: Mic,
 }
 
 type ViewType = 'weekly' | 'monthly' | 'sprint'
@@ -366,8 +377,8 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-soft overflow-hidden">
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 border-b border-gray-200">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h3 className="text-lg font-display font-bold text-gray-900">
               Tartalomnaptár
@@ -376,7 +387,7 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
               {slots.length} slot generálva
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
             <button
               onClick={() => setViewType('weekly')}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
@@ -411,7 +422,7 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
         </div>
       </div>
 
-      <div className="p-6 overflow-x-auto">
+      <div className="p-4 md:p-6 overflow-x-auto">
         {viewType === 'weekly' && (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -489,13 +500,27 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
                     <div className="text-xs font-semibold text-gray-700 mb-1">
                       {format(day, 'd')}
                     </div>
-                    <div className="space-y-1">
-                      {daySlots.slice(0, 3).map(renderSlot)}
-                      {daySlots.length > 3 && (
-                        <div className="text-xs text-gray-500 text-center">
-                          +{daySlots.length - 3} további
-                        </div>
-                      )}
+                    <div className="flex flex-wrap gap-1 content-start">
+                      {daySlots.map(slot => {
+                        const Icon = channelIcons[slot.channel.toLowerCase()] || FileText
+                        return (
+                          <div
+                            key={slot.id}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (campaignId) {
+                                router.push(`/campaigns/${campaignId}/sprints/${slot.sprint_id}/slots/${slot.id}`)
+                              }
+                            }}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-offset-1 transition-all ${
+                              objectiveColors[slot.objective] || 'bg-gray-100 text-gray-700'
+                            }`}
+                            title={`${slot.channel} - ${objectiveLabels[slot.objective] || slot.objective}\n${slot.content_type}`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )

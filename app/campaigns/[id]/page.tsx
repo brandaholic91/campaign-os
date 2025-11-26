@@ -94,7 +94,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
   const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
 
   return (
-    <div className="max-w-[1600px] mx-auto p-6 md:p-8 space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
       
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-gray-200 pb-8">
@@ -121,16 +121,18 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link href={`/campaigns/${id}/edit`}>
-            <button className="group flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-700 font-medium text-sm hover:border-primary-200 hover:text-primary-700 hover:bg-gray-50 transition-all">
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+          <Link href={`/campaigns/${id}/edit`} className="w-full md:w-auto">
+            <button className="group flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-700 font-medium text-sm hover:border-primary-200 hover:text-primary-700 hover:bg-gray-50 transition-all w-full md:w-auto">
               <svg className="w-4 h-4 text-gray-400 group-hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
               Szerkesztés
             </button>
           </Link>
-          <DeleteCampaignButton campaignId={id} />
+          <div className="w-full md:w-auto">
+            <DeleteCampaignButton campaignId={id} />
+          </div>
         </div>
       </div>
 
@@ -149,7 +151,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
         <CampaignStatusCard campaignId={id} currentStatus={campaign.status} updatedAt={campaign.updated_at} />
 
         {/* Date Card */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft flex flex-col justify-between h-full min-h-[160px]">
+        <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft flex flex-col justify-between h-full min-h-[160px]">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Időszak</span>
              <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
@@ -170,7 +172,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
          {/* Budget Card or Empty spacer */}
          {campaign.budget_estimate ? (
-           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft flex flex-col justify-between h-full min-h-[160px]">
+           <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft flex flex-col justify-between h-full min-h-[160px]">
              <div className="flex items-center justify-between mb-4">
                <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Költségvetés</span>
                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
@@ -186,7 +188,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
              </div>
            </div>
          ) : (
-           <div className="hidden lg:flex bg-gradient-to-br from-primary-900 to-primary-800 p-6 rounded-2xl shadow-soft flex-col justify-between text-white relative overflow-hidden group">
+           <div className="hidden lg:flex bg-gradient-to-br from-primary-900 to-primary-800 p-4 md:p-6 rounded-2xl shadow-soft flex-col justify-between text-white relative overflow-hidden group">
              <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-110 transition-transform"></div>
              <div className="relative z-10">
                 <span className="text-sm font-semibold text-primary-200 uppercase tracking-wider block mb-2">Kampány Áttekintés</span>
@@ -197,7 +199,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
         {/* Description Card (Full Width) */}
         {campaign.description && (
-          <div className="col-span-1 md:col-span-2 lg:col-span-3 bg-white p-8 rounded-2xl border border-gray-200 shadow-soft">
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 bg-white p-4 md:p-8 rounded-2xl border border-gray-200 shadow-soft">
             <h3 className="text-lg font-display font-bold text-gray-900 mb-4">Leírás</h3>
             <div className="prose prose-sm max-w-none text-gray-600 leading-relaxed">
               <p>{campaign.description}</p>
@@ -226,7 +228,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
         {/* Audiences */}
         <Link href={`/campaigns/${id}/segments`}>
-          <div className="group bg-white p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-primary-200 transition-all cursor-pointer">
+          <div className="group bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-primary-200 transition-all cursor-pointer">
             <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -247,7 +249,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
         {/* Topics */}
         <Link href={`/campaigns/${id}/topics`}>
-          <div className="group bg-white p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-primary-200 transition-all cursor-pointer">
+          <div className="group bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-primary-200 transition-all cursor-pointer">
             <div className="w-12 h-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
@@ -268,7 +270,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
         {/* Messages - Main Action */}
         <Link href={`/campaigns/${id}/messages`}>
-            <div className="group bg-white p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-lg hover:border-primary-400 transition-all cursor-pointer relative overflow-hidden">
+            <div className="group bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-lg hover:border-primary-400 transition-all cursor-pointer relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-transparent to-gray-50/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="relative z-10">
                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -293,7 +295,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
          {/* Sprints */}
          <Link href={`/campaigns/${id}/sprints`}>
-            <div className="group bg-white p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-primary-200 transition-all cursor-pointer">
+            <div className="group bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-primary-200 transition-all cursor-pointer">
               <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />

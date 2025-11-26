@@ -20,7 +20,7 @@ export function DashboardCards({ campaignId, goalsCount, narrativesCount }: Dash
       {/* Goals Card */}
       <div 
         onClick={() => setIsGoalsModalOpen(true)}
-        className="group bg-white p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-amber-200 transition-all cursor-pointer"
+        className="group bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-amber-200 transition-all cursor-pointer"
       >
         <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
           <Target className="w-6 h-6" />
@@ -40,7 +40,7 @@ export function DashboardCards({ campaignId, goalsCount, narrativesCount }: Dash
       {/* Narratives Card */}
       <div 
         onClick={() => setIsNarrativesModalOpen(true)}
-        className="group bg-white p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer"
+        className="group bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer"
       >
         <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
           <MessageSquare className="w-6 h-6" />

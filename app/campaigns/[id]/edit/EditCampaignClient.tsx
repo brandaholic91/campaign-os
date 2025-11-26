@@ -32,11 +32,11 @@ export default function EditCampaignClient({ campaign }: EditCampaignClientProps
       
       {hasWizardData ? (
         <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <h2 className="text-xl font-semibold mb-4">Alapvető információk</h2>
             <CampaignForm campaign={campaign} onSuccess={handleSuccess} />
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <CampaignWizardEditor
               wizardData={campaign.wizard_data as any}
               campaignId={campaign.id}

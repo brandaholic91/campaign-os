@@ -75,7 +75,7 @@ export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) 
 
   if (isLoading) {
     return (
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft">
+      <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft">
         <div className="flex items-center justify-center h-32">
           <div className="text-sm text-gray-500">Betöltés...</div>
         </div>
@@ -195,7 +195,7 @@ export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) 
   )
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft">
+    <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-soft">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-display font-bold text-gray-900">Áttekintés</h3>
         <div className="flex items-center gap-1">
@@ -221,7 +221,7 @@ export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) 
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
-                <span>{viewLabels[view]}</span>
+                <span className="hidden md:inline">{viewLabels[view]}</span>
                 <span className={`px-1.5 py-0.5 rounded text-[10px] ${
                   isActive ? 'bg-primary-200 text-primary-800' : 'bg-gray-200 text-gray-500'
                 }`}>
