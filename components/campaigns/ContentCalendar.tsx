@@ -490,10 +490,10 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
                       {format(day, 'd')}
                     </div>
                     <div className="space-y-1">
-                      {daySlots.slice(0, 2).map(renderSlot)}
-                      {daySlots.length > 2 && (
+                      {daySlots.slice(0, 3).map(renderSlot)}
+                      {daySlots.length > 3 && (
                         <div className="text-xs text-gray-500 text-center">
-                          +{daySlots.length - 2} további
+                          +{daySlots.length - 3} további
                         </div>
                       )}
                     </div>
