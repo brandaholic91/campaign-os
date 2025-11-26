@@ -1,35 +1,35 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Users, Hash, MessageSquare } from 'lucide-react'
-import type { CampaignStructure } from '@/lib/validation/campaign-structure'
+import { ChevronLeft, ChevronRight, Users, Hash, MessageSquare, Target } from 'lucide-react'
+import type { CampaignStructure, Goal, Narrative, Segment, Topic } from '@/lib/validation/campaign-structure'
 
 interface CampaignOverviewCardProps {
   campaignId: string
 }
 
-type ViewType = 'segments' | 'topics' | 'narratives'
+type ViewType = 'segments' | 'topics' | 'narratives' | 'goals'
 
 export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) {
   const [structure, setStructure] = useState<CampaignStructure | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [currentView, setCurrentView] = useState<ViewType>('segments')
   const [currentIndex, setCurrentIndex] = useState(0)
+  
+  const fetchStructure = async () => {
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}/structure`)
+      if (!response.ok) throw new Error('Failed to fetch structure')
+      const data = await response.json()
+      setStructure(data)
+    } catch (error) {
+      console.error('Failed to fetch campaign structure:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchStructure = async () => {
-      try {
-        const response = await fetch(`/api/campaigns/${campaignId}/structure`)
-        if (!response.ok) throw new Error('Failed to fetch structure')
-        const data = await response.json()
-        setStructure(data)
-      } catch (error) {
-        console.error('Failed to fetch campaign structure:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     fetchStructure()
   }, [campaignId])
 
@@ -43,6 +43,8 @@ export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) 
         return structure.topics || []
       case 'narratives':
         return structure.narratives || []
+      case 'goals':
+        return structure.goals || []
       default:
         return []
     }
@@ -84,28 +86,129 @@ export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) 
   const viewLabels = {
     segments: 'Célcsoportok',
     topics: 'Témák',
-    narratives: 'Narratívák'
+    narratives: 'Narratívák',
+    goals: 'Célok'
   }
 
   const viewIcons = {
     segments: Users,
     topics: Hash,
-    narratives: MessageSquare
+    narratives: MessageSquare,
+    goals: Target
   }
+
+  // Helper to safely access properties
+  const renderSegment = (item: Segment) => (
+    <div className="space-y-2">
+      <div className="pr-20">
+        <h4 className="font-semibold text-gray-900">{item.name}</h4>
+      </div>
+      {item.short_label && (
+        <span className="absolute top-4 right-4 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+          {item.short_label}
+        </span>
+      )}
+      {item.description && (
+        <p className="text-sm text-gray-600 line-clamp-3">{item.description}</p>
+      )}
+      {item.priority && (
+        <div className="text-xs text-gray-500">
+          Prioritás: <span className="font-medium capitalize">{item.priority}</span>
+        </div>
+      )}
+    </div>
+  )
+
+  const renderTopic = (item: Topic) => (
+    <div className="space-y-2">
+      <div className="pr-20">
+        <h4 className="font-semibold text-gray-900">{item.name}</h4>
+      </div>
+      {item.short_label && (
+        <span className="absolute top-4 right-4 px-2 py-0.5 bg-violet-100 text-violet-700 text-xs font-medium rounded">
+          {item.short_label}
+        </span>
+      )}
+      {item.description && (
+        <p className="text-sm text-gray-600 line-clamp-3">{item.description}</p>
+      )}
+      {item.topic_type && (
+        <div className="text-xs text-gray-500">
+          Típus: <span className="font-medium capitalize">{item.topic_type}</span>
+        </div>
+      )}
+      {item.priority && (
+        <div className="text-xs text-gray-500">
+          Prioritás: <span className="font-medium capitalize">{item.priority}</span>
+        </div>
+      )}
+    </div>
+  )
+
+  const renderNarrative = (item: Narrative) => (
+    <div className="space-y-2">
+      <div className="pr-20">
+        <h4 className="font-semibold text-gray-900">{item.title}</h4>
+      </div>
+      {item.priority && (
+        <span className="absolute top-4 right-4 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded">
+          Prioritás: {item.priority}
+        </span>
+      )}
+      {item.description && (
+        <p className="text-sm text-gray-600 line-clamp-4">{item.description}</p>
+      )}
+      {item.suggested_phase && (
+        <div className="text-xs text-gray-500">
+          Javasolt fázis: <span className="font-medium capitalize">{item.suggested_phase}</span>
+        </div>
+      )}
+    </div>
+  )
+
+  const renderGoal = (item: Goal) => (
+    <div className="space-y-2">
+      <div className="pr-20">
+        <h4 className="font-semibold text-gray-900">{item.title}</h4>
+      </div>
+      {item.priority && (
+        <span className="absolute top-4 right-4 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+          Prioritás: {item.priority}
+        </span>
+      )}
+      {item.description && (
+        <p className="text-sm text-gray-600 line-clamp-4">{item.description}</p>
+      )}
+      <div className="flex gap-4 text-xs text-gray-500">
+        {item.funnel_stage && (
+          <div>
+            Funnel: <span className="font-medium capitalize">{item.funnel_stage}</span>
+          </div>
+        )}
+        {item.kpi_hint && (
+          <div>
+            KPI: <span className="font-medium">{item.kpi_hint}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 
   return (
     <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-soft">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-display font-bold text-gray-900">Áttekintés</h3>
         <div className="flex items-center gap-1">
-          {(['segments', 'topics', 'narratives'] as ViewType[]).map((view) => {
+          {(['goals', 'segments', 'topics', 'narratives'] as ViewType[]).map((view) => {
             const Icon = viewIcons[view]
             const isActive = currentView === view
             const count = view === 'segments' 
               ? (structure?.segments?.length || 0)
               : view === 'topics'
               ? (structure?.topics?.length || 0)
-              : (structure?.narratives?.length || 0)
+              : view === 'narratives'
+              ? (structure?.narratives?.length || 0)
+              : (structure?.goals?.length || 0)
             
             return (
               <button
@@ -180,78 +283,14 @@ export function CampaignOverviewCard({ campaignId }: CampaignOverviewCardProps) 
           </div>
 
           {/* Content */}
-          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 min-h-[120px]">
-            {currentView === 'segments' && currentItem && 'name' in currentItem && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-gray-900">{currentItem.name}</h4>
-                  {currentItem.short_label && (
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                      {currentItem.short_label}
-                    </span>
-                  )}
-                </div>
-                {currentItem.description && (
-                  <p className="text-sm text-gray-600 line-clamp-3">{currentItem.description}</p>
-                )}
-                {currentItem.priority && (
-                  <div className="text-xs text-gray-500">
-                    Prioritás: <span className="font-medium capitalize">{currentItem.priority}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentView === 'topics' && currentItem && 'name' in currentItem && 'topic_type' in currentItem && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-gray-900">{currentItem.name}</h4>
-                  {currentItem.short_label && (
-                    <span className="px-2 py-0.5 bg-violet-100 text-violet-700 text-xs font-medium rounded">
-                      {currentItem.short_label}
-                    </span>
-                  )}
-                </div>
-                {currentItem.description && (
-                  <p className="text-sm text-gray-600 line-clamp-3">{currentItem.description}</p>
-                )}
-                {currentItem.topic_type && (
-                  <div className="text-xs text-gray-500">
-                    Típus: <span className="font-medium capitalize">{currentItem.topic_type}</span>
-                  </div>
-                )}
-                {currentItem.priority && (
-                  <div className="text-xs text-gray-500">
-                    Prioritás: <span className="font-medium capitalize">{currentItem.priority}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {currentView === 'narratives' && currentItem && 'title' in currentItem && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-gray-900">{currentItem.title}</h4>
-                  {currentItem.priority && (
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded">
-                      Prioritás: {currentItem.priority}
-                    </span>
-                  )}
-                </div>
-                {currentItem.description && (
-                  <p className="text-sm text-gray-600 line-clamp-4">{currentItem.description}</p>
-                )}
-                {currentItem.suggested_phase && (
-                  <div className="text-xs text-gray-500">
-                    Javasolt fázis: <span className="font-medium capitalize">{currentItem.suggested_phase}</span>
-                  </div>
-                )}
-              </div>
-            )}
+          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 min-h-[120px] relative group">
+            {currentView === 'segments' && renderSegment(currentItem as Segment)}
+            {currentView === 'topics' && renderTopic(currentItem as Topic)}
+            {currentView === 'narratives' && renderNarrative(currentItem as Narrative)}
+            {currentView === 'goals' && renderGoal(currentItem as Goal)}
           </div>
         </div>
       )}
     </div>
   )
 }
-

@@ -10,6 +10,7 @@ import { ValidationStatusBadge } from '@/components/ai/ValidationStatusBadge'
 import { CampaignOverviewCard } from '@/components/campaigns/CampaignOverviewCard'
 import { ExecutionPlanner } from '@/components/campaigns/ExecutionPlanner'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { DashboardCards } from '@/components/campaigns/DashboardCards'
 
 type Campaign = Database['campaign_os']['Tables']['campaigns']['Row']
 
@@ -75,6 +76,16 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
   const { count: topicsCount } = await db
     .from('topics')
+    .select('*', { count: 'exact', head: true })
+    .eq('campaign_id', id)
+
+  const { count: goalsCount } = await db
+    .from('goals')
+    .select('*', { count: 'exact', head: true })
+    .eq('campaign_id', id)
+
+  const { count: narrativesCount } = await db
+    .from('narratives')
     .select('*', { count: 'exact', head: true })
     .eq('campaign_id', id)
 
@@ -204,8 +215,15 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
           <ValidationStatusSection campaignId={id} />
         </div>
 
-        {/* Navigation / Module Cards */}
+         {/* Navigation / Module Cards */}
         
+        {/* Goals & Narratives */}
+        <DashboardCards 
+          campaignId={id} 
+          goalsCount={goalsCount || 0} 
+          narrativesCount={narrativesCount || 0} 
+        />
+
         {/* Audiences */}
         <Link href={`/campaigns/${id}/segments`}>
           <div className="group bg-white p-6 rounded-2xl border border-gray-200 shadow-soft hover:shadow-md hover:border-primary-200 transition-all cursor-pointer">

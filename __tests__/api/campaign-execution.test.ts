@@ -10,9 +10,12 @@ function createMockSprint(id: string, order: number, startDate: string, endDate:
     end_date: endDate,
     focus_goal: 'awareness',
     focus_description: 'Test sprint focus',
-    focus_segments: ['segment-1'],
-    focus_topics: ['topic-1'],
-    focus_channels: ['facebook', 'instagram'],
+    // Legacy fields mapped or ignored, adding required new fields
+    focus_stage: 'awareness',
+    focus_goals: ['00000000-0000-0000-0000-000000000000'],
+    focus_segments_primary: ['00000000-0000-0000-0000-000000000000'],
+    focus_topics_primary: ['00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001'],
+    focus_channels_primary: ['facebook', 'instagram'],
   }
 }
 
@@ -26,12 +29,18 @@ function createMockContentSlot(
   return {
     id,
     sprint_id: sprintId,
+    campaign_id: '00000000-0000-0000-0000-000000000000',
     date,
     channel,
     slot_index: slotIndex,
     objective: 'reach',
     content_type: 'static_image',
     status: 'planned',
+    related_goal_ids: ['00000000-0000-0000-0000-000000000000'],
+    funnel_stage: 'awareness',
+    angle_type: 'story',
+    cta_type: 'soft_info',
+    time_of_day: 'morning'
   }
 }
 
@@ -197,15 +206,19 @@ describe('Execution Plan Save API', () => {
         end_date: '2025-03-14',
         focus_goal: 'engagement',
         focus_description: 'Multi-target sprint',
-        focus_segments: ['segment-1', 'segment-2', 'segment-3'],
-        focus_topics: ['topic-1', 'topic-2'],
-        focus_channels: ['facebook', 'instagram', 'twitter'],
+        // Legacy fields mapped or ignored, adding required new fields
+        focus_stage: 'engagement',
+        focus_goals: ['00000000-0000-0000-0000-000000000000'],
+        focus_segments_primary: ['segment-1', 'segment-2'],
+        focus_segments_secondary: ['segment-3'],
+        focus_topics_primary: ['topic-1', 'topic-2'],
+        focus_channels_primary: ['facebook', 'instagram', 'twitter'],
       }
       
-      expect(sprint.focus_segments).toHaveLength(3)
-      expect(sprint.focus_topics).toHaveLength(2)
-      expect(sprint.focus_channels).toHaveLength(3)
+      expect(sprint.focus_segments_primary).toHaveLength(2)
+      expect(sprint.focus_segments_secondary).toHaveLength(1)
+      expect(sprint.focus_topics_primary).toHaveLength(2)
+      expect(sprint.focus_channels_primary).toHaveLength(3)
     })
   })
 })
-
