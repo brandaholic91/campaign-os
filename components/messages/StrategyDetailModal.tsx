@@ -153,7 +153,7 @@ export function StrategyDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[800px] h-[80vh] flex flex-col">
+      <DialogContent className="w-[95vw] sm:max-w-[800px] h-[90vh] sm:h-[80vh] flex flex-col p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-display">Stratégia Részletei</DialogTitle>
           <DialogDescription>
@@ -163,7 +163,7 @@ export function StrategyDetailModal({
 
         <div className="flex-1 overflow-y-auto pr-2">
           <Tabs defaultValue="core" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-4 sm:mb-6 h-auto">
               <TabsTrigger value="core">Stratégiai mag</TabsTrigger>
               <TabsTrigger value="tone">Stílus/tónus</TabsTrigger>
               <TabsTrigger value="funnel">CTA/funnel</TabsTrigger>
@@ -322,24 +322,24 @@ export function StrategyDetailModal({
           </Tabs>
         </div>
 
-        <div className="flex justify-between pt-4 border-t mt-4">
+        <div className="flex flex-col-reverse sm:flex-row justify-between pt-4 border-t mt-4 gap-3 sm:gap-0">
           <Button 
             variant="destructive" 
             size="sm" 
             onClick={handleDelete}
             disabled={isDeleting || isRegenerating}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
           >
             <Trash2 className="w-4 h-4" />
             {isDeleting ? 'Törlés...' : 'Törlés'}
           </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} disabled={isRegenerating}>Bezárás</Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={onClose} disabled={isRegenerating} className="w-full sm:w-auto">Bezárás</Button>
             <Button 
               variant="outline" 
               onClick={handleRegenerate} 
               disabled={isRegenerating}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               {isRegenerating ? (
                 <>
@@ -353,7 +353,7 @@ export function StrategyDetailModal({
                 </>
               )}
             </Button>
-            <Button onClick={handleEdit} disabled={isRegenerating} className="gap-2">
+            <Button onClick={handleEdit} disabled={isRegenerating} className="gap-2 w-full sm:w-auto">
               <Edit className="w-4 h-4" />
               Szerkesztés
             </Button>

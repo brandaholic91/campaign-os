@@ -232,7 +232,7 @@ export function StrategyForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[900px] h-[85vh] flex flex-col">
+      <DialogContent className="w-[95vw] sm:max-w-[900px] h-[90vh] sm:h-[85vh] flex flex-col p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-display">
             {isEditMode ? 'Stratégia szerkesztése' : 'Új stratégia létrehozása'}
@@ -241,7 +241,7 @@ export function StrategyForm({
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
           <Tabs defaultValue="core" className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
               <TabsTrigger value="core">Stratégiai mag</TabsTrigger>
               <TabsTrigger value="tone">Stílus/tónus</TabsTrigger>
               <TabsTrigger value="funnel">CTA/funnel</TabsTrigger>
@@ -295,8 +295,8 @@ export function StrategyForm({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-between pt-4 border-t mt-4">
-            <div>
+          <div className="flex flex-col-reverse sm:flex-row justify-between pt-4 border-t mt-4 gap-3 sm:gap-0">
+            <div className="w-full sm:w-auto">
               {isEditMode && (
                 <Button
                   type="button"
@@ -304,7 +304,7 @@ export function StrategyForm({
                   size="sm"
                   onClick={handleDelete}
                   disabled={isDeleting || isSubmitting}
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-auto"
                 >
                   {isDeleting ? (
                     <>
@@ -320,16 +320,17 @@ export function StrategyForm({
                 </Button>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={isSubmitting || isDeleting}
+                className="w-full sm:w-auto"
               >
                 Mégse
               </Button>
-              <Button type="submit" disabled={isSubmitting || isDeleting}>
+              <Button type="submit" disabled={isSubmitting || isDeleting} className="w-full sm:w-auto">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
