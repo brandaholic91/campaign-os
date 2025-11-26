@@ -246,8 +246,8 @@ export async function POST(request: Request) {
     focusErrors.push(ensureMaxLength('focus_segments_secondary', focusPayload.focusSegmentsSecondary, 2))
     if (focusPayload.focusTopicsSecondary.length > 0) {
       focusErrors.push(
-        focusPayload.focusTopicsSecondary.length < 2
-          ? 'focus_topics_secondary must contain at least 2 entries when provided'
+        focusPayload.focusTopicsSecondary.length < 1
+          ? 'focus_topics_secondary must contain at least 1 entry when provided'
           : focusPayload.focusTopicsSecondary.length > 4
             ? 'focus_topics_secondary cannot have more than 4 entries'
             : null
@@ -417,8 +417,8 @@ export async function PUT(request: Request) {
       const topicPrimaryError = ensureLengthRange('focus_topics_primary', focusPayload.focusTopicsPrimary, 2, 3)
       let topicSecondaryError: string | null = null
       if (focusPayload.focusTopicsSecondary.length > 0) {
-        if (focusPayload.focusTopicsSecondary.length < 2) {
-          topicSecondaryError = 'focus_topics_secondary must contain at least 2 entries when provided'
+        if (focusPayload.focusTopicsSecondary.length < 1) {
+          topicSecondaryError = 'focus_topics_secondary must contain at least 1 entry when provided'
         } else if (focusPayload.focusTopicsSecondary.length > 4) {
           topicSecondaryError = 'focus_topics_secondary cannot have more than 4 entries'
         }

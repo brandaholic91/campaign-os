@@ -356,8 +356,8 @@ export default function SprintForm({
       ]
 
       if (focusTopicsSecondary.length > 0) {
-        if (focusTopicsSecondary.length < 2) {
-          errorMessages.push('Kiegészítő témák esetén legalább 2 elemet kell megadni')
+        if (focusTopicsSecondary.length < 1) {
+          errorMessages.push('Kiegészítő témák esetén legalább 1 elemet kell megadni')
         } else if (focusTopicsSecondary.length > 4) {
           errorMessages.push('Kiegészítő témák legfeljebb 4 elemet tartalmazhatnak')
         }
@@ -622,7 +622,7 @@ export default function SprintForm({
             <div className="space-y-2">
               <Label className="text-sm">
                 Kiegészítő témák{' '}
-                <span className="text-xs text-gray-500">(2-4 darab, opcionális)</span>
+                <span className="text-xs text-gray-500">(1-4 darab, opcionális)</span>
               </Label>
               <MultiSelect
                 options={topics.map((t) => ({

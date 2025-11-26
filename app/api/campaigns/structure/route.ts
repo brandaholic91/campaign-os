@@ -67,21 +67,85 @@ export async function POST(req: NextRequest) {
         .eq('campaign_id', campaignId)
       
       const segmentIds = existingSegments?.map(s => s.id) || []
+
+      // Get narrative IDs to clean up junctions
+      const { data: existingNarratives } = await supabase
+        .schema('campaign_os')
+        .from('narratives')
+        .select('id')
+        .eq('campaign_id', campaignId)
       
-      // Delete matrix entries first (they reference segments)
+      const narrativeIds = existingNarratives?.map(n => n.id) || []
+      
+      // 1. Delete matrix entries first (they reference segments)
       if (segmentIds.length > 0) {
-        await supabase
+        const { error: matrixDeleteError } = await supabase
           .schema('campaign_os')
           .from('segment_topic_matrix')
           .delete()
           .in('segment_id', segmentIds)
+        
+        if (matrixDeleteError) {
+          console.error('Failed to delete matrix entries:', matrixDeleteError)
+          throw new Error(`Failed to clean up old matrix entries: ${matrixDeleteError.message}`)
+        }
+      }
+
+      // 2. Delete narrative junctions
+      if (narrativeIds.length > 0) {
+        const { error: narrativeGoalsError } = await supabase
+          .schema('campaign_os')
+          .from('narrative_goals')
+          .delete()
+          .in('narrative_id', narrativeIds)
+        
+        if (narrativeGoalsError) console.warn('Failed to clean narrative_goals:', narrativeGoalsError)
+
+        const { error: narrativeTopicsError } = await supabase
+          .schema('campaign_os')
+          .from('narrative_topics')
+          .delete()
+          .in('narrative_id', narrativeIds)
+        
+        if (narrativeTopicsError) console.warn('Failed to clean narrative_topics:', narrativeTopicsError)
       }
       
-      // Then delete the related entities
-      await supabase.schema('campaign_os').from('goals').delete().eq('campaign_id', campaignId)
-      await supabase.schema('campaign_os').from('segments').delete().eq('campaign_id', campaignId)
-      await supabase.schema('campaign_os').from('topics').delete().eq('campaign_id', campaignId)
-      await supabase.schema('campaign_os').from('narratives').delete().eq('campaign_id', campaignId)
+      // 3. Delete the related entities
+      // Delete narratives
+      const { error: narrativesDeleteError } = await supabase
+        .schema('campaign_os')
+        .from('narratives')
+        .delete()
+        .eq('campaign_id', campaignId)
+      
+      if (narrativesDeleteError) throw new Error(`Failed to delete old narratives: ${narrativesDeleteError.message}`)
+
+      // Delete goals
+      const { error: goalsDeleteError } = await supabase
+        .schema('campaign_os')
+        .from('goals')
+        .delete()
+        .eq('campaign_id', campaignId)
+      
+      if (goalsDeleteError) throw new Error(`Failed to delete old goals: ${goalsDeleteError.message}`)
+
+      // Delete topics
+      const { error: topicsDeleteError } = await supabase
+        .schema('campaign_os')
+        .from('topics')
+        .delete()
+        .eq('campaign_id', campaignId)
+      
+      if (topicsDeleteError) throw new Error(`Failed to delete old topics: ${topicsDeleteError.message}`)
+
+      // Delete segments
+      const { error: segmentsDeleteError } = await supabase
+        .schema('campaign_os')
+        .from('segments')
+        .delete()
+        .eq('campaign_id', campaignId)
+      
+      if (segmentsDeleteError) throw new Error(`Failed to delete old segments: ${segmentsDeleteError.message}`)
     } else {
       // Create new campaign
       const { data: campaignData, error: campaignError } = await supabase

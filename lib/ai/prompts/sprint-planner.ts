@@ -64,7 +64,7 @@ CRITICAL: You must respond with ONLY valid JSON. No markdown, no explanations, n
     "narrative_emphasis": ["uuid-string"], // 1-2 narrative IDs
     "key_messages_summary": "string (2-3 sentences in Hungarian)",
     "success_criteria": ["string"], // 1+ success criteria in Hungarian
-    "risks_and_watchouts": ["string"] // 2-4 risks in Hungarian
+    "risks_and_watchouts": ["string"] // 2-5 risks in Hungarian
   }]
 }
 
@@ -115,7 +115,7 @@ SPRINT PLANNING GUIDELINES:
    - focus_description: 2-3 sentences explaining sprint strategy in Hungarian
    - key_messages_summary: 2-3 sentences summarizing key messaging in Hungarian
    - success_criteria: 1+ specific, measurable criteria in Hungarian
-   - risks_and_watchouts: 2-4 potential risks and mitigation approaches in Hungarian
+   - risks_and_watchouts: 2-5 potential risks and mitigation approaches in Hungarian
 
 STRATEGIC METADATA USAGE:
 
