@@ -471,7 +471,7 @@ export function SlotEditPage({ campaignId, sprintId, slotId }: SlotEditPageProps
                     <FormItem>
                       <FormLabel>Hangnem Override (Opcionális)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Ha eltér a stratégiai hangnemtől..." />
+                        <Input {...field} value={field.value || ''} placeholder="Ha eltér a stratégiai hangnemtől..." />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
