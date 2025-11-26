@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const campaignId = searchParams.get('campaign_id')
+    const segmentId = searchParams.get('segment_id')
+    const topicId = searchParams.get('topic_id')
 
     if (!campaignId) {
       return NextResponse.json(
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
     const db = supabase.schema('campaign_os')
 
     // Fetch strategies with segment and topic names via JOIN
-    const { data, error } = await db
+    let query = db
       .from('message_strategies')
       .select(`
         id,
@@ -56,7 +58,16 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('campaign_id', campaignId)
-      .order('created_at', { ascending: false })
+
+    // Add optional filters for segment and topic
+    if (segmentId) {
+      query = query.eq('segment_id', segmentId)
+    }
+    if (topicId) {
+      query = query.eq('topic_id', topicId)
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
       console.error('Error fetching strategies:', error)

@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { ContentSlot } from '@/lib/ai/schemas'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { format } from 'date-fns'
 import { Edit, Trash2, Calendar, Target, Users, MessageSquare, Radio, Layers, Lightbulb, Type } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { StrategyInfoCard } from './StrategyInfoCard'
+import { EmptyStrategyState } from './EmptyStrategyState'
 
 interface SlotDetailViewProps {
   slot: ContentSlot
@@ -15,6 +18,21 @@ interface SlotDetailViewProps {
   topicNames: Record<string, string>
   onEdit: () => void
   onDelete: () => void
+}
+
+interface MessageStrategy {
+  id: string
+  segment_name: string
+  topic_name: string
+  content: {
+    strategy_core: {
+      core_message: string
+      supporting_messages?: string[]
+    }
+    cta_funnel: {
+      funnel_stage?: string
+    }
+  }
 }
 
 const objectiveLabels: Record<string, string> = {
@@ -73,6 +91,64 @@ const timeOfDayLabels: Record<string, string> = {
 }
 
 export function SlotDetailView({ slot, segmentNames, topicNames, onEdit, onDelete }: SlotDetailViewProps) {
+  const router = useRouter()
+  const [strategy, setStrategy] = useState<MessageStrategy | null>(null)
+  const [isLoadingStrategy, setIsLoadingStrategy] = useState(false)
+
+  // Load strategy for primary segment × primary topic
+  useEffect(() => {
+    async function loadStrategy() {
+      if (!slot.primary_segment_id || !slot.primary_topic_id) {
+        return
+      }
+
+      setIsLoadingStrategy(true)
+      try {
+        const supabase = createClient()
+        const db = supabase.schema('campaign_os')
+
+        const { data, error } = await db
+          .from('message_strategies')
+          .select(`
+            id,
+            segment_id,
+            topic_id,
+            strategy_core,
+            style_tone,
+            cta_funnel,
+            segments!segment_id (
+              name
+            ),
+            topics!topic_id (
+              name
+            )
+          `)
+          .eq('campaign_id', slot.campaign_id)
+          .eq('segment_id', slot.primary_segment_id)
+          .eq('topic_id', slot.primary_topic_id)
+          .single()
+
+        if (data && !error) {
+          setStrategy({
+            id: data.id,
+            segment_name: (data.segments as any)?.name || 'Unknown',
+            topic_name: (data.topics as any)?.name || 'Unknown',
+            content: {
+              strategy_core: data.strategy_core as any,
+              cta_funnel: data.cta_funnel as any,
+            },
+          })
+        }
+      } catch (err) {
+        console.error('Error loading strategy:', err)
+      } finally {
+        setIsLoadingStrategy(false)
+      }
+    }
+
+    loadStrategy()
+  }, [slot.campaign_id, slot.primary_segment_id, slot.primary_topic_id])
+
   return (
     <div className="space-y-6">
       {/* Basic Info Card */}
@@ -171,6 +247,21 @@ export function SlotDetailView({ slot, segmentNames, topicNames, onEdit, onDelet
                 {slot.funnel_stage || 'Nincs megadva'}
               </Badge>
             </div>
+          </div>
+
+          {/* Message Strategy Section */}
+          <div className="pt-4 border-t border-gray-200 mt-4">
+            {isLoadingStrategy ? (
+              <div className="text-sm text-gray-500 text-center py-4">Stratégia betöltése...</div>
+            ) : strategy ? (
+              <StrategyInfoCard strategy={strategy} campaignId={slot.campaign_id} />
+            ) : (
+              <EmptyStrategyState
+                campaignId={slot.campaign_id}
+                segmentId={slot.primary_segment_id}
+                topicId={slot.primary_topic_id}
+              />
+            )}
           </div>
         </CardContent>
       </Card>
