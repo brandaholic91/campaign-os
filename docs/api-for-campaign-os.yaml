@@ -1,0 +1,344 @@
+openapi: 3.0.3
+info:
+  title: Campaign OS API
+  description: API for Campaign OS - Communication and Social Media Campaign Planning Tool
+  version: 1.0.0
+servers:
+  - url: /api
+    description: Internal API Routes
+paths:
+  /campaigns:
+    get:
+      summary: List all campaigns
+      description: Returns a list of all campaigns ordered by creation date.
+      tags:
+        - Campaigns
+      responses:
+        '200':
+          description: A list of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Campaign'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a new campaign
+      description: Creates a new campaign with the provided details.
+      tags:
+        - Campaigns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignInput'
+      responses:
+        '201':
+          description: Campaign created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Campaign'
+        '400':
+          description: Validation error (missing fields or invalid dates)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /content-slots:
+    get:
+      summary: List content slots
+      description: Returns content slots, optionally filtered by sprint or campaign.
+      tags:
+        - Content Slots
+      parameters:
+        - in: query
+          name: sprint_id
+          schema:
+            type: string
+            format: uuid
+          description: Filter by Sprint ID
+        - in: query
+          name: campaign_id
+          schema:
+            type: string
+            format: uuid
+          description: Filter by Campaign ID
+      responses:
+        '200':
+          description: A list of content slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContentSlot'
+    post:
+      summary: Create a content slot
+      description: Creates a new content slot.
+      tags:
+        - Content Slots
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentSlotInput'
+      responses:
+        '201':
+          description: Content slot created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentSlot'
+
+  /messages:
+    get:
+      summary: List messages
+      description: Returns messages matrix data.
+      tags:
+        - Messages
+      responses:
+        '200':
+          description: A list of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+
+components:
+  schemas:
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        campaign_type:
+          $ref: '#/components/schemas/CampaignType'
+        status:
+          $ref: '#/components/schemas/CampaignStatus'
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        primary_goal_type:
+          $ref: '#/components/schemas/GoalType'
+        secondary_goals:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        budget_estimate:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - campaign_type
+        - status
+        - start_date
+        - end_date
+        - primary_goal_type
+
+    CampaignInput:
+      type: object
+      properties:
+        name:
+          type: string
+        campaign_type:
+          $ref: '#/components/schemas/CampaignType'
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        primary_goal_type:
+          $ref: '#/components/schemas/GoalType'
+        secondary_goals:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        budget_estimate:
+          type: number
+      required:
+        - name
+        - campaign_type
+        - start_date
+        - end_date
+        - primary_goal_type
+
+    ContentSlot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sprint_id:
+          type: string
+          format: uuid
+        campaign_id:
+          type: string
+          format: uuid
+        funnel_stage:
+          $ref: '#/components/schemas/FunnelStage'
+        angle_type:
+          $ref: '#/components/schemas/AngleType'
+        status:
+          $ref: '#/components/schemas/ContentSlotStatus'
+        related_goal_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        time_of_day:
+          type: string
+          enum: [morning, midday, evening, unspecified]
+        cta_type:
+          type: string
+      required:
+        - id
+        - campaign_id
+        - funnel_stage
+        - angle_type
+        - status
+
+    ContentSlotInput:
+      type: object
+      properties:
+        sprint_id:
+          type: string
+          format: uuid
+        campaign_id:
+          type: string
+          format: uuid
+        funnel_stage:
+          $ref: '#/components/schemas/FunnelStage'
+        angle_type:
+          $ref: '#/components/schemas/AngleType'
+        related_goal_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        time_of_day:
+          type: string
+          enum: [morning, midday, evening, unspecified]
+      required:
+        - campaign_id
+        - funnel_stage
+        - angle_type
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        segment_id:
+          type: string
+          format: uuid
+        topic_id:
+          type: string
+          format: uuid
+        headline:
+          type: string
+        body:
+          type: string
+        message_type:
+          type: string
+          enum: [core, supporting, contrast]
+        status:
+          type: string
+          enum: [draft, approved]
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+
+    # Enums
+    CampaignType:
+      type: string
+      enum:
+        - political_election
+        - political_issue
+        - brand_awareness
+        - product_launch
+        - promo
+        - ngo_issue
+
+    CampaignStatus:
+      type: string
+      enum:
+        - planning
+        - running
+        - closed
+
+    GoalType:
+      type: string
+      enum:
+        - awareness
+        - engagement
+        - list_building
+        - conversion
+        - mobilization
+
+    FunnelStage:
+      type: string
+      enum:
+        - awareness
+        - engagement
+        - consideration
+        - conversion
+        - mobilization
+
+    AngleType:
+      type: string
+      enum:
+        - story
+        - proof
+        - how_to
+        - comparison
+        - behind_the_scenes
+        - testimonial
+        - other
+
+    ContentSlotStatus:
+      type: string
+      enum:
+        - planned
+        - scheduled
+        - cancelled

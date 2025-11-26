@@ -15,7 +15,7 @@
 **Solution:** Campaign OS - webes kampánytervező eszköz kampánycélok → célcsoportok → témák → üzenetek → csatornák → tartalomnaptár → sprintek folyamattal.
 
 **Tech Stack:**
-- Frontend: Next.js 16 (App Router), React 19, TypeScript 5.3, Tailwind CSS 3.4, Shadcn/ui
+- Frontend: Next.js 16 (App Router), React 19, TypeScript 5.9.3, Tailwind CSS 3.4, Shadcn/ui
 - Backend: Next.js API Routes, Supabase Postgres (PostgreSQL 15+)
 - AI/LLM: Anthropic Claude API, CopilotKit Protocol (Epic 2+)
 - Deployment: Vercel, Supabase Cloud
@@ -33,6 +33,7 @@
 - `message_strategies` - Kommunikációs stratégiák (4 kategória, 16 mező - Epic 3.0)
 - `sprints` - Sprintek (focus_stage, focus_goals[], suggested_weekly_post_volume - Epic 5)
 - `content_slots` - Tartalom slotok (date, channel, segment, topic, objective - Epic 5)
+- `content_drafts` - Tartalom vázlatok (hook, body, visual_idea, status - Epic 6.1)
 - `narratives` - Narratívák (primary_goal_ids, primary_topic_ids, suggested_phase - Epic 4.0)
 
 **Key Files:**
@@ -120,6 +121,7 @@
 - `sprints` - id, campaign_id, name, order, start_date, end_date, focus_stage, focus_goals[], suggested_weekly_post_volume (JSONB), narrative_emphasis[], key_messages_summary, success_criteria[], risks_and_watchouts[]
 - `sprint_segments`, `sprint_topics`, `sprint_channels` - Junction tables with priority (primary/secondary)
 - `content_slots` - id, sprint_id, date, channel, slot_index, primary_segment_id, primary_topic_id, objective, content_type, status
+- `content_drafts` - id, slot_id, variant_name, status, hook, body, cta_copy, visual_idea, created_by
 
 **Migration Files:**
 - `YYYYMMDD_initial_schema.sql` - Epic 1 base schema
@@ -129,6 +131,7 @@
 - `YYYYMMDD_execution_planning_schema.sql` - Epic 5 sprints + content_slots
 - `YYYYMMDD_enhanced_sprint_schema.sql` - Epic 5 Phase 2 enhanced sprints
 - `YYYYMMDD_sprint_primary_secondary.sql` - Epic 5.10 priority in junction tables
+- `YYYYMMDD_content_slot_draft_separation.sql` - Epic 6.1 content drafts
 
 ---
 
@@ -263,9 +266,9 @@ npm run dev
 - Manual testing for all features
 - Supabase local development environment
 - Browser DevTools for debugging
+- Jest for unit and integration testing (configured)
 
 **Planned (Future):**
-- Vitest for unit tests
 - Playwright for E2E tests
 - React Testing Library for component tests
 - 80%+ coverage for critical logic
