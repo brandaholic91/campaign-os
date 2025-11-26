@@ -49,7 +49,7 @@ try {
       const anthropic = getAnthropicClient()
       serviceAdapter = new AnthropicAdapter({
         anthropic: anthropic as any,
-        model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
+        model: process.env.AI_MODEL || 'claude-3-5-sonnet-20241022',
       })
       break
   }
