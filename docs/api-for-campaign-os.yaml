@@ -1,4 +1,3 @@
-openapi: 3.0.3
 info:
   title: Campaign OS API
   description: API for Campaign OS - Communication and Social Media Campaign Planning Tool

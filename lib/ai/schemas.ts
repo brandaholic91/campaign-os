@@ -363,9 +363,9 @@ export const SprintPlanSchema = z.object({
   focus_goals: z.array(z.string().uuid()).min(1).max(3),
   focus_segments_primary: z.array(z.string().uuid()).min(1, 'At least one primary focus segment required').max(2, 'Maximum two primary focus segments allowed'),
   focus_segments_secondary: z.array(z.string().uuid()).max(2, 'Maximum two secondary focus segments allowed').optional(),
-  focus_topics_primary: z.array(z.string().uuid()).min(2, 'At least two primary focus topics required').max(3, 'Maximum three primary focus topics allowed'),
-  focus_topics_secondary: z.array(z.string().uuid()).min(2, 'At least two secondary focus topics required').max(4, 'Maximum four secondary focus topics allowed').optional(),
-  focus_channels_primary: z.array(z.string().min(1, 'Channel key must be at least one character')).min(2, 'At least two primary focus channels required').max(3, 'Maximum three primary focus channels allowed'),
+  focus_topics_primary: z.array(z.string().uuid()).min(1, 'At least one primary focus topic required').max(3, 'Maximum three primary focus topics allowed'),
+  focus_topics_secondary: z.array(z.string().uuid()).max(4, 'Maximum four secondary focus topics allowed').optional(),
+  focus_channels_primary: z.array(z.string().min(1, 'Channel key must be at least one character')).min(1, 'At least one primary focus channel required').max(3, 'Maximum three primary focus channels allowed'),
   focus_channels_secondary: z.array(z.string().min(1, 'Channel key must be at least one character')).optional(),
 
   suggested_weekly_post_volume: SuggestedWeeklyPostVolumeSchema.optional(),
