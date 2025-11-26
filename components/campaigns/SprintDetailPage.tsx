@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SprintPlan, ContentSlot } from '@/lib/ai/schemas'
 import { ContentCalendar } from './ContentCalendar'
+import { ContentSlotEditForm } from './ContentSlotEditForm'
 import SprintForm from '../sprints/SprintForm'
 import { ArrowLeft, Calendar, Target, Users, MessageSquare, Radio, Edit, Plus, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -45,6 +46,7 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
   const [isLoading, setIsLoading] = useState(true)
   const [isGeneratingContent, setIsGeneratingContent] = useState(false)
   const [isEditingSettings, setIsEditingSettings] = useState(false)
+  const [isCreatingSlot, setIsCreatingSlot] = useState(false)
   const [progress, setProgress] = useState<string>('')
   const [segmentNames, setSegmentNames] = useState<Record<string, string>>({})
   const [topicNames, setTopicNames] = useState<Record<string, string>>({})
@@ -578,20 +580,37 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
         </div>
 
         {/* Content Calendar Section */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-display font-bold text-gray-900">
-                Tartalomnaptár
-              </h3>
-              <p className="text-sm text-gray-600 mt-1">
-                {contentSlots.length > 0
-                  ? `${contentSlots.length} tartalom slot generálva`
-                  : 'Még nincs tartalomnaptár generálva'}
-              </p>
+        {contentSlots.length > 0 && sprint ? (
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCreatingSlot(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Új slot
+              </Button>
             </div>
+            <ContentCalendar
+              slots={contentSlots}
+              sprints={[sprint]}
+              campaignId={campaignId}
+              onSlotUpdate={loadContentSlots}
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-soft p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-display font-bold text-gray-900">
+                  Tartalomnaptár
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Még nincs tartalomnaptár generálva
+                </p>
+              </div>
 
-            {contentSlots.length === 0 && (
               <Button
                 onClick={handleGenerateContent}
                 disabled={isGeneratingContent}
@@ -608,27 +627,18 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
                   </>
                 )}
               </Button>
+            </div>
+
+            {isGeneratingContent && progress && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
+                  <p className="text-sm font-medium text-gray-900">{progress}</p>
+                </div>
+              </div>
             )}
           </div>
-
-          {isGeneratingContent && progress && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
-                <p className="text-sm font-medium text-gray-900">{progress}</p>
-              </div>
-            </div>
-          )}
-
-          {contentSlots.length > 0 && sprint && (
-            <ContentCalendar
-              slots={contentSlots}
-              sprints={[sprint]}
-              campaignId={campaignId}
-              onSlotUpdate={loadContentSlots}
-            />
-          )}
-        </div>
+        )}
       </div>
 
       {/* Edit Form Dialog */}
@@ -649,6 +659,18 @@ export function SprintDetailPage({ campaignId, sprintId }: SprintDetailPageProps
             />
           </DialogContent>
         </Dialog>
+      )}
+      {/* Create Content Slot Dialog */}
+      {isCreatingSlot && sprint && (
+        <ContentSlotEditForm
+          sprintId={sprint.id}
+          campaignId={campaignId}
+          onSuccess={() => {
+            setIsCreatingSlot(false)
+            loadContentSlots()
+          }}
+          onCancel={() => setIsCreatingSlot(false)}
+        />
       )}
     </div>
   )

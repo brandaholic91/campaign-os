@@ -30,8 +30,10 @@ type Segment = Database['campaign_os']['Tables']['segments']['Row']
 type Topic = Database['campaign_os']['Tables']['topics']['Row']
 type Sprint = Database['campaign_os']['Tables']['sprints']['Row']
 
+
 interface ContentSlotEditFormProps {
-  slot: ContentSlot
+  slot?: ContentSlot
+  sprintId: string
   campaignId: string
   onSuccess: () => void
   onCancel: () => void
@@ -85,10 +87,12 @@ const statusOptions: string[] = ['planned', 'draft', 'published']
 
 export function ContentSlotEditForm({
   slot,
+  sprintId,
   campaignId,
   onSuccess,
   onCancel,
 }: ContentSlotEditFormProps) {
+  const isEditing = !!slot
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [segments, setSegments] = useState<Segment[]>([])
@@ -97,16 +101,16 @@ export function ContentSlotEditForm({
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
-    date: slot.date ? slot.date.split('T')[0] : '',
-    channel: slot.channel || '',
-    slot_index: slot.slot_index || 1,
-    primary_segment_id: slot.primary_segment_id || '',
-    primary_topic_id: slot.primary_topic_id || '',
-    objective: (slot.objective as ContentObjective) || 'reach',
-    content_type: (slot.content_type as ContentType) || 'static_image',
-    angle_hint: slot.angle_hint || '',
-    notes: slot.notes || '',
-    status: (slot.status as string) || 'planned',
+    date: slot?.date ? slot.date.split('T')[0] : '',
+    channel: slot?.channel || '',
+    slot_index: slot?.slot_index || 1,
+    primary_segment_id: slot?.primary_segment_id || '',
+    primary_topic_id: slot?.primary_topic_id || '',
+    objective: (slot?.objective as ContentObjective) || 'reach',
+    content_type: (slot?.content_type as ContentType) || 'static_image',
+    angle_hint: slot?.angle_hint || '',
+    notes: slot?.notes || '',
+    status: (slot?.status as string) || 'planned',
   })
 
   // Load segments, topics, and sprint
@@ -141,7 +145,7 @@ export function ContentSlotEditForm({
       const { data: sprintData } = await db
         .from('sprints')
         .select('*')
-        .eq('id', slot.sprint_id)
+        .eq('id', sprintId)
         .single()
 
       if (sprintData) {
@@ -150,7 +154,7 @@ export function ContentSlotEditForm({
     }
 
     loadData()
-  }, [slot.sprint_id, campaignId])
+  }, [sprintId, campaignId])
 
   // Validate form
   const validateForm = (): boolean => {
@@ -161,6 +165,11 @@ export function ContentSlotEditForm({
       const slotDate = new Date(formData.date)
       const sprintStart = new Date(sprint.start_date)
       const sprintEnd = new Date(sprint.end_date)
+
+      // Reset time parts for accurate date comparison
+      slotDate.setHours(0, 0, 0, 0)
+      sprintStart.setHours(0, 0, 0, 0)
+      sprintEnd.setHours(0, 0, 0, 0)
 
       if (slotDate < sprintStart || slotDate > sprintEnd) {
         setValidationError(
@@ -211,7 +220,7 @@ export function ContentSlotEditForm({
         .select('id, slot_index')
         .eq('date', formData.date)
         .eq('channel', formData.channel)
-        .neq('id', slot.id)
+        .neq('id', slot?.id || 'new') // Exclude current slot if editing
 
       if (existingSlots) {
         const duplicate = existingSlots.find(
@@ -227,36 +236,68 @@ export function ContentSlotEditForm({
         }
       }
 
-      // Update slot via PUT endpoint
-      const response = await fetch(`/api/content-slots/${slot.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: formData.date,
-          channel: formData.channel,
-          slot_index: formData.slot_index,
-          primary_segment_id: formData.primary_segment_id || null,
-          primary_topic_id: formData.primary_topic_id || null,
-          objective: formData.objective,
-          content_type: formData.content_type,
-          angle_hint: formData.angle_hint || null,
-          notes: formData.notes || null,
-          status: formData.status,
-        }),
-      })
+      if (isEditing && slot) {
+        // Update slot via PUT endpoint
+        const response = await fetch(`/api/content-slots/${slot.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            date: formData.date,
+            channel: formData.channel,
+            slot_index: formData.slot_index,
+            primary_segment_id: formData.primary_segment_id || null,
+            primary_topic_id: formData.primary_topic_id || null,
+            objective: formData.objective,
+            content_type: formData.content_type,
+            angle_hint: formData.angle_hint || null,
+            notes: formData.notes || null,
+            status: formData.status,
+          }),
+        })
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Sikertelen frissítés')
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Sikertelen frissítés')
+        }
+
+        toast.success('Tartalom slot sikeresen frissítve')
+      } else {
+        // Create new slot via POST endpoint
+        const response = await fetch('/api/content-slots', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sprint_id: sprintId,
+            campaign_id: campaignId,
+            date: formData.date,
+            channel: formData.channel,
+            slot_index: formData.slot_index,
+            primary_segment_id: formData.primary_segment_id || null,
+            primary_topic_id: formData.primary_topic_id || null,
+            objective: formData.objective,
+            content_type: formData.content_type,
+            angle_hint: formData.angle_hint || null,
+            notes: formData.notes || null,
+            status: formData.status,
+          }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Sikertelen létrehozás')
+        }
+
+        toast.success('Tartalom slot sikeresen létrehozva')
       }
 
-      toast.success('Tartalom slot sikeresen frissítve')
       onSuccess()
     } catch (err) {
-      console.error('Error updating content slot:', err)
-      setError(err instanceof Error ? err.message : 'Sikertelen frissítés')
+      console.error('Error saving content slot:', err)
+      setError(err instanceof Error ? err.message : 'Sikertelen mentés')
     } finally {
       setLoading(false)
     }
@@ -266,7 +307,9 @@ export function ContentSlotEditForm({
     <Dialog open={true} onOpenChange={onCancel}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Tartalom slot szerkesztése</DialogTitle>
+          <DialogTitle>
+            {isEditing ? 'Tartalom slot szerkesztése' : 'Új tartalom slot létrehozása'}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

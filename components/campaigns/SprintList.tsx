@@ -31,8 +31,6 @@ interface SprintListProps {
   sprints: SprintPlan[]
   campaignId?: string
   onSprintUpdate?: () => void
-  onGenerateContent?: (sprintId: string) => void
-  generatingContentFor?: string | null
 }
 
 const focusGoalLabels: Record<string, string> = {
@@ -51,7 +49,7 @@ const focusGoalColors: Record<string, string> = {
   mobilization: 'bg-red-100 text-red-700 border-red-200',
 }
 
-export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateContent, generatingContentFor }: SprintListProps) {
+export function SprintList({ sprints, campaignId, onSprintUpdate }: SprintListProps) {
   const router = useRouter()
   const [expandedSprints, setExpandedSprints] = useState<Set<string>>(new Set())
   const [segmentNames, setSegmentNames] = useState<Record<string, string>>({})
@@ -413,26 +411,7 @@ export function SprintList({ sprints, campaignId, onSprintUpdate, onGenerateCont
                 </div>
 
                 <div className="ml-4 flex items-center gap-2">
-                  {onGenerateContent && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onGenerateContent(sprint.id)}
-                      disabled={generatingContentFor === sprint.id}
-                    >
-                      {generatingContentFor === sprint.id ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                          Generálás...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4 mr-1" />
-                          Tartalomnaptár létrehozása
-                        </>
-                      )}
-                    </Button>
-                  )}
+
                   {campaignId && (
                     <>
                       <Button

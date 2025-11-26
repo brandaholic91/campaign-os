@@ -529,6 +529,7 @@ export function ContentCalendar({ slots, sprints, campaignId, onSlotUpdate }: Co
       {editingSlot && campaignId && (
         <ContentSlotEditForm
           slot={editingSlot}
+          sprintId={editingSlot.sprint_id}
           campaignId={campaignId}
           onSuccess={handleEditSuccess}
           onCancel={() => setEditingSlot(null)}
