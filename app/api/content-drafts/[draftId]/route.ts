@@ -95,35 +95,45 @@ export async function PUT(
       created_at: existingDraft.created_at, // Prevent created_at from being changed
     }
 
-    // Validate merged data against ContentDraftSchema
-    const validation = ContentDraftSchema.safeParse(updatedData)
+    // If only updating status (e.g., approval), skip full validation
+    const isStatusOnlyUpdate = Object.keys(body).length === 1 && 'status' in body
+    
+    if (!isStatusOnlyUpdate) {
+      // Validate merged data against ContentDraftSchema for full updates
+      const validation = ContentDraftSchema.safeParse(updatedData)
 
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: validation.error.issues },
-        { status: 400 }
-      )
+      if (!validation.success) {
+        return NextResponse.json(
+          { error: 'Validation failed', details: validation.error.issues },
+          { status: 400 }
+        )
+      }
     }
+
+    // Prepare update data
+    const updatePayload: any = {
+      updated_at: new Date().toISOString(),
+    }
+
+    // Add fields from body
+    if (body.variant_name !== undefined) updatePayload.variant_name = body.variant_name
+    if (body.status !== undefined) updatePayload.status = body.status
+    if (body.hook !== undefined) updatePayload.hook = body.hook
+    if (body.body !== undefined) updatePayload.body = body.body
+    if (body.cta_copy !== undefined) updatePayload.cta_copy = body.cta_copy
+    if (body.visual_idea !== undefined) updatePayload.visual_idea = body.visual_idea
+    if (body.alt_text_suggestion !== undefined) updatePayload.alt_text_suggestion = body.alt_text_suggestion
+    if (body.length_hint !== undefined) updatePayload.length_hint = body.length_hint
+    if (body.tone_notes !== undefined) updatePayload.tone_notes = body.tone_notes
+    if (body.used_segment_id !== undefined) updatePayload.used_segment_id = body.used_segment_id
+    if (body.used_topic_id !== undefined) updatePayload.used_topic_id = body.used_topic_id
+    if (body.used_goal_ids !== undefined) updatePayload.used_goal_ids = body.used_goal_ids
+    if (body.created_by !== undefined) updatePayload.created_by = body.created_by
 
     // Update draft in database
     const { data: draft, error: updateError } = await db
       .from('content_drafts')
-      .update({
-        variant_name: validation.data.variant_name,
-        status: validation.data.status,
-        hook: validation.data.hook,
-        body: validation.data.body,
-        cta_copy: validation.data.cta_copy,
-        visual_idea: validation.data.visual_idea,
-        alt_text_suggestion: validation.data.alt_text_suggestion,
-        length_hint: validation.data.length_hint,
-        tone_notes: validation.data.tone_notes,
-        used_segment_id: validation.data.used_segment_id,
-        used_topic_id: validation.data.used_topic_id,
-        used_goal_ids: validation.data.used_goal_ids,
-        created_by: validation.data.created_by,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', draftId)
       .select()
       .single()
