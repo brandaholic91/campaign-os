@@ -131,11 +131,16 @@ export default function MessageMatrix({
 
       if (!response.ok) {
         let errorMessage = 'Hiba történt a generálás során'
+        let errorDetails = ''
         try {
           const error = await response.json()
           errorMessage = error.error || error.message || errorMessage
           if (error.details) {
+            errorDetails = error.details
             errorMessage += `: ${error.details}`
+          }
+          if (error.debug) {
+            console.error('[handleGenerateStrategy] Error debug info:', error.debug)
           }
         } catch (parseError) {
           try {
@@ -147,13 +152,20 @@ export default function MessageMatrix({
             errorMessage = `HTTP ${response.status}: ${response.statusText || 'Ismeretlen hiba'}`
           }
         }
+        console.error('[handleGenerateStrategy] Generation failed:', {
+          status: response.status,
+          errorMessage,
+          errorDetails
+        })
         throw new Error(errorMessage)
       }
 
       const data = await response.json()
       
       if (!data.strategies || !Array.isArray(data.strategies) || data.strategies.length === 0) {
-        throw new Error('Nem sikerült stratégiát generálni. Kérlek, próbáld újra.')
+        // This should not happen if backend returns proper error, but handle it gracefully
+        const errorMsg = data.error || data.details || 'Nem sikerült stratégiát generálni. Kérlek, próbáld újra.'
+        throw new Error(errorMsg)
       }
       
       // Map response to format expected by preview

@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
+// Convert legacy enum values to current database enum values
+const normalizeCampaignType = (type: string): string => {
+  const mapping: Record<string, string> = {
+    'brand_product': 'product_launch',
+    'ngo': 'ngo_issue',
+  }
+  return mapping[type] || type
+}
+
 const SaveWizardSchema = z.object({
   campaign: z.object({
     name: z.string(),
@@ -63,7 +72,7 @@ export async function POST(req: NextRequest) {
         description: campaign.description || null,
         start_date: campaign.startDate,
         end_date: campaign.endDate,
-        campaign_type: campaign.campaignType as any,
+        campaign_type: normalizeCampaignType(campaign.campaignType) as any,
         primary_goal_type: campaign.goalType as any,
         status: 'planning',
         budget_estimate: campaign.budgetEstimate || null,

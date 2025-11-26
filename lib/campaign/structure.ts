@@ -48,12 +48,18 @@ export async function fetchCampaignStructure(id: string): Promise<CampaignStruct
     goals: (goals || []).map(g => ({
       ...g,
       priority: g.priority || 1,
+      description: g.description ?? undefined,
       target_metric: g.target_metric as any,
-      funnel_stage: g.funnel_stage as any
+      funnel_stage: g.funnel_stage as any,
+      kpi_hint: g.kpi_hint ?? undefined
     })),
     segments: (segments || []).map(s => ({
       ...s,
+      short_label: s.short_label ?? undefined,
+      description: s.description ?? undefined,
       priority: s.priority as any,
+      demographics: s.demographics ? (s.demographics as Record<string, any>) : undefined,
+      psychographics: s.psychographics ? (s.psychographics as Record<string, any>) : undefined,
       demographic_profile: s.demographic_profile as any,
       psychographic_profile: s.psychographic_profile as any,
       media_habits: s.media_habits as any,
@@ -62,17 +68,36 @@ export async function fetchCampaignStructure(id: string): Promise<CampaignStruct
     })),
     topics: (topics || []).map(t => ({
       ...t,
+      short_label: t.short_label ?? undefined,
+      description: t.description ?? undefined,
+      core_narrative: t.core_narrative ?? undefined,
+      category: t.category ?? undefined,
       priority: t.priority as any,
       topic_type: t.topic_type as any,
-      related_goal_stages: Array.isArray(t.related_goal_stages) ? t.related_goal_stages : (t.related_goal_stages ? [t.related_goal_stages] : []),
-      recommended_content_types: Array.isArray(t.recommended_content_types) ? t.recommended_content_types : (t.recommended_content_types ? [t.recommended_content_types] : []),
-      risk_notes: Array.isArray(t.risk_notes) ? t.risk_notes : (t.risk_notes ? [t.risk_notes] : [])
+      related_goal_types: Array.isArray(t.related_goal_types)
+        ? (t.related_goal_types as string[])
+        : (t.related_goal_types ? [t.related_goal_types as string] : undefined),
+      related_goal_stages: Array.isArray(t.related_goal_stages) 
+        ? (t.related_goal_stages as ('awareness' | 'engagement' | 'consideration' | 'conversion' | 'mobilization')[])
+        : (t.related_goal_stages ? [t.related_goal_stages as 'awareness' | 'engagement' | 'consideration' | 'conversion' | 'mobilization'] : []),
+      content_angles: Array.isArray(t.content_angles)
+        ? (t.content_angles as string[])
+        : (t.content_angles ? [t.content_angles as string] : undefined),
+      recommended_channels: Array.isArray(t.recommended_channels)
+        ? (t.recommended_channels as string[])
+        : (t.recommended_channels ? [t.recommended_channels as string] : undefined),
+      recommended_content_types: Array.isArray(t.recommended_content_types)
+        ? (t.recommended_content_types as string[])
+        : (t.recommended_content_types ? [t.recommended_content_types as string] : []),
+      risk_notes: Array.isArray(t.risk_notes)
+        ? (t.risk_notes as string[])
+        : (t.risk_notes ? [t.risk_notes as string] : [])
     })),
     narratives: (narrativesData || []).map(n => ({
       id: n.id,
       title: n.title,
-      description: n.description,
-      priority: n.priority,
+      description: n.description ?? undefined,
+      priority: n.priority ?? undefined,
       suggested_phase: n.suggested_phase as any,
       primary_goal_ids: n.narrative_goals?.map((ng: any) => ng.goal_id) || [],
       primary_topic_ids: n.narrative_topics?.map((nt: any) => nt.topic_id) || []
@@ -82,7 +107,7 @@ export async function fetchCampaignStructure(id: string): Promise<CampaignStruct
       topic_id: m.topic_id,
       importance: m.importance as any,
       role: m.role as any,
-      summary: m.summary
+      summary: m.summary ?? undefined
     }))
   }
 

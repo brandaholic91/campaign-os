@@ -1,0 +1,300 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>6</epicId>
+    <storyId>3</storyId>
+    <title>Content Draft API CRUD</title>
+    <status>drafted</status>
+    <generatedAt>2025-01-02</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/6-3-content-draft-api-crud.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>campaign manager</asA>
+    <iWant>CRUD API endpoints for content drafts</iWant>
+    <soThat>I can create, read, update, and delete draft content for slots</soThat>
+    <tasks>
+      - Task 1: Create GET drafts by slot endpoint (AC: 1)
+        - Create `app/api/content-slots/[slotId]/drafts/route.ts`
+        - Implement GET handler
+        - Query content_drafts table filtered by slot_id
+        - Order by created_at DESC (newest first)
+        - Return `{ drafts: ContentDraft[] }`
+        - Handle 404 if slot not found
+        - Add error handling
+      
+      - Task 2: Create POST draft endpoint (AC: 2)
+        - Add POST handler to `app/api/content-slots/[slotId]/drafts/route.ts`
+        - Validate request body against ContentDraftSchema
+        - Validate required fields (hook, body, cta_copy, visual_idea)
+        - Validate min lengths (hook: 10, body: 50, cta_copy: 5, visual_idea: 20)
+        - Verify slot_id exists (foreign key check)
+        - Set default values: `status: 'draft'`, `created_by: 'human'` (if not provided)
+        - Insert draft into content_drafts table
+        - Return created draft: `{ draft: ContentDraft }`
+        - Add error handling (400 for validation, 404 for slot not found, 500 for server errors)
+      
+      - Task 3: Create GET single draft endpoint (AC: 3)
+        - Create `app/api/content-drafts/[draftId]/route.ts`
+        - Implement GET handler
+        - Query content_drafts table by id
+        - Return `{ draft: ContentDraft }`
+        - Handle 404 if draft not found
+        - Add error handling
+      
+      - Task 4: Create PUT draft endpoint (AC: 4)
+        - Add PUT handler to `app/api/content-drafts/[draftId]/route.ts`
+        - Validate request body against ContentDraftSchema
+        - Validate required fields still present
+        - Validate min lengths
+        - Update draft in content_drafts table
+        - Return updated draft: `{ draft: ContentDraft }`
+        - Handle 404 if draft not found
+        - Add error handling
+      
+      - Task 5: Create DELETE draft endpoint (AC: 5)
+        - Add DELETE handler to `app/api/content-drafts/[draftId]/route.ts`
+        - Verify draft exists
+        - Delete draft from content_drafts table
+        - Return success confirmation: `{ success: true }`
+        - Handle 404 if draft not found
+        - Add error handling
+      
+      - Task 6: Test all endpoints (AC: 1-6)
+        - Test GET drafts by slot (with and without drafts)
+        - Test POST draft (valid and invalid data)
+        - Test GET single draft (existing and non-existing)
+        - Test PUT draft (valid and invalid updates)
+        - Test DELETE draft (existing and non-existing)
+        - Test foreign key constraints (slot_id must exist)
+        - Test CASCADE delete (delete slot, verify drafts deleted)
+        - Test validation errors (missing fields, min length violations)
+        - Test status transitions (draft → approved → published)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    1. **Given** I have a content slot with id `slotId`
+       **When** I GET `/api/content-slots/[slotId]/drafts`
+       **Then** I receive list of all drafts for that slot: `{ drafts: ContentDraft[] }`
+       **And** Drafts are ordered by created_at (newest first)
+       **And** Response includes all draft fields (hook, body, cta_copy, visual_idea, status, variant_name, etc.)
+
+    2. **And** When I POST `/api/content-slots/[slotId]/drafts` with draft data
+       **Then** Draft is created and saved to database
+       **And** Response returns created draft: `{ draft: ContentDraft }`
+       **And** Validation ensures required fields (hook, body, cta_copy, visual_idea)
+       **And** Validation ensures hook min 10 chars, body min 50 chars, cta_copy min 5 chars, visual_idea min 20 chars
+       **And** Default values: `status: 'draft'`, `created_by: 'human'` (if not specified)
+
+    3. **And** When I GET `/api/content-drafts/[draftId]`
+       **Then** I receive draft details: `{ draft: ContentDraft }`
+       **And** Response includes slot relationship (slot_id)
+       **And** 404 error if draft not found
+
+    4. **And** When I PUT `/api/content-drafts/[draftId]` with updated data
+       **Then** Draft is updated in database
+       **And** Response returns updated draft: `{ draft: ContentDraft }`
+       **And** Status can be updated (draft → approved → published)
+       **And** Validation ensures required fields still present
+       **And** 404 error if draft not found
+
+    5. **And** When I DELETE `/api/content-drafts/[draftId]`
+       **Then** Draft is deleted from database
+       **And** Response returns success confirmation: `{ success: true }`
+       **And** 404 error if draft not found
+
+    6. **And** All endpoints validate against ContentDraftSchema from Story 6.1
+       **And** Error handling returns appropriate HTTP status codes (400, 404, 500)
+       **And** Foreign key constraints enforced (slot_id must exist)
+       **And** CASCADE delete works (if slot deleted, drafts deleted)
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/tech-spec.md" title="Technical Specification" section="Epic 5: Execution Planner">
+        <snippet>Content slots and content drafts are part of the execution planning system. Content slots represent planned content opportunities, while content drafts are concrete content pieces with copy, visuals, and CTA generated from slots.</snippet>
+      </doc>
+      <doc path="docs/sprint-artifacts/6-3-content-draft-api-crud.md" title="Story 6.3: Content Draft API CRUD" section="Dev Notes">
+        <snippet>Follow existing API route patterns from Story 5.4. Use ContentDraftSchema from Story 6.1 for validation. Use Supabase client from `lib/supabase/server.ts`. Error handling uses standard HTTP status codes (400, 404, 500).</snippet>
+      </doc>
+      <doc path="docs/epics.md" title="Epic 6: Content Slot / Content Draft Separation" section="Story 6.3">
+        <snippet>CRUD API endpoints for content drafts. All endpoints validate against ContentDraftSchema. Foreign key constraints enforced (slot_id must exist). CASCADE delete works (if slot deleted, drafts deleted).</snippet>
+      </doc>
+      <doc path="docs/sprint-artifacts/6-1-content-slot-schema-enhancement-draft-table.md" title="Story 6.1: ContentSlot Schema Enhancement" section="Content Draft Schema">
+        <snippet>ContentDraftSchema defines validation rules: hook (min 10 chars), body (min 50 chars), cta_copy (min 5 chars), visual_idea (min 20 chars). Status enum: draft, approved, rejected, published. Created_by enum: ai, human.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact path="lib/ai/schemas.ts" kind="schema" symbol="ContentDraftSchema" lines="453-471" reason="Zod schema for content draft validation with all required fields and min length constraints">
+        <snippet>export const ContentDraftSchema = z.object({
+          id: z.string().uuid().optional(),
+          slot_id: z.string().uuid(),
+          variant_name: z.string().optional(),
+          status: ContentDraftStatusSchema.default('draft'),
+          hook: z.string().min(10, 'Hook must be at least 10 characters'),
+          body: z.string().min(50, 'Body must be at least 50 characters'),
+          cta_copy: z.string().min(5, 'CTA copy must be at least 5 characters'),
+          visual_idea: z.string().min(20, 'Visual idea must be at least 20 characters'),
+          alt_text_suggestion: z.string().optional(),
+          length_hint: z.string().optional(),
+          tone_notes: z.string().optional(),
+          used_segment_id: z.string().uuid().optional(),
+          used_topic_id: z.string().uuid().optional(),
+          used_goal_ids: z.array(z.string().uuid()).optional(),
+          created_by: z.enum(['ai', 'human']).default('ai'),
+          created_at: z.string().optional(),
+          updated_at: z.string().optional(),
+        })</snippet>
+      </artifact>
+      <artifact path="lib/supabase/server.ts" kind="service" symbol="createClient" lines="1-36" reason="Supabase server client factory for database operations">
+        <snippet>export async function createClient() {
+          const cookieStore = await cookies()
+          return createServerClient&lt;Database&gt;(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { cookies: { get, set, remove } }
+          )
+        }</snippet>
+      </artifact>
+      <artifact path="app/api/campaigns/[id]/route.ts" kind="controller" symbol="GET, PUT, DELETE handlers" lines="8-154" reason="Reference pattern for CRUD API routes with Next.js App Router">
+        <snippet>Uses NextRequest, NextResponse, createClient from lib/supabase/server. Handles 404 errors with PGRST116 code check. Returns JSON responses with proper status codes. Uses .single() for single record queries.</snippet>
+      </artifact>
+      <artifact path="app/api/strategies/route.ts" kind="controller" symbol="GET, POST handlers" lines="19-185" reason="Reference pattern for POST endpoint with Zod validation">
+        <snippet>Uses CreateStrategyRequestSchema for request validation. Validates with safeParse, returns 400 for validation errors. Handles UNIQUE constraint violations (code 23505) with 409 status. Uses supabase.schema('campaign_os') for queries.</snippet>
+      </artifact>
+      <artifact path="app/api/content-slots/[id]/route.ts" kind="controller" symbol="PUT, DELETE handlers" lines="20-183" reason="Reference pattern for content slot CRUD operations">
+        <snippet>Validates date ranges, checks for duplicates, updates with proper error handling. Uses TypeScript types from Database types. Returns proper error messages in Hungarian for user-facing errors.</snippet>
+      </artifact>
+      <artifact path="supabase/migrations/20251201_content_slot_draft_separation.sql" kind="migration" symbol="content_drafts table" lines="367-391" reason="Database schema for content_drafts table with all constraints">
+        <snippet>CREATE TABLE campaign_os.content_drafts (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          slot_id UUID NOT NULL REFERENCES campaign_os.content_slots(id) ON DELETE CASCADE,
+          variant_name TEXT,
+          status TEXT NOT NULL DEFAULT 'draft',
+          hook TEXT NOT NULL,
+          body TEXT NOT NULL,
+          cta_copy TEXT NOT NULL,
+          visual_idea TEXT NOT NULL,
+          alt_text_suggestion TEXT,
+          length_hint TEXT,
+          tone_notes TEXT,
+          used_segment_id UUID REFERENCES campaign_os.segments(id) ON DELETE SET NULL,
+          used_topic_id UUID REFERENCES topics(id) ON DELETE SET NULL,
+          used_goal_ids JSONB DEFAULT '[]'::jsonb,
+          created_by TEXT NOT NULL DEFAULT 'ai',
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW(),
+          CONSTRAINT valid_content_draft_status CHECK (status IN ('draft', 'approved', 'rejected', 'published')),
+          CONSTRAINT valid_content_draft_created_by CHECK (created_by IN ('ai', 'human')),
+          CONSTRAINT valid_hook_min_length CHECK (char_length(hook) >= 10),
+          CONSTRAINT valid_body_min_length CHECK (char_length(body) >= 50),
+          CONSTRAINT valid_cta_copy_min_length CHECK (char_length(cta_copy) >= 5),
+          CONSTRAINT valid_visual_idea_min_length CHECK (char_length(visual_idea) >= 20)
+        )</snippet>
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="next" version="^16.0.3" />
+        <package name="@supabase/ssr" version="^0.7.0" />
+        <package name="@supabase/supabase-js" version="^2.84.0" />
+        <package name="zod" version="^4.1.12" />
+        <package name="typescript" version="^5.9.3" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>RESTful API: Follow existing API route patterns from Story 5.4 and app/api/strategies/route.ts</constraint>
+    <constraint>Error Handling: Use standard HTTP status codes (400 for validation, 404 for not found, 500 for server errors)</constraint>
+    <constraint>Validation: Use ContentDraftSchema from lib/ai/schemas.ts (Story 6.1) for all request body validation</constraint>
+    <constraint>Database Queries: Use Supabase client from lib/supabase/server.ts with schema('campaign_os')</constraint>
+    <constraint>Foreign Key Constraints: slot_id must exist in content_slots table (enforced by database)</constraint>
+    <constraint>CASCADE Delete: If content_slot is deleted, all related content_drafts are automatically deleted (database constraint)</constraint>
+    <constraint>Min Length Validation: hook (10 chars), body (50 chars), cta_copy (5 chars), visual_idea (20 chars) - enforced by both Zod schema and database CHECK constraints</constraint>
+    <constraint>Default Values: status defaults to 'draft', created_by defaults to 'human' if not specified in POST request</constraint>
+    <constraint>Response Format: All endpoints return JSON with consistent structure: { drafts: ContentDraft[] } or { draft: ContentDraft } or { success: true }</constraint>
+    <constraint>Ordering: GET /api/content-slots/[slotId]/drafts returns drafts ordered by created_at DESC (newest first)</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="GET /api/content-slots/[slotId]/drafts" kind="REST endpoint">
+      <signature>GET /api/content-slots/[slotId]/drafts</signature>
+      <path>app/api/content-slots/[slotId]/drafts/route.ts</path>
+      <description>Returns list of all content drafts for a given content slot, ordered by created_at DESC</description>
+      <response>{ drafts: ContentDraft[] }</response>
+      <errors>404 if slot not found, 500 for server errors</errors>
+    </interface>
+    <interface name="POST /api/content-slots/[slotId]/drafts" kind="REST endpoint">
+      <signature>POST /api/content-slots/[slotId]/drafts</signature>
+      <path>app/api/content-slots/[slotId]/drafts/route.ts</path>
+      <description>Creates a new content draft for a given content slot</description>
+      <request>ContentDraft (without id, slot_id, created_at, updated_at)</request>
+      <response>{ draft: ContentDraft }</response>
+      <errors>400 for validation errors, 404 if slot not found, 500 for server errors</errors>
+    </interface>
+    <interface name="GET /api/content-drafts/[draftId]" kind="REST endpoint">
+      <signature>GET /api/content-drafts/[draftId]</signature>
+      <path>app/api/content-drafts/[draftId]/route.ts</path>
+      <description>Returns a single content draft by ID</description>
+      <response>{ draft: ContentDraft }</response>
+      <errors>404 if draft not found, 500 for server errors</errors>
+    </interface>
+    <interface name="PUT /api/content-drafts/[draftId]" kind="REST endpoint">
+      <signature>PUT /api/content-drafts/[draftId]</signature>
+      <path>app/api/content-drafts/[draftId]/route.ts</path>
+      <description>Updates an existing content draft</description>
+      <request>Partial ContentDraft (fields to update)</request>
+      <response>{ draft: ContentDraft }</response>
+      <errors>400 for validation errors, 404 if draft not found, 500 for server errors</errors>
+    </interface>
+    <interface name="DELETE /api/content-drafts/[draftId]" kind="REST endpoint">
+      <signature>DELETE /api/content-drafts/[draftId]</signature>
+      <path>app/api/content-drafts/[draftId]/route.ts</path>
+      <description>Deletes a content draft</description>
+      <response>{ success: true }</response>
+      <errors>404 if draft not found, 500 for server errors</errors>
+    </interface>
+    <interface name="ContentDraftSchema" kind="Zod schema">
+      <signature>ContentDraftSchema: z.object({ ... })</signature>
+      <path>lib/ai/schemas.ts</path>
+      <description>Zod validation schema for content drafts with all required fields and min length constraints</description>
+    </interface>
+    <interface name="createClient" kind="function">
+      <signature>createClient(): Promise&lt;SupabaseClient&gt;</signature>
+      <path>lib/supabase/server.ts</path>
+      <description>Factory function that creates Supabase server client for database operations</description>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Test all CRUD operations with Jest. Test validation (required fields, min lengths). Test foreign key constraints. Test CASCADE delete. Test error handling (404, 400, 500). Test status transitions. Use existing test patterns from __tests__/api/ directory.
+    </standards>
+    <locations>
+      __tests__/api/content-drafts.test.ts (new file to create)
+    </locations>
+    <ideas>
+      <test ac="1">Test GET /api/content-slots/[slotId]/drafts returns empty array when slot has no drafts</test>
+      <test ac="1">Test GET /api/content-slots/[slotId]/drafts returns drafts ordered by created_at DESC</test>
+      <test ac="1">Test GET /api/content-slots/[slotId]/drafts returns 404 when slot does not exist</test>
+      <test ac="2">Test POST /api/content-slots/[slotId]/drafts creates draft with valid data</test>
+      <test ac="2">Test POST /api/content-slots/[slotId]/drafts sets default status='draft' and created_by='human'</test>
+      <test ac="2">Test POST /api/content-slots/[slotId]/drafts returns 400 when required fields missing</test>
+      <test ac="2">Test POST /api/content-slots/[slotId]/drafts returns 400 when min length constraints violated</test>
+      <test ac="2">Test POST /api/content-slots/[slotId]/drafts returns 404 when slot_id does not exist</test>
+      <test ac="3">Test GET /api/content-drafts/[draftId] returns draft details</test>
+      <test ac="3">Test GET /api/content-drafts/[draftId] returns 404 when draft does not exist</test>
+      <test ac="4">Test PUT /api/content-drafts/[draftId] updates draft successfully</test>
+      <test ac="4">Test PUT /api/content-drafts/[draftId] allows status transitions (draft → approved → published)</test>
+      <test ac="4">Test PUT /api/content-drafts/[draftId] returns 400 when validation fails</test>
+      <test ac="4">Test PUT /api/content-drafts/[draftId] returns 404 when draft does not exist</test>
+      <test ac="5">Test DELETE /api/content-drafts/[draftId] deletes draft successfully</test>
+      <test ac="5">Test DELETE /api/content-drafts/[draftId] returns 404 when draft does not exist</test>
+      <test ac="6">Test CASCADE delete: when content_slot deleted, all related drafts are deleted</test>
+      <test ac="6">Test foreign key constraint: cannot create draft with invalid slot_id</test>
+    </ideas>
+  </tests>
+</story-context>
+

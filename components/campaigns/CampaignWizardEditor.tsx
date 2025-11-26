@@ -172,6 +172,15 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
   const [formData, setFormData] = useState(wizardData || {})
   const [generatedStructure, setGeneratedStructure] = useState<CampaignStructureType | null>(null)
 
+  // Convert legacy enum values to current database enum values
+  const normalizeCampaignType = (type: string): string => {
+    const mapping: Record<string, string> = {
+      'brand_product': 'product_launch',
+      'ngo': 'ngo_issue',
+    }
+    return mapping[type] || type
+  }
+
   const updateField = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }))
   }
@@ -201,7 +210,7 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brief,
-          campaignType: formData.type || campaignType,
+          campaignType: normalizeCampaignType(formData.type || campaignType),
           goalType: formData.goalType || goalType
         })
       })
@@ -364,7 +373,7 @@ export function CampaignWizardEditor({ wizardData, campaignId, campaignType, goa
             description: formData.description || '',
             startDate: formData.startDate || '',
             endDate: formData.endDate || '',
-            campaignType: formData.type || campaignType,
+            campaignType: normalizeCampaignType(formData.type || campaignType),
             goalType: formData.goalType || goalType
           },
           structure,
