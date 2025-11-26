@@ -70,6 +70,19 @@ Ez a folyamat egy **kétfázisú** megközelítést alkalmaz a nagyobb kontroll 
 -   Kampány alapadatok (dátumok, célok).
 -   Generált stratégiák és narratívák.
 
+**Dinamikus Posztszám Kalkuláció:**
+A rendszer determinisztikus logikával számolja ki az ajánlott heti volument (`suggested_weekly_post_volume`):
+1.  **Bázis (Kampány Típus)**: Pl. Product Launch = 14, NGO = 8, General = 10.
+2.  **Csatornák**:
+    *   TikTok: +4 (Video hangsúly)
+    *   Twitter/X: +5
+    *   Instagram: +2 (Story hangsúly)
+    *   Facebook: +2
+3.  **Sprint Fókusz**:
+    *   Conversion/Mobilization: +20% intenzitás
+    *   Engagement: +10% intenzitás
+    *   Consideration: -10% intenzitás
+
 **Kimenet (Sprint Schema):**
 -   **Időzítés**: Start/End dátumok.
 -   **Fókusz**: `focus_stage` (pl. Awareness), `focus_goals`.
